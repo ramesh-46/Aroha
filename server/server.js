@@ -22,26 +22,20 @@ const allowedOrigins = [
   "http://localhost:3000"           // local dev
 ];
 
-const corsOptions = {
-  origin: function(origin, callback) {
+app.use(cors({
+  origin: function(origin, callback){
     // allow requests with no origin (Postman, mobile apps)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = "The CORS policy for this site does not allow access from the specified Origin.";
+    if(!origin) return callback(null, true);
+    if(allowedOrigins.indexOf(origin) === -1){
+      const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
       return callback(new Error(msg), false);
     }
     return callback(null, true);
   },
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"],
   credentials: true
-};
-
-// Use CORS middleware
-app.use(cors(corsOptions));
-
-// Handle preflight OPTIONS requests globally with the same CORS options
-app.options("*", cors(corsOptions));
+}));
 
 // --------------------
 // Body parser
@@ -63,8 +57,8 @@ mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-  .then(() => console.log("✅ MongoDB Connected"))
-  .catch(err => console.log("❌ MongoDB Error:", err));
+.then(() => console.log("✅ MongoDB Connected"))
+.catch(err => console.log("❌ MongoDB Error:", err));
 
 // --------------------
 // Routes
