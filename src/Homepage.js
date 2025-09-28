@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from "react-router-dom";
 
 // --- Main App ---
 const Homepage = () => {
@@ -301,11 +302,15 @@ const CategoryCard = ({ label, note, images }) => {
 };
 
 // --- Header ---
+
 const Header = () => {
+  const navigate = useNavigate();
+
   const navItems = [
     { name: "Home", href: "#home" },
     { name: "Categories", href: "#categories" },
     { name: "Marketplaces", href: "#marketplaces" },
+    { name: "Contact", href: "#contact" },
     { name: "Contact", href: "#contact" },
   ];
 
@@ -322,17 +327,38 @@ const Header = () => {
           <span style={styles.brandName}>AROHA</span>
         </div>
         <div style={styles.contactInfo}>
-          <a href="mailto:aroha.info@gmail.com" style={styles.contactLink}>aroha.info@gmail.com</a>
-          <a href="https://wa.me/918019802281?text=I%20visited%20AROHA%20website%20-%20I%20want%20help%20with%20orders%20and%20catalog." target="_blank" rel="noopener" style={styles.contactLink}>
-            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" style={styles.whatsappIcon} />
+          <a href="mailto:aroha.info@gmail.com" style={styles.contactLink}>
+            aroha.info@gmail.com
+          </a>
+          <a
+            href="https://wa.me/918019802281?text=I%20visited%20AROHA%20website%20-%20I%20want%20help%20with%20orders%20and%20catalog."
+            target="_blank"
+            rel="noopener"
+            style={styles.contactLink}
+          >
+            <img
+              src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
+              alt="WhatsApp"
+              style={styles.whatsappIcon}
+            />
             WhatsApp
           </a>
+
+          {/* Login Button */}
+          <button
+            style={styles.loginButton}
+            onClick={() => navigate("/login")}
+          >
+            Login
+          </button>
         </div>
         <nav>
           <ul style={styles.navUl}>
             {navItems.map((item, index) => (
               <li key={index}>
-                <a href={item.href} style={styles.navA}>{item.name}</a>
+                <a href={item.href} style={styles.navA}>
+                  {item.name}
+                </a>
               </li>
             ))}
           </ul>
@@ -341,6 +367,7 @@ const Header = () => {
     </header>
   );
 };
+
 
 // --- Hero with Carousel ---
 const Hero = () => {
@@ -486,6 +513,15 @@ const styles = {
     fontWeight: 400,
     color: "#2c3e50",
     letterSpacing: "0.05em",
+  }, loginButton: {
+    backgroundColor: "black",
+    color: "white",
+    border: "none",
+    padding: "8px 16px",
+    marginLeft: "10px",
+    cursor: "pointer",
+    borderRadius: "4px",
+    fontWeight: "bold",
   },
   contactInfo: {
     display: "flex",
