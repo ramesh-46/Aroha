@@ -41,7 +41,7 @@ function Dashboard() {
       if (filters.sizes.length > 0) params.append("sizes", filters.sizes.join(","));
       if (filters.brands.length > 0) params.append("brands", filters.brands.join(","));
 
-      const res = await axios.get(`http://localhost:5000/products/search?${params.toString()}`);
+      const res = await axios.get(`https://aroha.onrender.com/products/search?${params.toString()}`);
       setProducts(res.data);
     } catch (err) {
       console.log(err);
@@ -65,7 +65,7 @@ function Dashboard() {
   const handleAddToCart = async (productId) => {
     if (!isLoggedIn) return navigate("/login");
     try {
-      await axios.post(`http://localhost:5000/cart`, {
+      await axios.post(`https://aroha.onrender.com/cart`, {
         userId: user._id,
         productId,
         quantity: 1
@@ -80,7 +80,7 @@ function Dashboard() {
   // Delete product (admin or owner)
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/products/${id}`);
+      await axios.delete(`https://aroha.onrender.com/products/${id}`);
       fetchProducts();
     } catch (err) {
       console.log(err);
@@ -321,7 +321,7 @@ function Dashboard() {
                     <div style={styles.productImageContainer}>
                       {images.length > 0 ? (
                         <img
-                          src={`http://localhost:5000/uploads/${images[0]}`}
+                          src={`https://aroha.onrender.com/uploads/${images[0]}`}
                           alt={p.name}
                           style={styles.productImage}
                         />

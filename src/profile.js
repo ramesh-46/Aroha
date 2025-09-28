@@ -7,7 +7,7 @@ function Profile() {
 
   const handleUpdate = async () => {
     try {
-      const res = await axios.post("http://localhost:5000/auth/profile/update", form);
+      const res = await axios.post("https://aroha.onrender.com/auth/profile/update", form);
       if (res.data.success) {
         localStorage.setItem("user", JSON.stringify(res.data.user));
         alert("Profile updated!");

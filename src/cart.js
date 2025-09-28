@@ -13,7 +13,7 @@ function Cart() {
   const fetchCart = async () => {
     if (!user) return;
     try {
-      const res = await axios.get(`http://localhost:5000/cart/${user._id}`);
+      const res = await axios.get(`https://aroha.onrender.com/cart/${user._id}`);
       setCart(res.data);
     } catch (err) {
       console.log(err);
@@ -24,7 +24,7 @@ function Cart() {
   const fetchOrders = async () => {
     if (!user) return;
     try {
-      const res = await axios.get(`http://localhost:5000/orders/${user._id}`);
+      const res = await axios.get(`https://aroha.onrender.com/orders/${user._id}`);
       setPreviousOrders(res.data);
     } catch (err) {
       console.log(err);
@@ -56,7 +56,7 @@ function Cart() {
     if (newQty < 1) return;
 
     try {
-      await axios.post("http://localhost:5000/cart", {
+      await axios.post("https://aroha.onrender.com/cart", {
         userId: user._id,
         productId,
         quantity: newQty - item.quantity // update difference
@@ -83,7 +83,7 @@ function Cart() {
         quantity: i.quantity
       }));
 
-      await axios.post("http://localhost:5000/orders", {
+      await axios.post("https://aroha.onrender.com/orders", {
         userId: user._id,
         items: formattedItems,
         customerName: customerDetails.name,
@@ -93,7 +93,7 @@ function Cart() {
 
       // Remove ordered items from cart
       for (let i of itemsToOrder) {
-        await axios.delete(`http://localhost:5000/cart/removeItem/${user._id}/${i.productId._id}`);
+        await axios.delete(`https://aroha.onrender.com/cart/removeItem/${user._id}/${i.productId._id}`);
       }
 
       setShowOrderModal(false);
@@ -124,7 +124,7 @@ function Cart() {
               }}
             >
               <input type="checkbox" checked={selectedItems.includes(item.productId._id)} onChange={() => toggleSelect(item.productId._id)} />
-              <img src={`http://localhost:5000/uploads/${item.productId.images?.[0]}`} alt={item.productId.name} style={imgStyle} />
+              <img src={`https://aroha.onrender.com/uploads/${item.productId.images?.[0]}`} alt={item.productId.name} style={imgStyle} />
               <h4>{item.productId.name}</h4>
               <p>Price: ₹{item.productId.finalPrice || item.productId.price}</p>
               <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "5px", marginTop: "5px" }}>

@@ -2,20 +2,28 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import {
   FaBoxOpen, FaTruck, FaHome, FaClock, FaShoppingCart,
-  FaMoneyBillWave, FaHistory, FaMapMarkerAlt, FaPhoneAlt, FaInfoCircle
+  FaMoneyBillWave, FaHistory, FaMapMarkerAlt, FaPhoneAlt,
+  FaExclamationTriangle, FaImage
 } from "react-icons/fa";
 
 function Orders() {
   const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const user = JSON.parse(localStorage.getItem("user"));
 
   const fetchOrders = async () => {
     if (!user) return;
     try {
-      const res = await axios.get(`http://localhost:5000/orders/user/${user._id}`);
+      setLoading(true);
+      const res = await axios.get(`https://aroha.onrender.com/orders/user/${user._id}`);
       setOrders(res.data);
+      setError(null);
     } catch (err) {
-      console.log(err);
+      console.error("Error fetching orders:", err);
+      setError("Failed to load orders. Please try again later.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -23,10 +31,57 @@ function Orders() {
     fetchOrders();
   }, []);
 
+  // Helper function to safely get product image
+  const getProductImage = (item) => {
+    if (!item.productId) {
+      return "https://via.placeholder.com/150?text=Product+Removed";
+    }
+
+    try {
+      if (item.productId.images && item.productId.images.length > 0) {
+        return `https://aroha.onrender.com/uploads/${item.productId.images[0]}`;
+      }
+      return "https://via.placeholder.com/150?text=No+Image";
+    } catch (e) {
+      return "https://via.placeholder.com/150?text=Error+Loading";
+    }
+  };
+
+  // Helper function to safely get product name
+  const getProductName = (item) => {
+    if (!item.productId) {
+      return "Product Removed";
+    }
+    return item.productId.name || "Unknown Product";
+  };
+
+  // Helper function to safely get product price
+  const getProductPrice = (item) => {
+    if (!item.productId) {
+      return 0;
+    }
+    return (item.productId.finalPrice || item.productId.price || 0) * item.quantity;
+  };
+
   if (!user) return (
     <div style={styles.noUser}>
       <FaBoxOpen style={styles.noUserIcon} />
       <p>Please log in to view orders.</p>
+    </div>
+  );
+
+  if (loading) return (
+    <div style={styles.loading}>
+      <FaBoxOpen style={styles.loadingIcon} />
+      <p>Loading orders...</p>
+    </div>
+  );
+
+  if (error) return (
+    <div style={styles.error}>
+      <FaExclamationTriangle style={styles.errorIcon} />
+      <p>{error}</p>
+      <button onClick={fetchOrders} style={styles.retryButton}>Retry</button>
     </div>
   );
 
@@ -37,7 +92,7 @@ function Orders() {
       {orders.length === 0 ? (
         <div style={styles.noOrders}>
           <FaBoxOpen style={styles.noOrdersIcon} />
-          <p>No orders yet.</p>
+          <p>No orders found.</p>
         </div>
       ) : (
         <div style={styles.ordersGrid}>
@@ -47,7 +102,7 @@ function Orders() {
               <div style={styles.orderHeader}>
                 <div style={styles.orderId}>
                   <FaShoppingCart style={styles.icon} />
-                  <span>Order #{order._id.substring(0, 8)}</span>
+                  <span>Order #{order._id.substring(0, 8)}...</span>
                 </div>
                 <div style={styles.status}>
                   <FaTruck style={styles.icon} />
@@ -77,17 +132,21 @@ function Orders() {
               <div style={styles.itemsSection}>
                 <h5 style={styles.sectionTitle}>Items:</h5>
                 <div style={styles.itemsGrid}>
-                  {order.items.slice(0, 3).map((i) => (
-                    <div key={i.productId._id} style={styles.itemBox}>
+                  {order.items.map((i) => (
+                    <div key={i._id} style={styles.itemBox}>
                       <img
-                        src={`http://localhost:5000/uploads/${i.productId.images?.[0]}`}
-                        alt={i.productId.name}
+                        src={getProductImage(i)}
+                        alt={getProductName(i)}
                         style={styles.itemImage}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "https://via.placeholder.com/150?text=Image+Error";
+                        }}
                       />
                       <div style={styles.itemDetails}>
-                        <p style={styles.itemName}>{i.productId.name.substring(0, 15)}...</p>
+                        <p style={styles.itemName}>{getProductName(i).substring(0, 15)}...</p>
                         <p style={styles.itemQty}>Qty: {i.quantity}</p>
-                        <p style={styles.itemPrice}>₹{(i.productId.finalPrice || i.productId.price) * i.quantity}</p>
+                        <p style={styles.itemPrice}>₹{getProductPrice(i).toFixed(2)}</p>
                       </div>
                     </div>
                   ))}
@@ -103,7 +162,9 @@ function Orders() {
               <div style={styles.orderFooter}>
                 <div style={styles.total}>
                   <FaMoneyBillWave style={styles.icon} />
-                  <span>Total: ₹{order.items.reduce((sum, i) => sum + (i.productId.finalPrice || i.productId.price) * i.quantity, 0)}</span>
+                  <span>Total: ₹{
+                    order.items.reduce((sum, i) => sum + getProductPrice(i), 0).toFixed(2)
+                  }</span>
                 </div>
                 <div style={styles.date}>
                   <FaClock style={styles.icon} />
@@ -111,7 +172,7 @@ function Orders() {
                 </div>
               </div>
 
-              {/* Status History (Collapsible) */}
+              {/* Status History */}
               {order.statusHistory?.length > 0 && (
                 <div style={styles.historySection}>
                   <h5 style={styles.sectionTitle}>
@@ -121,7 +182,7 @@ function Orders() {
                     {order.statusHistory.slice(0, 2).map((s, idx) => (
                       <li key={idx} style={styles.historyItem}>
                         <FaClock style={styles.smallIcon} />
-                        <span>{s.status} at {new Date(s.updatedAt).toLocaleTimeString()}</span>
+                        <span>{s.status} at {new Date(s.updatedAt).toLocaleString()}</span>
                       </li>
                     ))}
                     {order.statusHistory.length > 2 && (
@@ -138,7 +199,7 @@ function Orders() {
   );
 }
 
-// --- Styles ---
+// Styles
 const styles = {
   container: {
     padding: "20px",
@@ -163,6 +224,36 @@ const styles = {
     fontSize: "3rem",
     color: "#ddd",
     marginBottom: "10px",
+  },
+  loading: {
+    padding: "40px",
+    textAlign: "center",
+    color: "#666",
+  },
+  loadingIcon: {
+    fontSize: "3rem",
+    color: "#ddd",
+    marginBottom: "10px",
+    animation: "spin 1s linear infinite",
+  },
+  error: {
+    padding: "40px",
+    textAlign: "center",
+    color: "#dc3545",
+  },
+  errorIcon: {
+    fontSize: "3rem",
+    color: "#dc3545",
+    marginBottom: "10px",
+  },
+  retryButton: {
+    marginTop: "15px",
+    padding: "8px 16px",
+    background: "#2c3e50",
+    color: "#fff",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
   },
   noOrders: {
     padding: "40px",
@@ -247,6 +338,7 @@ const styles = {
     padding: "6px",
     background: "#fefefe",
     textAlign: "center",
+    position: "relative",
   },
   itemImage: {
     width: "100%",
@@ -351,7 +443,6 @@ const styles = {
   status_delivered: {
     color: "#28a745",
   },
-  // --- Media Queries ---
   "@media (max-width: 1200px)": {
     ordersGrid: {
       gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",

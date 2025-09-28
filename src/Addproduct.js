@@ -148,7 +148,7 @@ function AddProduct() {
           data.append(key, formData[key]);
         }
       });
-      await axios.post("http://localhost:5000/products", data, {
+      await axios.post("https://aroha.onrender.com/products", data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       alert("Product added successfully!");

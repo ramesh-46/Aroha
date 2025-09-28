@@ -15,7 +15,7 @@ function SellerOrders() {
   // --- Fetch Orders ---
   const fetchOrders = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/orders/all");
+      const res = await axios.get("https://aroha.onrender.com/orders/all");
       setOrders(res.data);
     } catch (err) {
       console.log(err);
@@ -29,7 +29,7 @@ function SellerOrders() {
   // --- Update Order Status ---
   const handleStatusChange = async (orderId, status) => {
     try {
-      const res = await axios.put(`http://localhost:5000/orders/status/${orderId}`, { status });
+      const res = await axios.put(`https://aroha.onrender.com/orders/status/${orderId}`, { status });
       setOrders(orders.map((o) => (o._id === orderId ? res.data : o)));
       setEditOrderId(null);
     } catch (err) {
@@ -126,7 +126,7 @@ function SellerOrders() {
                 {order.items.slice(0, 2).map((i) => (
                   <div key={i.productId._id} style={styles.itemPreview}>
                     <img
-                      src={`http://localhost:5000/uploads/${i.productId.images?.[0]}`}
+                      src={`https://aroha.onrender.com/uploads/${i.productId.images?.[0]}`}
                       alt={i.productId.name}
                       style={styles.itemImage}
                     />

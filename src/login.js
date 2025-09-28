@@ -18,7 +18,7 @@ function Login() {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:5000/auth/login", { mobile, password });
+      const res = await axios.post("https://aroha.onrender.com/auth/login", { mobile, password });
 
       console.log("Login response:", res.data);
 
