@@ -1,6 +1,9 @@
 {
-  "build": {
-    "env": {},
-    "npmInstallCommand": "npm install --legacy-peer-deps"
-  }
+  "version": 2,
+  "builds": [
+    { "src": "package.json", "use": "@vercel/static-build" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
