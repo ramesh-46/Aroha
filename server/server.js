@@ -1,4 +1,3 @@
-
 // server.js
 const express = require("express");
 const mongoose = require("mongoose");
@@ -7,9 +6,7 @@ require("dotenv").config();
 const path = require("path");
 const fs = require("fs");
 
-// --------------------
 // Route imports
-// --------------------
 const authRoutes = require("./routes/auth");
 const productRoutes = require("./routes/products");
 const cartRoutes = require("./routes/cart");
@@ -18,17 +15,37 @@ const orderRoutes = require("./routes/orders");
 const app = express();
 
 // --------------------
-// Middleware
+// CORS Setup
 // --------------------
-// Allow frontend domain and localhost (for development)
-app.use(cors({
-  origin: [
-    "https://aroha-git-main-ramesh-46s-projects.vercel.app", // frontend deployed URL
-    "http://localhost:3000" // local dev
-  ],
-  credentials: true
-}));
+const allowedOrigins = [
+  "https://aroha-three.vercel.app", // frontend deployed URL
+  "http://localhost:3000"           // local dev
+];
 
+const corsOptions = {
+  origin: function(origin, callback) {
+    // allow requests with no origin (Postman, mobile apps)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = "The CORS policy for this site does not allow access from the specified Origin.";
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true
+};
+
+// Use CORS middleware
+app.use(cors(corsOptions));
+
+// Handle preflight OPTIONS requests globally with the same CORS options
+app.options("*", cors(corsOptions));
+
+// --------------------
+// Body parser
+// --------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -77,10 +94,6 @@ app.use((err, req, res, next) => {
 // --------------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
-
-
-
-
 
 
 
