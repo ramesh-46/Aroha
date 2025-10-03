@@ -152,6 +152,13 @@ function AddProduct() {
   return (
     <div style={styles.container}>
       <h2 style={styles.heading}><FaPlus /> Add New Product</h2>
+        <button
+            type="button"
+            onClick={() => navigate("/seller-orders")}
+            style={styles.sellerOrdersButton}
+          >
+            <FaBoxOpen /> Go to Seller Orders
+          </button>
       <form onSubmit={handleSubmit} style={styles.form}>
         {/* Basic Info Row */}
         <div style={styles.row}>
@@ -549,13 +556,7 @@ function AddProduct() {
           <button type="submit" style={styles.submitButton}>
             <FaCheck /> Save Product
           </button>
-          <button
-            type="button"
-            onClick={() => navigate("/seller-orders")}
-            style={styles.sellerOrdersButton}
-          >
-            <FaBoxOpen /> Go to Seller Orders
-          </button>
+        
         </div>
       </form>
     </div>
