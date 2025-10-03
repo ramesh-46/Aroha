@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
 
 function SellerOrders() {
   const [orders, setOrders] = useState([]);
@@ -11,6 +12,7 @@ function SellerOrders() {
     showRecentDeliveries: false,
   });
   const [editOrderId, setEditOrderId] = useState(null);
+  const navigate = useNavigate(); // Initialize useNavigate
 
   // --- Fetch Orders ---
   const fetchOrders = async () => {
@@ -50,7 +52,15 @@ function SellerOrders() {
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.heading}>🛒 All Customer Orders</h2>
+      <div style={styles.headerContainer}>
+        <h2 style={styles.heading}>🛒 All Customer Orders</h2>
+        <button
+          onClick={() => navigate("/Addproduct")}
+          style={styles.addProductButton}
+        >
+          Add Product
+        </button>
+      </div>
 
       {/* --- Filters --- */}
       <div style={styles.filters}>
@@ -66,21 +76,18 @@ function SellerOrders() {
           <option value="Packing">Packing</option>
           <option value="Delivered">Delivered</option>
         </select>
-
         <input
           type="date"
           onChange={(e) => setFilters({ ...filters, fromDate: e.target.value })}
           value={filters.fromDate}
           style={styles.input}
         />
-
         <input
           type="date"
           onChange={(e) => setFilters({ ...filters, toDate: e.target.value })}
           value={filters.toDate}
           style={styles.input}
         />
-
         <label style={styles.checkboxLabel}>
           <input
             type="checkbox"
@@ -90,7 +97,6 @@ function SellerOrders() {
           />
           Pending Only
         </label>
-
         <label style={styles.checkboxLabel}>
           <input
             type="checkbox"
@@ -114,40 +120,42 @@ function SellerOrders() {
                 <p style={styles.status}>Status: <strong>{order.status}</strong></p>
                 <p style={styles.date}>{new Date(order.createdAt).toLocaleDateString()}</p>
               </div>
-
               <div style={styles.customerInfo}>
                 <p>Customer: {order.customerName}</p>
                 <p>Mobile: {order.customerMobile}</p>
                 <p style={styles.address}>Address: {order.deliveryAddress.substring(0, 15)}...</p>
               </div>
-
               {/* --- Items Preview (First 2 items) --- */}
               <div style={styles.itemsPreview}>
                 {order.items.slice(0, 2).map((i) => (
-                  <div key={i.productId._id} style={styles.itemPreview}>
-                    <img
-                      src={`https://aroha.onrender.com/uploads/${i.productId.images?.[0]}`}
-                      alt={i.productId.name}
-                      style={styles.itemImage}
-                    />
+                  <div key={i._id} style={styles.itemPreview}>
+                    {i.productId && i.productId.images && i.productId.images.length > 0 ? (
+                      <img
+                        src={`https://aroha.onrender.com/uploads/${i.productId.images[0]}`}
+                        alt={i.productId.name}
+                        style={styles.itemImage}
+                      />
+                    ) : (
+                      <div style={{ ...styles.itemImage, background: "#eee", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <span style={{ fontSize: "10px", color: "#999" }}>No Image</span>
+                      </div>
+                    )}
                     <div style={styles.itemDetails}>
-                      <p style={styles.itemName}>{i.productId.name.substring(0, 10)}...</p>
+                      <p style={styles.itemName}>{i.productId ? i.productId.name.substring(0, 10) : "N/A"}...</p>
                       <p style={styles.itemQty}>Qty: {i.quantity}</p>
-                      <p style={styles.itemPrice}>₹{(i.productId.finalPrice || i.productId.price) * i.quantity}</p>
+                      <p style={styles.itemPrice}>₹{(i.productId ? (i.productId.finalPrice || i.productId.price) : 0) * i.quantity}</p>
                     </div>
                   </div>
                 ))}
                 {order.items.length > 2 && <p style={styles.moreItems}>+{order.items.length - 2} more</p>}
               </div>
-
               <p style={styles.total}>
                 Total: ₹
                 {order.items.reduce(
-                  (sum, i) => sum + (i.productId.finalPrice || i.productId.price) * i.quantity,
+                  (sum, i) => sum + ((i.productId ? (i.productId.finalPrice || i.productId.price) : 0) * i.quantity),
                   0
                 )}
               </p>
-
               {/* --- Edit Status --- */}
               {editOrderId === order._id ? (
                 <div style={styles.editStatus}>
@@ -194,12 +202,32 @@ const styles = {
     backgroundColor: "#f8f9fa",
     minHeight: "100vh",
   },
+  headerContainer: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: "20px",
+  },
   heading: {
     fontFamily: "'Cormorant Garamond', serif",
     fontSize: "clamp(1.75rem, 4vw, 2.25rem)",
-    marginBottom: "20px",
-    textAlign: "center",
+    marginBottom: "0",
+    textAlign: "left",
     color: "#2c3e50",
+  },
+  addProductButton: {
+    padding: "8px 16px",
+    cursor: "pointer",
+    borderRadius: "6px",
+    border: "none",
+    background: "#000",
+    color: "#fff",
+    fontSize: "0.9rem",
+    fontWeight: "500",
+    transition: "background 0.3s ease",
+    ":hover": {
+      background: "#333",
+    },
   },
   filters: {
     display: "flex",

@@ -1,7 +1,7 @@
-// src/login.js
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { ClipLoader } from "react-spinners";
 
 function Login() {
   const [mobile, setMobile] = useState("");
@@ -14,25 +14,16 @@ function Login() {
       alert("Please enter both mobile and password");
       return;
     }
-
     setLoading(true);
-
     try {
       const res = await axios.post("https://aroha.onrender.com/auth/login", { mobile, password });
-
-      console.log("Login response:", res.data);
-
       if (res?.data?.success) {
-        // Optionally save user info
         localStorage.setItem("user", JSON.stringify(res.data.user));
-
-        // Navigate to dashboard
         navigate("/dashboard");
       } else {
         alert(res?.data?.message || "Login failed. Check your credentials.");
       }
     } catch (err) {
-      console.error(err);
       alert(err.response?.data?.message || "Login failed. Please try again.");
     } finally {
       setLoading(false);
@@ -42,7 +33,6 @@ function Login() {
   return (
     <div style={formContainer}>
       <h2>Login</h2>
-
       <input
         type="text"
         placeholder="Mobile"
@@ -50,7 +40,6 @@ function Login() {
         onChange={(e) => setMobile(e.target.value)}
         style={inputStyle}
       />
-
       <input
         type="password"
         placeholder="Password"
@@ -58,28 +47,27 @@ function Login() {
         onChange={(e) => setPassword(e.target.value)}
         style={inputStyle}
       />
-
-      <button onClick={handleLogin} style={btnStyle} disabled={loading}>
-        {loading ? "Logging in..." : "Login"}
+      <button onClick={handleLogin} style={loginBtnStyle} disabled={loading}>
+        {loading ? <ClipLoader color="#fff" size={20} /> : "Login"}
       </button>
-
-      <Link to="/signup" style={linkStyle}>
-        Don't have an account? Signup
-      </Link>
-
-      <p style={{ marginTop: "10px" }}>
-        Or <span style={{ color: "blue", cursor: "pointer" }} onClick={() => navigate("/dashboard")}>
-          skip login
-        </span> to go directly to Dashboard
+      <p style={signupText}>
+        If you are a new customer,{" "}
+        <button onClick={() => navigate("/signup")} style={signupBtnStyle}>
+          create an account
+        </button>
       </p>
+      <button onClick={() => navigate("/dashboard")} style={skipBtnStyle}>
+        Skip Login → Go to Search Dashboard
+      </button>
     </div>
   );
 }
 
 const formContainer = {
-  maxWidth: "400px",
+  maxWidth: "500px",
+  width: "90%",
   margin: "50px auto",
-  padding: "20px",
+  padding: "30px",
   border: "1px solid #ccc",
   borderRadius: "10px",
   textAlign: "center",
@@ -88,28 +76,54 @@ const formContainer = {
 
 const inputStyle = {
   width: "90%",
-  padding: "10px",
-  margin: "10px 0",
+  padding: "12px",
+  margin: "15px 0",
   borderRadius: "5px",
   border: "1px solid #ccc",
+  fontSize: "16px",
 };
 
-const btnStyle = {
-  width: "95%",
-  padding: "10px",
-  background: "#333",
+const loginBtnStyle = {
+  width: "60%",
+  padding: "12px",
+  background: "#000",
   color: "#fff",
   border: "none",
   borderRadius: "5px",
   cursor: "pointer",
+  margin: "15px 0",
+  fontSize: "18px",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
 };
 
-const linkStyle = {
-  display: "block",
+const signupText = {
+  margin: "10px 0",
+  fontSize: "14px",
+  color: "#555",
+};
+
+const signupBtnStyle = {
+  padding: "7px 10px",
+  background: "#000",
+  color: "#fff",
+  border: "none",
+  borderRadius: "3px",
+  cursor: "pointer",
+  fontSize: "15px",
+  marginLeft: "5px",
+};
+
+const skipBtnStyle = {
+  background: "none",
+  border: "none",
+  color: "#003b7bff",
+  textDecoration: "underline",
+  cursor: "pointer",
+  fontSize: "16px",
   marginTop: "10px",
-  textDecoration: "none",
-  color: "#333",
-  fontWeight: "bold",
+  padding: "5px",
 };
 
 export default Login;

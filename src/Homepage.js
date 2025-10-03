@@ -34,7 +34,6 @@ const PopupModal = ({ label, onClose }) => {
       ],
       Innerwear: [
         "https://images.unsplash.com/photo-1656587132121-aaccc57589cf?q=80&w=1112&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-       
       ],
     },
     Women: {
@@ -46,34 +45,30 @@ const PopupModal = ({ label, onClose }) => {
       Western: [
         "https://images.unsplash.com/photo-1622586192289-b396e1ea3bde?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "https://images.unsplash.com/photo-1632812452083-72d3c8abe533?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-
       ],
       Jeans: [
-        "https://images.unsplash.com/photo-1590902939083-c5b8c7c4fbfe?q=80&w=688&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+        "https://images.unsplash.com/photo-1590902939083-c7f7d6a6d990?q=80&w=688&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "https://images.unsplash.com/photo-1742980511651-b845fa826f33?q=80&w=735&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-
       ],
       Lehenga: [
         "https://images.unsplash.com/photo-1732508531942-f36d9da79d9e?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "https://images.unsplash.com/photo-1610047614301-13c63f00c032?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-       
       ],
       Tops: [
         "https://images.unsplash.com/photo-1496070527953-98faef8b036f?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "https://images.unsplash.com/photo-1658435323421-c8397182ef10?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-
       ],
     },
     Children: {
       "T-Shirts": [
         "https://images.unsplash.com/photo-1689093197152-dbdfd8c353c8?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-  ],
+      ],
       Pants: [
         "https://plus.unsplash.com/premium_photo-1701204056522-0999ece8145e?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-   ],
+      ],
       Dresses: [
         "https://images.unsplash.com/photo-1585483947202-d72b328f5e0c?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-   ],
+      ],
       Shorts: [
         "https://images.unsplash.com/photo-1726303827945-9c6e9c3a1a63?q=80&w=687&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "https://images.unsplash.com/photo-1657412235023-c7c492501ce2?q=80&w=687&auto=format&fit=crop",
@@ -83,33 +78,31 @@ const PopupModal = ({ label, onClose }) => {
     Jewelry: {
       Rings: [
         "https://images.unsplash.com/photo-1642575904226-e43265872da4?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-
       ],
       Necklaces: [
         "https://images.unsplash.com/photo-1620441090373-f6977a23fa0b?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "https://plus.unsplash.com/premium_photo-1757960107520-b0a8736c06fa?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-    ],
+      ],
       Earrings: [
         "https://images.unsplash.com/photo-1653227907864-560dce4c252d?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "https://images.unsplash.com/photo-1626784215021-2e39ccf971cd?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-   ],
+      ],
       Bracelets: [
         "https://images.unsplash.com/photo-1626784214765-754de4c5a77b?q=80&w=1176&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "https://images.unsplash.com/photo-1632801981184-4dce451c7ca6?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3Dhttps://images.unsplash.com/photo-1586495777744-4432e7858464?ixlib=rb-4.0.3&auto=format&fit=crop&w=500&q=80",
-    ],
+      ],
     },
     Accessories: {
       Purses: [
         "https://images.unsplash.com/photo-1689903777276-141133d42760?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "https://images.unsplash.com/photo-1689903777384-31fd780bef3c?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-
       ],
       Belts: [
         "https://plus.unsplash.com/premium_photo-1726769202190-ad2a3f2f360b?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "https://images.unsplash.com/photo-1664285612706-b32633c95820?q=80&w=958&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-     ],
+      ],
       Perfumes: [
-        "https://images.unsplash.com/photo-1595389294696-ae969ff733a8?q=80&w=764&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+        "https://images.unsplash.com/photo-1595389294696-ae969ff71d90?q=80&w=764&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "https://images.unsplash.com/photo-1577962272294-564f38f71d90?q=80&w=1171&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "https://images.unsplash.com/photo-1594035910663-369b72b7abe2?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
       ],
@@ -120,7 +113,6 @@ const PopupModal = ({ label, onClose }) => {
       ],
     },
   };
-
   return (
     <div style={styles.modalOverlay}>
       <div style={styles.modalContent}>
@@ -131,7 +123,15 @@ const PopupModal = ({ label, onClose }) => {
             <ProductCarousel key={index} type={type} images={images} />
           ))}
         </div>
-        <button style={styles.startShoppingButton}>Start Shopping</button>
+     <button
+  style={styles.startShoppingButton}
+  onClick={() => {
+    window.location.href = "/login";
+  }}
+>
+  Start Shopping
+</button>
+
       </div>
     </div>
   );
@@ -140,14 +140,12 @@ const PopupModal = ({ label, onClose }) => {
 // --- Product Carousel (for each product type in popup) ---
 const ProductCarousel = ({ type, images }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images.length);
     }, 2000);
     return () => clearInterval(interval);
   }, [images.length]);
-
   return (
     <div style={styles.productCarousel}>
       <h3 style={styles.productTypeTitle}>{type}</h3>
@@ -166,7 +164,7 @@ const ProductCarousel = ({ type, images }) => {
           />
         ))}
       </div>
-      <button style={styles.shopNowButton}>Shop Now</button>
+      {/* <button style={styles.shopNowButton}>Shop Now</button> */}
     </div>
   );
 };
@@ -174,7 +172,6 @@ const ProductCarousel = ({ type, images }) => {
 // --- Main with Category Carousels ---
 const Main = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
-
   const categories = [
     {
       label: "Men",
@@ -217,7 +214,6 @@ const Main = () => {
       ],
     },
   ];
-
   return (
     <main style={styles.main}>
       <section>
@@ -259,14 +255,12 @@ const Main = () => {
 // --- Category Card with Carousel ---
 const CategoryCard = ({ label, note, images }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prevIndex) => (prevIndex + 1) % images.length);
     }, 2000);
     return () => clearInterval(interval);
   }, [images.length]);
-
   return (
     <div
       style={{
@@ -302,15 +296,13 @@ const CategoryCard = ({ label, note, images }) => {
 };
 
 // --- Header ---
-
 const Header = () => {
   const navigate = useNavigate();
-
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navItems = [
     { name: "Home", href: "#home" },
     { name: "Categories", href: "#categories" },
     { name: "Marketplaces", href: "#marketplaces" },
-    { name: "Contact", href: "#contact" },
     { name: "Contact", href: "#contact" },
   ];
 
@@ -324,7 +316,7 @@ const Header = () => {
             style={styles.logoImg}
             loading="lazy"
           />
-          <span style={styles.brandName}>AROHA</span>
+          <span style={styles.brandName}>AROHA HUB</span>
         </div>
         <div style={styles.contactInfo}>
           <a href="mailto:aroha.info@gmail.com" style={styles.contactLink}>
@@ -343,7 +335,6 @@ const Header = () => {
             />
             WhatsApp
           </a>
-
           {/* Login Button */}
           <button
             style={styles.loginButton}
@@ -352,7 +343,15 @@ const Header = () => {
             Login
           </button>
         </div>
-        <nav>
+        {/* Mobile Menu Button */}
+        <button
+          style={styles.mobileMenuButton}
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+        >
+          ☰
+        </button>
+        {/* Desktop Nav */}
+        <nav style={styles.desktopNav}>
           <ul style={styles.navUl}>
             {navItems.map((item, index) => (
               <li key={index}>
@@ -364,10 +363,35 @@ const Header = () => {
           </ul>
         </nav>
       </div>
+      {/* Mobile Menu Dropdown */}
+      {isMobileMenuOpen && (
+        <div style={styles.mobileMenuOverlay}>
+          <div style={styles.mobileMenuContent}>
+            <button
+              style={styles.mobileMenuCloseButton}
+              onClick={() => setIsMobileMenuOpen(false)}
+            >
+              ×
+            </button>
+            <ul style={styles.mobileNavUl}>
+              {navItems.map((item, index) => (
+                <li key={index} style={styles.mobileNavLi}>
+                  <a
+                    href={item.href}
+                    style={styles.mobileNavA}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    {item.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
-
 
 // --- Hero with Carousel ---
 const Hero = () => {
@@ -384,15 +408,15 @@ const Hero = () => {
     "https://images.unsplash.com/photo-1541495532687-d41ee8904943?q=80&w=991&auto=format&fit=crop",
     "https://images.unsplash.com/photo-1510734790177-c931e3956547?q=80&w=1173&auto=format&fit=crop",
     "https://i.pinimg.com/736x/ff/c8/cb/ffc8cb48cf587c7a05529fd65f74ad3a.jpg",
+    "https://images.unsplash.com/photo-1659167664742-a592e00f5a29?q=80&w=1334&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+    "https://images.unsplash.com/photo-1662376992924-da68f73ff112?q=80&w=1170&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
   ];
-
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImageIndex((prevIndex) => (prevIndex + 1) % heroImages.length);
     }, 3000);
     return () => clearInterval(interval);
   }, [heroImages.length]);
-
   return (
     <div style={styles.hero} id="home">
       {heroImages.map((image, index) => (
@@ -423,27 +447,40 @@ const Hero = () => {
 
 // --- Footer ---
 const Footer = () => {
+  const [showPopup, setShowPopup] = useState(false);
+  const [password, setPassword] = useState('');
+  const navigate = useNavigate();
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    if (password === '*****') {
+      navigate('/AddProduct');
+    } else {
+      alert('Incorrect password');
+    }
+  };
+
   const extraLinks = [
     { name: "Help", href: "#help" },
     { name: "Donation", href: "#donation" },
     { name: "Notice", href: "#notice" },
     { name: "About", href: "#about" },
+    { name: "Seller Login", href: "#", onClick: (e) => { e.preventDefault(); setShowPopup(true); } },
   ];
 
   return (
     <footer id="contact" style={styles.footer}>
       <div style={styles.footerGrid}>
         <div style={styles.footerAddress}>
-              <div style={styles.logoContainer}>
-          <img
-            src="https://i.postimg.cc/MZsBK9X0/Screenshot-2025-09-27-201020.png"
-            alt="AROHA Logo"
-            style={styles.logoImg}
-            loading="lazy"
-          />
-          <span style={styles.brandName}>AROHA</span>
-        </div>
-          
+          <div style={styles.logoContainer}>
+            <img
+              src="https://i.postimg.cc/MZsBK9X0/Screenshot-2025-09-27-201020.png"
+              alt="AROHA Logo"
+              style={styles.logoImg}
+              loading="lazy"
+            />
+            <span style={styles.brandName}>AROHA</span>
+          </div>
           <p>Hyderabad, Telangana 500016</p>
           <p>aroha.info@gmail.com</p>
           <p>+91 8019802281</p>
@@ -462,12 +499,38 @@ const Footer = () => {
       </div>
       <div style={styles.footerExtraLinks}>
         {extraLinks.map((item, index) => (
-          <a key={index} href={item.href} style={styles.extraLink}>{item.name}</a>
+          <a
+            key={index}
+            href={item.href}
+            style={styles.extraLink}
+            onClick={item.onClick}
+          >
+            {item.name}
+          </a>
         ))}
       </div>
       <div style={styles.copyright}>
-        <p>© 2025 AROHA. All images credited to Unsplash / Pexels.</p>
+        <p>© 2025 AROHA HUB. All images credited to Unsplash / Pexels.</p>
       </div>
+
+      {/* Popup JSX */}
+      {showPopup && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
+          <div style={{ background: '#fff', padding: '20px', borderRadius: '8px', width: '300px', textAlign: 'center' }}>
+            <h3>Seller Admin Login</h3>
+            <form onSubmit={handleLogin}>
+              <input
+                type="password"
+                placeholder="Enter password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ width: '100%', padding: '8px', margin: '10px 0', borderRadius: '4px', border: '1px solid #ccc' }}
+              />
+              <button type="submit" style={{ background: '#000000ff', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer' }}>Submit</button>
+            </form>
+          </div>
+        </div>
+      )}
     </footer>
   );
 };
@@ -513,7 +576,8 @@ const styles = {
     fontWeight: 400,
     color: "#2c3e50",
     letterSpacing: "0.05em",
-  }, loginButton: {
+  },
+  loginButton: {
     backgroundColor: "black",
     color: "white",
     border: "none",
@@ -808,6 +872,68 @@ const styles = {
     transition: "background-color 0.3s ease",
     ":hover": {
       backgroundColor: "#333",
+    },
+  },
+  // Mobile Menu Styles
+  mobileMenuButton: {
+    display: "none",
+    background: "none",
+    border: "none",
+    fontSize: "1.5rem",
+    cursor: "pointer",
+    color: "#000",
+    padding: "0.5rem",
+  },
+  mobileMenuOverlay: {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    zIndex: 999,
+  },
+  mobileMenuContent: {
+    backgroundColor: "#fff",
+    padding: "1.5rem",
+    borderRadius: "8px",
+    margin: "1rem",
+    maxWidth: "300px",
+    position: "relative",
+  },
+  mobileMenuCloseButton: {
+    position: "absolute",
+    top: "0.5rem",
+    right: "0.5rem",
+    background: "none",
+    border: "none",
+    fontSize: "1.5rem",
+    cursor: "pointer",
+  },
+  mobileNavUl: {
+    listStyle: "none",
+    padding: 0,
+    margin: 0,
+  },
+  mobileNavLi: {
+    marginBottom: "0.75rem",
+  },
+  mobileNavA: {
+    color: "inherit",
+    textDecoration: "none",
+    fontSize: "1rem",
+    fontWeight: 500,
+  },
+  desktopNav: {
+    display: "block",
+  },
+  // Responsive Styles
+  "@media (max-width: 768px)": {
+    mobileMenuButton: {
+      display: "block",
+    },
+    desktopNav: {
+      display: "none",
     },
   },
 };

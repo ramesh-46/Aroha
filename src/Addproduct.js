@@ -4,11 +4,10 @@ import { useNavigate } from "react-router-dom";
 import {
   FaPlus, FaImage, FaTag, FaShoppingCart, FaPercent,
   FaRupeeSign, FaTshirt, FaPalette, FaRuler, FaHashtag,
-  FaTimes, FaCheck, FaInfoCircle
+  FaTimes, FaCheck, FaInfoCircle, FaBoxOpen
 } from "react-icons/fa";
 
 function AddProduct() {
-  // Predefined options
   const categories = ["Men", "Women", "Children", "Jewelry", "Accessories"];
   const subCategories = {
     Men: ["Shirts", "Pants", "T-Shirts", "Innerwear"],
@@ -48,11 +47,9 @@ function AddProduct() {
     customKeyword: "",
     customTag: ""
   });
-
   const [imagePreviews, setImagePreviews] = useState([]);
   const navigate = useNavigate();
 
-  // Auto-calculate final price and discount
   useEffect(() => {
     if (formData.price) {
       const price = parseFloat(formData.price) || 0;
@@ -66,15 +63,12 @@ function AddProduct() {
     }
   }, [formData.price, formData.discount]);
 
-  // Update subcategories when category changes
   useEffect(() => {
     setFormData(prev => ({ ...prev, subCategory: "" }));
   }, [formData.category]);
 
-  // Handle input changes
   const handleChange = (e) => {
     const { name, value, type, checked, files } = e.target;
-
     if (name === "images") {
       const filesArray = Array.from(files);
       setFormData(prev => ({ ...prev, images: filesArray }));
@@ -95,7 +89,6 @@ function AddProduct() {
     }
   };
 
-  // Handle checkbox changes for arrays
   const handleCheckboxChange = (field, value) => {
     setFormData(prev => {
       const currentValues = prev[field] || [];
@@ -106,7 +99,6 @@ function AddProduct() {
     });
   };
 
-  // Add custom items
   const addCustomItem = (field, value) => {
     if (value && !formData[field].includes(value)) {
       setFormData(prev => ({
@@ -117,7 +109,6 @@ function AddProduct() {
     }
   };
 
-  // Remove item
   const removeItem = (field, value) => {
     setFormData(prev => ({
       ...prev,
@@ -125,7 +116,6 @@ function AddProduct() {
     }));
   };
 
-  // Submit form
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.price || formData.images.length === 0) {
@@ -162,7 +152,6 @@ function AddProduct() {
   return (
     <div style={styles.container}>
       <h2 style={styles.heading}><FaPlus /> Add New Product</h2>
-
       <form onSubmit={handleSubmit} style={styles.form}>
         {/* Basic Info Row */}
         <div style={styles.row}>
@@ -177,7 +166,6 @@ function AddProduct() {
               required
             />
           </div>
-
           <div style={styles.inputGroup}>
             <label style={styles.label}><FaTag /> Category*</label>
             <select
@@ -193,7 +181,6 @@ function AddProduct() {
               ))}
             </select>
           </div>
-
           {formData.category && (
             <div style={styles.inputGroup}>
               <label style={styles.label}><FaTag /> Sub-Category</label>
@@ -210,6 +197,20 @@ function AddProduct() {
               </select>
             </div>
           )}
+          <div style={styles.inputGroup}>
+            <label style={styles.label}><FaTag /> Brand</label>
+            <select
+              name="brand"
+              value={formData.brand}
+              onChange={handleChange}
+              style={styles.input}
+            >
+              <option value="">Select Brand</option>
+              {brands.map(brand => (
+                <option key={brand} value={brand}>{brand}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Pricing Row */}
@@ -225,7 +226,6 @@ function AddProduct() {
               required
             />
           </div>
-
           <div style={styles.inputGroup}>
             <label style={styles.label}><FaPercent /> Discount (%)</label>
             <input
@@ -239,7 +239,6 @@ function AddProduct() {
               max="100"
             />
           </div>
-
           <div style={styles.inputGroup}>
             <label style={styles.label}><FaRupeeSign /> Final Price</label>
             <input
@@ -249,7 +248,6 @@ function AddProduct() {
               readOnly
             />
           </div>
-
           <div style={styles.inputGroup}>
             <label style={styles.label}><FaShoppingCart /> Stock</label>
             <input
@@ -361,7 +359,6 @@ function AddProduct() {
               ))}
             </div>
           </div>
-
           <div style={styles.inputGroup}>
             <label style={styles.label}><FaTag /> Type</label>
             <select
@@ -414,7 +411,6 @@ function AddProduct() {
               ))}
             </div>
           </div>
-
           <div style={styles.inputGroup}>
             <label style={styles.label}><FaTag /> Tags</label>
             <div style={styles.customInputGroup}>
@@ -482,7 +478,6 @@ function AddProduct() {
               />
             </div>
           </div>
-
           <div style={styles.inputGroup}>
             <label style={styles.label}><FaRuler /> Weight (grams)</label>
             <input
@@ -494,7 +489,6 @@ function AddProduct() {
               placeholder="0"
             />
           </div>
-
           <div style={styles.inputGroup}>
             <label style={styles.label}><FaHashtag /> SKU</label>
             <input
@@ -550,10 +544,17 @@ function AddProduct() {
           </div>
         </div>
 
-        {/* Submit */}
+        {/* Submit and Seller Orders Button */}
         <div style={styles.submitGroup}>
           <button type="submit" style={styles.submitButton}>
             <FaCheck /> Save Product
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/seller-orders")}
+            style={styles.sellerOrdersButton}
+          >
+            <FaBoxOpen /> Go to Seller Orders
           </button>
         </div>
       </form>
@@ -590,12 +591,18 @@ const styles = {
   row: {
     display: "flex",
     flexWrap: "wrap",
-    gap: "20px",
+    gap: "15px",
     marginBottom: "20px",
   },
   inputGroup: {
-    flex: "1",
+    flex: "1 1 calc(25% - 15px)",
     minWidth: "200px",
+    "@media (max-width: 768px)": {
+      flex: "1 1 calc(50% - 15px)",
+    },
+    "@media (max-width: 480px)": {
+      flex: "1 1 100%",
+    },
   },
   label: {
     display: "block",
@@ -720,6 +727,7 @@ const styles = {
   submitGroup: {
     display: "flex",
     justifyContent: "flex-end",
+    gap: "15px",
     marginTop: "25px",
   },
   submitButton: {
@@ -734,9 +742,19 @@ const styles = {
     alignItems: "center",
     gap: "8px",
     transition: "background 0.3s",
-    ":hover": {
-      background: "#1a252f",
-    },
+  },
+  sellerOrdersButton: {
+    padding: "12px 24px",
+    background: "#000",
+    color: "#fff",
+    border: "none",
+    borderRadius: "6px",
+    fontSize: "1rem",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    transition: "background 0.3s",
   },
 };
 

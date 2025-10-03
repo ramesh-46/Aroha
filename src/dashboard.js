@@ -139,15 +139,15 @@ function Dashboard() {
       {/* Header */}
       <header style={styles.header}>
         <div style={styles.logoContainer}>
-          <span style={styles.brandName}>AROHA</span>
+          <span style={styles.brandName}>AROHA HUB</span>
         </div>
         <div style={styles.navLinks}>
           <button style={styles.navBtn} onClick={() => navigate("/dashboard")}>Dashboard</button>
-          {isLoggedIn && <button style={styles.navBtn} onClick={() => navigate("/AddProduct")}>Add Product</button>}
+         
           <button style={styles.navBtn} onClick={() => handleNavigate("/cart")}>Cart</button>
           <button style={styles.navBtn} onClick={() => handleNavigate("/profile")}>Profile</button>
           <button style={styles.navBtn} onClick={() => navigate("/orders")}>Orders</button>
-          <button style={styles.navBtn} onClick={() => navigate("/help")}>Help</button>
+          <button style={styles.navBtn} onClick={() => navigate("")}>Help</button>
         </div>
       </header>
 
