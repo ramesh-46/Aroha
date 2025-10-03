@@ -319,8 +319,8 @@ const Header = () => {
           <span style={styles.brandName}>AROHA HUB</span>
         </div>
         <div style={styles.contactInfo}>
-          <a href="mailto:aroha.info@gmail.com" style={styles.contactLink}>
-            aroha.info@gmail.com
+          <a href="mailto:arohahubinfo@proton.me" style={styles.contactLink}>
+            arohahubinfo@proton.me
           </a>
           <a
             href="https://wa.me/918019802281?text=I%20visited%20AROHA%20website%20-%20I%20want%20help%20with%20orders%20and%20catalog."
@@ -482,7 +482,7 @@ const Footer = () => {
             <span style={styles.brandName}>AROHA</span>
           </div>
           <p>Hyderabad, Telangana 500016</p>
-          <p>aroha.info@gmail.com</p>
+          <p>arohahubinfo@proton.me</p>
           <p>+91 8019802281</p>
         </div>
         <div style={styles.footerMap}>
@@ -590,13 +590,13 @@ const styles = {
   contactInfo: {
     display: "flex",
     alignItems: "center",
-    gap: "1rem",
+    gap: "0.25rem",
     fontSize: "0.875rem",
   },
   whatsappIcon: {
-    width: "20px",
-    height: "20px",
-    marginRight: "0.25rem",
+    width: "25px",
+    height: "25px",
+   
   },
   contactLink: {
     color: "inherit",
