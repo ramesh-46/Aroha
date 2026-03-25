@@ -6,6 +6,7 @@ function AdminDashboard() {
 
   const cards = [
     { title: "Add Product", description: "Add new products to your store", path: "/addproduct" },
+    { title: "Manage Products", description: "View, search, filter, edit, and delete your uploaded products", path: "/product-management" },
     { title: "My customer Orders", description: "View and manage customer orders", path: "/seller-orders" },
     { title: "My Profile", description: "View and edit your profile", path: "/SellerProfile" },
     { title: "Coupons", description: "Generate unique discount coupons", path: "/PromotionPage" },

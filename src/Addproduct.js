@@ -16,7 +16,21 @@ function AddProduct() {
     Jewelry: ["Rings", "Necklaces", "Earrings", "Bracelets"],
     Accessories: ["Purses", "Belts", "Perfumes", "Sunglasses"]
   });
-  const [brands, setBrands] = useState(["AROHA", "Local", "Premium", "Designer", "Other"]);
+  const [brands, setBrands] = useState([
+    "Otto",
+    "Polo",
+    "Zara",
+    "H&M",
+    "Levis",
+    "Nike",
+    "Adidas"
+  ]);
+  const [collections, setCollections] = useState([
+    "Summer Collection",
+    "Winter Collection",
+    "Festive Collection",
+    "Casual Collection"
+  ]);
   const colors = ["Red", "Blue", "Green", "Black", "White", "Yellow", "Pink", "Gray", "Navy", "Beige"];
   const sizes = ["XS", "S", "M", "L", "XL", "XXL", "XXXL"];
   const [categoryTypes, setCategoryTypes] = useState({
@@ -32,6 +46,8 @@ function AddProduct() {
     category: "",
     subCategory: "",
     brand: "",
+    collection: "",
+    customCollection: "",
     price: "",
     discount: "",
     finalPrice: "",
@@ -165,7 +181,10 @@ function AddProduct() {
     if (!formData.price) missingFields.push("Base Price");
     if (!formData.category) missingFields.push("Category");
     if (!formData.subCategory) missingFields.push("Sub-Category");
-    if (!formData.brand) missingFields.push("Brand");
+    if (!formData.brand || formData.brand === "custom") {
+      missingFields.push("Brand");
+    }
+    if (!formData.collection) missingFields.push("Collection");
     if (formData.color.length === 0) missingFields.push("Color (Select at least one)");
     if (formData.size.length === 0) missingFields.push("Size (Select at least one)");
     if (!formData.type) missingFields.push("Type / Material");
@@ -190,11 +209,14 @@ function AddProduct() {
         }
       });
       
+      const seller = JSON.parse(localStorage.getItem("sellerData"));
       const user = JSON.parse(localStorage.getItem("user"));
-      if (user) {
-        data.append("sellerId", user._id || "");
-        data.append("sellerName", user.name || user.email || "");
-        data.append("soldBy", user.name || "AROHA Seller");
+      const owner = seller || user;
+
+      if (owner) {
+        data.append("sellerId", owner._id || "");
+        data.append("sellerName", owner.name || owner.companyName || owner.email || "");
+        data.append("soldBy", owner.companyName || owner.name || "AROHA Seller");
       }
 
       await axios.post("http://localhost:5000/products", data, {
@@ -316,7 +338,56 @@ function AddProduct() {
             </div>
           )}
           <div style={styles.inputGroup}>
+            <label style={styles.label}><FaTag /> Collection</label>
+
+            <select
+              name="collection"
+              value={formData.collection}
+              onChange={handleChange}
+              style={styles.input}
+            >
+              <option value="">Select Collection</option>
+              {collections.map(col => (
+                <option key={col} value={col}>{col}</option>
+              ))}
+            </select>
+
+            <div style={styles.customInputGroup}>
+              <input
+                type="text"
+                name="customCollection"
+                value={formData.customCollection}
+                onChange={handleChange}
+                style={styles.customInput}
+                placeholder="Custom Collection"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (formData.customCollection) {
+                    setCollections(prev => [...prev, formData.customCollection]); // ✅ add to list
+                    setFormData(prev => ({
+                      ...prev,
+                      collection: formData.customCollection,
+                      customCollection: ""
+                    }));
+                  }
+                }}
+                style={styles.addButton}
+              >
+                <FaPlus />
+              </button>
+            </div>
+
+            {formData.collection && !collections.includes(formData.collection) && (
+              <div style={{ marginTop: "5px", fontSize: "0.85rem", color: "green" }}>
+                Active Collection: {formData.collection}
+              </div>
+            )}
+          </div>
+          <div style={styles.inputGroup}>
             <label style={styles.label}><FaTag /> Brand</label>
+
             <select
               name="brand"
               value={formData.brand}
@@ -328,6 +399,7 @@ function AddProduct() {
                 <option key={brand} value={brand}>{brand}</option>
               ))}
             </select>
+
             <div style={styles.customInputGroup}>
               <input
                 type="text"
@@ -341,7 +413,12 @@ function AddProduct() {
                 type="button"
                 onClick={() => {
                   if (formData.customBrand) {
-                    setFormData(prev => ({ ...prev, brand: formData.customBrand, customBrand: "" }));
+                    setBrands(prev => [...prev, formData.customBrand]);
+                    setFormData(prev => ({
+                      ...prev,
+                      brand: formData.customBrand,
+                      customBrand: ""
+                    }));
                   }
                 }}
                 style={styles.addButton}
@@ -349,9 +426,10 @@ function AddProduct() {
                 <FaPlus />
               </button>
             </div>
+
             {formData.brand && !brands.includes(formData.brand) && (
               <div style={{ marginTop: "5px", fontSize: "0.85rem", color: "green" }}>
-                Selected: {formData.brand}
+                Selected Brand: {formData.brand}
               </div>
             )}
           </div>

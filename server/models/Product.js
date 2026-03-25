@@ -1,23 +1,31 @@
 const mongoose = require("mongoose");
 
 const productSchema = new mongoose.Schema({
-  name: { type: String, required: true, trim: true },       // Product name
-  category: { type: String, required: true },               // Main category (e.g., Clothing)
-  subCategory: String,                                      // Sub-category (e.g., Shirts)
-  brand: String,                                            // Brand name
-  sellerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // Link to user
-  sellerName: String,                                       // Seller info
-  soldBy: { type: String, default: "AROHA" },              // Platform or seller
-  productType: String,                                      // e.g., Cotton, Polyester, Leather
-  material: String,                                         // Fabric/material
+  name: { type: String, required: true, trim: true },
+  category: { type: String, required: true },
+  subCategory: String,
+
+  brand: { type: String, required: true },
+  collection: { type: String, required: true },
+
+  sellerId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  sellerName: String,
+  soldBy: { type: String, default: "AROHA" },
+
+  productType: String,
+  material: String,
+
   price: { type: Number, required: true },
-  discount: { type: Number, default: 0 },                  // Discount %
-  finalPrice: { type: Number },                             // Calculated price after discount
-  color: [String],                                         // e.g., ["Red", "Blue"]
-  size: [String],                                          // e.g., ["S", "M", "L"]
-  type: String,                                            // e.g., Shirt, Pants
-  rating: { type: Number, default: 0 },                    // Average rating
-  reviews: [                                              // Optional: store reviews
+  discount: { type: Number, default: 0 },
+  finalPrice: Number,
+
+  color: [String],
+  size: [String],
+  type: String,
+
+  rating: { type: Number, default: 0 },
+
+  reviews: [
     {
       userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
       rating: Number,
@@ -25,31 +33,35 @@ const productSchema = new mongoose.Schema({
       createdAt: { type: Date, default: Date.now }
     }
   ],
-  keywords: [String],                                     // For search
-  stock: { type: Number, default: 0 },                    // Quantity available
-  images: [String],                                       // Store image filenames/URLs
-  sku: { type: String, unique: true, sparse: true },                    // Stock keeping unit
-  weight: Number,                                         // Weight in grams or kg
-  dimensions: {                                           // Product dimensions
+
+  keywords: [String],
+  stock: { type: Number, default: 0 },
+  images: [String],
+
+  sku: { type: String, unique: true, sparse: true },
+
+  weight: Number,
+
+  dimensions: {
     length: Number,
     width: Number,
     height: Number
   },
-  tags: [String],                                         // e.g., ["new arrival", "summer"]
-  isFeatured: { type: Boolean, default: false },         // Highlighted on homepage
-  isActive: { type: Boolean, default: true },            // Product status
-  createdAt: { type: Date, default: Date.now },
-  updatedAt: { type: Date, default: Date.now }
-});
 
-// Pre-save middleware to calculate finalPrice
+  tags: [String],
+
+  isFeatured: { type: Boolean, default: false },
+  isActive: { type: Boolean, default: true }
+
+}, { timestamps: true });
+
+// price calculation
 productSchema.pre("save", function(next) {
-  if (this.discount) {
+  if (this.discount !== undefined) {
     this.finalPrice = this.price - (this.price * this.discount) / 100;
   } else {
     this.finalPrice = this.price;
   }
-  this.updatedAt = Date.now();
   next();
 });
 

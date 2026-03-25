@@ -19,6 +19,7 @@ import SellerProfile from "./sellerprofile";
 import About from "./About";
 import PromotionPage from "./promotions";
 import UserCoupons from "./UserCoupons";
+import ProductManagement from "./ProductManagement";
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
         <Route path="/cart" element={<Cart />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/AddProduct" element={<AddProduct />} />
+        <Route path="/product-management" element={<ProductManagement />} />
         <Route path="/seller-orders" element={<SellerOrders />} />
         <Route path="/Orders" element={<Orders />} />
         <Route path="/coupons" element={<UserCoupons />} />
