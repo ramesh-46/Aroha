@@ -1,15 +1,19 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import Swal from "./sweetalertConfig";
 import {
   FaBoxOpen, FaTruck, FaHome, FaClock, FaShoppingCart,
   FaMoneyBillWave, FaHistory, FaMapMarkerAlt, FaPhoneAlt,
-  FaExclamationTriangle, FaImage
+  FaExclamationTriangle, FaImage, FaQuestionCircle
 } from "react-icons/fa";
 
 function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [supportThreads, setSupportThreads] = useState([]);
+  const [activeSupport, setActiveSupport] = useState(null);
+  const [supportMessage, setSupportMessage] = useState("");
   const user = JSON.parse(localStorage.getItem("user"));
 
   const fetchOrders = async () => {
@@ -29,38 +33,105 @@ function Orders() {
 
   useEffect(() => {
     fetchOrders();
+    if (user?._id) {
+      fetchSupportThreads();
+    }
   }, []);
+
+  const fetchSupportThreads = async () => {
+    try {
+      const res = await axios.get(`http://localhost:5000/support?userId=${user._id}`);
+      setSupportThreads(res.data.queries || []);
+    } catch (err) {
+      console.error("Failed to fetch support queries", err);
+    }
+  };
 
   // Helper function to safely get product image
   const getProductImage = (item) => {
-    if (!item.productId) {
-      return "https://via.placeholder.com/150?text=Product+Removed";
+    let img = null;
+    if (item.productSnapshot?.images && item.productSnapshot.images.length > 0) {
+      img = item.productSnapshot.images[0];
+    } else if (item.productId?.images && item.productId.images.length > 0) {
+      img = item.productId.images[0];
     }
-
-    try {
-      if (item.productId.images && item.productId.images.length > 0) {
-        return `http://localhost:5000/uploads/${item.productId.images[0]}`;
-      }
-      return "https://via.placeholder.com/150?text=No+Image";
-    } catch (e) {
-      return "https://via.placeholder.com/150?text=Error+Loading";
+    
+    if (img) {
+      return img.startsWith("http") ? img : `http://localhost:5000/uploads/${img}`;
     }
+    return "https://via.placeholder.com/150?text=No+Image";
   };
 
   // Helper function to safely get product name
   const getProductName = (item) => {
-    if (!item.productId) {
-      return "Product Removed";
-    }
-    return item.productId.name || "Unknown Product";
+    if (item.productSnapshot?.name) return item.productSnapshot.name;
+    if (item.productId?.name) return item.productId.name;
+    return "Unknown Product";
   };
 
   // Helper function to safely get product price
   const getProductPrice = (item) => {
-    if (!item.productId) {
-      return 0;
+    if (item.discountedPrice !== undefined && item.discountedPrice !== null) {
+      return item.discountedPrice * item.quantity;
     }
-    return (item.productId.finalPrice || item.productId.price || 0) * item.quantity;
+    if (!item.productId) return 0;
+    const originalPrice = Number(item.productId.price) || 0;
+    const finalPrice = Number(item.productId.finalPrice);
+    const hasDiscount = Number.isFinite(finalPrice) && finalPrice < originalPrice;
+
+    return (hasDiscount ? finalPrice : originalPrice) * item.quantity;
+  };
+
+  const formatPrice = (value) => Math.round(Number(value) || 0);
+
+  const openSupport = (order, item) => {
+    const existingThread = supportThreads.find(
+      (thread) =>
+        (thread.orderId === order._id || thread.orderId?._id === order._id) &&
+        (thread.productId === item.productId?._id || thread.productId?._id === item.productId?._id)
+    );
+
+    setActiveSupport({
+      order,
+      item,
+      thread: existingThread || null
+    });
+    setSupportMessage("");
+  };
+
+  const sendSupportMessage = async () => {
+    if (!activeSupport || !supportMessage.trim()) return;
+
+    try {
+      let thread = activeSupport.thread;
+      if (!thread) {
+        const res = await axios.post("http://localhost:5000/support", {
+          userId: user._id,
+          orderId: activeSupport.order._id,
+          productId: activeSupport.item.productId?._id,
+          productName: getProductName(activeSupport.item),
+          message: supportMessage.trim()
+        });
+        thread = res.data.query;
+      } else {
+        const res = await axios.post(`http://localhost:5000/support/${thread._id}/reply`, {
+          senderType: "user",
+          senderId: user._id,
+          message: supportMessage.trim()
+        });
+        thread = res.data.query;
+      }
+
+      setSupportThreads((prev) => {
+        const exists = prev.some((item) => item._id === thread._id);
+        return exists ? prev.map((item) => (item._id === thread._id ? thread : item)) : [thread, ...prev];
+      });
+      setActiveSupport((prev) => ({ ...prev, thread }));
+      setSupportMessage("");
+    } catch (err) {
+      console.error("Failed to send support message", err);
+      Swal.fire("Error", "Unable to send help request.", "error");
+    }
   };
 
   if (!user) return (
@@ -96,7 +167,12 @@ function Orders() {
         </div>
       ) : (
         <div style={styles.ordersGrid}>
-          {orders.map((order) => (
+          {orders.map((order) => {
+            const itemSubtotal = order.items.reduce((sum, i) => sum + getProductPrice(i), 0);
+            const couponDiscount = Number(order.discountAmount) || 0;
+            const finalOrderTotal = Math.max(itemSubtotal - couponDiscount, 0);
+
+            return (
             <div key={order._id} style={styles.orderBox}>
               {/* Order Header */}
               <div style={styles.orderHeader}>
@@ -132,24 +208,42 @@ function Orders() {
               <div style={styles.itemsSection}>
                 <h5 style={styles.sectionTitle}>Items:</h5>
                 <div style={styles.itemsGrid}>
-                  {order.items.map((i) => (
-                    <div key={i._id} style={styles.itemBox}>
-                      <img
-                        src={getProductImage(i)}
-                        alt={getProductName(i)}
-                        style={styles.itemImage}
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = "https://via.placeholder.com/150?text=Image+Error";
-                        }}
-                      />
-                      <div style={styles.itemDetails}>
-                        <p style={styles.itemName}>{getProductName(i).substring(0, 15)}...</p>
-                        <p style={styles.itemQty}>Qty: {i.quantity}</p>
-                        <p style={styles.itemPrice}>₹{getProductPrice(i).toFixed(2)}</p>
+                  {order.items.map((i) => {
+                    const originalUnitPrice = (i.originalPrice !== undefined && i.originalPrice !== null) ? i.originalPrice : (Number(i.productId?.price) || 0);
+                    const discountedUnitPrice = (i.discountedPrice !== undefined && i.discountedPrice !== null) ? i.discountedPrice : Number(i.productId?.finalPrice);
+                    const hasDiscount = Number.isFinite(discountedUnitPrice) && discountedUnitPrice < originalUnitPrice;
+                    const originalTotalPrice = originalUnitPrice * i.quantity;
+                    const finalTotalPrice = (hasDiscount ? discountedUnitPrice : originalUnitPrice) * i.quantity;
+
+                    return (
+                      <div key={i._id} style={styles.itemBox}>
+                        <img
+                          src={getProductImage(i)}
+                          alt={getProductName(i)}
+                          style={styles.itemImage}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = "https://via.placeholder.com/150?text=Image+Error";
+                          }}
+                        />
+                        <div style={styles.itemDetails}>
+                          <p style={styles.itemName}>{getProductName(i).substring(0, 15)}...</p>
+                          <p style={styles.itemQty}>Qty: {i.quantity}</p>
+                          {hasDiscount ? (
+                            <div style={styles.itemPriceWrap}>
+                              <p style={styles.itemOriginalPrice}>₹{formatPrice(originalTotalPrice)}</p>
+                              <p style={styles.itemPrice}>₹{formatPrice(finalTotalPrice)}</p>
+                            </div>
+                          ) : (
+                            <p style={styles.itemPrice}>₹{formatPrice(originalTotalPrice)}</p>
+                          )}
+                          <button style={styles.helpButton} onClick={() => openSupport(order, i)}>
+                            <FaQuestionCircle /> Help
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {order.items.length > 3 && (
                     <div style={styles.moreItems}>
                       +{order.items.length - 3} more
@@ -160,11 +254,17 @@ function Orders() {
 
               {/* Order Footer */}
               <div style={styles.orderFooter}>
-                <div style={styles.total}>
-                  <FaMoneyBillWave style={styles.icon} />
-                  <span>Total: ₹{
-                    order.items.reduce((sum, i) => sum + getProductPrice(i), 0).toFixed(2)
-                  }</span>
+                <div style={styles.totalBlock}>
+                  {couponDiscount > 0 && (
+                    <div style={styles.couponRow}>
+                      <span>Coupon Discount:</span>
+                      <span>-₹{formatPrice(couponDiscount)}</span>
+                    </div>
+                  )}
+                  <div style={styles.total}>
+                    <FaMoneyBillWave style={styles.icon} />
+                    <span>Total: ₹{formatPrice(finalOrderTotal)}</span>
+                  </div>
                 </div>
                 <div style={styles.date}>
                   <FaClock style={styles.icon} />
@@ -192,270 +292,477 @@ function Orders() {
                 </div>
               )}
             </div>
-          ))}
+            );
+          })}
+        </div>
+      )}
+
+      {activeSupport && (
+        <div style={styles.supportOverlay}>
+          <div style={styles.supportModal}>
+            <h3 style={styles.supportTitle}>Help for {getProductName(activeSupport.item)}</h3>
+            <div style={styles.supportMessages}>
+              {(activeSupport.thread?.messages || []).length === 0 ? (
+                <p style={styles.supportEmpty}>Start the conversation and admin replies will appear here.</p>
+              ) : (
+                activeSupport.thread.messages.map((message) => (
+                  <div
+                    key={message._id}
+                    style={{
+                      ...styles.supportBubble,
+                      alignSelf: message.senderType === "user" ? "flex-end" : "flex-start",
+                      background: message.senderType === "user" ? "#111827" : "#f3f4f6",
+                      color: message.senderType === "user" ? "#fff" : "#111827"
+                    }}
+                  >
+                    <strong>{message.senderType === "user" ? "You" : "Admin"}</strong>
+                    <span>{message.message}</span>
+                  </div>
+                ))
+              )}
+            </div>
+            <textarea
+              value={supportMessage}
+              onChange={(e) => setSupportMessage(e.target.value)}
+              placeholder="Describe the issue or question"
+              style={styles.supportInput}
+            />
+            <div style={styles.supportActions}>
+              <button style={styles.helpButton} onClick={sendSupportMessage}>Send</button>
+              <button style={styles.supportCloseButton} onClick={() => setActiveSupport(null)}>Close</button>
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// Styles
+// Styles (Premium E-commerce Look)
 const styles = {
   container: {
-    padding: "20px",
-    fontFamily: "'Inter', sans-serif",
-    color: "#333",
-    backgroundColor: "#f8f9fa",
+    padding: "40px 20px",
+    fontFamily: "'Inter', system-ui, sans-serif",
+    color: "#1f2937",
+    backgroundColor: "#f3f4f6", // lighter gray
     minHeight: "100vh",
+    maxWidth: "1200px",
+    margin: "0 auto",
   },
   heading: {
-    fontFamily: "'Cormorant Garamond', serif",
     fontSize: "2rem",
-    marginBottom: "20px",
-    textAlign: "center",
-    color: "#2c3e50",
+    fontWeight: "800",
+    marginBottom: "24px",
+    color: "#111827",
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
   },
   noUser: {
-    padding: "40px",
+    padding: "60px 20px",
     textAlign: "center",
-    color: "#666",
+    color: "#6b7280",
+    background: "#fff",
+    borderRadius: "16px",
+    boxShadow: "0 4px 6px rgba(0,0,0,0.02)",
   },
   noUserIcon: {
-    fontSize: "3rem",
-    color: "#ddd",
-    marginBottom: "10px",
+    fontSize: "4rem",
+    color: "#d1d5db",
+    marginBottom: "16px",
   },
   loading: {
-    padding: "40px",
+    padding: "60px 20px",
     textAlign: "center",
-    color: "#666",
+    color: "#6b7280",
   },
   loadingIcon: {
     fontSize: "3rem",
-    color: "#ddd",
-    marginBottom: "10px",
+    color: "#9ca3af",
+    marginBottom: "16px",
     animation: "spin 1s linear infinite",
   },
   error: {
     padding: "40px",
     textAlign: "center",
-    color: "#dc3545",
+    color: "#ef4444",
+    background: "#fef2f2",
+    borderRadius: "16px",
+    border: "1px solid #fee2e2",
   },
   errorIcon: {
     fontSize: "3rem",
-    color: "#dc3545",
-    marginBottom: "10px",
+    color: "#ef4444",
+    marginBottom: "16px",
   },
   retryButton: {
-    marginTop: "15px",
-    padding: "8px 16px",
-    background: "#2c3e50",
+    marginTop: "16px",
+    padding: "10px 20px",
+    background: "#ef4444",
     color: "#fff",
     border: "none",
-    borderRadius: "6px",
+    borderRadius: "8px",
     cursor: "pointer",
+    fontWeight: "600",
   },
   noOrders: {
-    padding: "40px",
+    padding: "60px",
     textAlign: "center",
-    color: "#666",
+    color: "#6b7280",
+    background: "#fff",
+    borderRadius: "16px",
+    boxShadow: "0 4px 6px rgba(0,0,0,0.02)",
   },
   noOrdersIcon: {
-    fontSize: "3rem",
-    color: "#ddd",
-    marginBottom: "10px",
+    fontSize: "4rem",
+    color: "#d1d5db",
+    marginBottom: "16px",
   },
   ordersGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-    gap: "20px",
-    marginTop: "20px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "24px",
   },
   orderBox: {
-    background: "#fff",
-    border: "1px solid #ddd",
-    borderRadius: "10px",
-    padding: "15px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
-    transition: "transform 0.3s ease, box-shadow 0.3s ease",
-    ":hover": {
-      transform: "translateY(-3px)",
-      boxShadow: "0 8px 20px rgba(0,0,0,0.12)",
-    },
+    background: "#ffffff",
+    border: "1px solid #e5e7eb",
+    borderRadius: "16px",
+    padding: "24px",
+    boxShadow: "0 10px 25px rgba(0, 0, 0, 0.05), 0 4px 6px rgba(0, 0, 0, 0.02)",
+    transition: "transform 0.2s ease, box-shadow 0.2s ease",
   },
   orderHeader: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: "12px",
-    paddingBottom: "8px",
-    borderBottom: "1px dashed #eee",
+    marginBottom: "20px",
+    paddingBottom: "16px",
+    borderBottom: "1px solid #e5e7eb",
+    flexWrap: "wrap",
+    gap: "12px",
   },
   orderId: {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    fontSize: "0.95rem",
-    fontWeight: "500",
+    fontSize: "1.1rem",
+    fontWeight: "700",
+    color: "#111827",
   },
   status: {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    fontSize: "0.9rem",
-    fontWeight: "500",
+    fontSize: "0.95rem",
+    fontWeight: "600",
+    padding: "6px 12px",
+    borderRadius: "20px",
+    background: "#f3f4f6", // default fallback
   },
   customerInfo: {
-    marginBottom: "12px",
+    marginBottom: "20px",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "16px",
+    padding: "16px",
+    background: "#f9fafb",
+    borderRadius: "12px",
   },
   infoRow: {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    fontSize: "0.85rem",
-    marginBottom: "6px",
-    color: "#555",
+    fontSize: "0.9rem",
+    color: "#4b5563",
+    fontWeight: "500",
   },
   itemsSection: {
-    margin: "12px 0",
+    margin: "20px 0",
   },
   sectionTitle: {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    fontSize: "0.95rem",
-    marginBottom: "10px",
-    color: "#2c3e50",
+    fontSize: "1.05rem",
+    fontWeight: "700",
+    marginBottom: "16px",
+    color: "#111827",
   },
   itemsGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))",
-    gap: "10px",
+    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+    gap: "16px",
   },
   itemBox: {
-    border: "1px solid #eee",
-    borderRadius: "6px",
-    padding: "6px",
-    background: "#fefefe",
-    textAlign: "center",
-    position: "relative",
+    border: "1px solid #e5e7eb",
+    borderRadius: "12px",
+    padding: "12px",
+    background: "#ffffff",
+    display: "flex",
+    alignItems: "center",
+    gap: "16px",
+    transition: "border-color 0.2s",
   },
   itemImage: {
-    width: "100%",
-    height: "60px",
+    width: "80px",
+    height: "80px",
     objectFit: "cover",
-    borderRadius: "4px",
-    marginBottom: "4px",
+    borderRadius: "8px",
+    border: "1px solid #f3f4f6",
   },
   itemDetails: {
-    fontSize: "0.75rem",
+    display: "flex",
+    flexDirection: "column",
+    flex: 1,
   },
   itemName: {
-    margin: "0 0 2px 0",
-    fontWeight: "500",
+    margin: "0 0 6px 0",
+    fontWeight: "600",
+    fontSize: "0.95rem",
+    color: "#111827",
   },
   itemQty: {
-    margin: "0 0 2px 0",
-    color: "#666",
+    margin: "0 0 6px 0",
+    color: "#6b7280",
+    fontSize: "0.85rem",
+    fontWeight: "500",
   },
   itemPrice: {
     margin: 0,
-    fontWeight: "bold",
-    color: "#28a745",
+    fontWeight: "700",
+    color: "#10b981", // Emerald green
+    fontSize: "1rem",
+  },
+  itemPriceWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    marginTop: "2px",
+  },
+  itemOriginalPrice: {
+    margin: 0,
+    color: "#9ca3af",
+    textDecoration: "line-through",
+    fontSize: "0.85rem",
+  },
+  helpButton: {
+    marginTop: "10px",
+    border: "1px solid #d1d5db",
+    borderRadius: "8px",
+    padding: "6px 12px",
+    background: "#ffffff",
+    color: "#374151",
+    cursor: "pointer",
+    fontSize: "0.85rem",
+    fontWeight: "600",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    transition: "all 0.2s",
+    alignSelf: "flex-start",
+  },
+  supportOverlay: {
+    position: "fixed",
+    inset: 0,
+    background: "rgba(17, 24, 39, 0.6)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "20px",
+    zIndex: 100,
+    backdropFilter: "blur(4px)",
+  },
+  supportModal: {
+    width: "100%",
+    maxWidth: "560px",
+    background: "#ffffff",
+    borderRadius: "20px",
+    padding: "24px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "16px",
+    boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)",
+  },
+  supportTitle: {
+    margin: 0,
+    fontSize: "1.25rem",
+    fontWeight: "700",
+    color: "#111827",
+  },
+  supportMessages: {
+    minHeight: "200px",
+    maxHeight: "350px",
+    overflowY: "auto",
+    display: "flex",
+    flexDirection: "column",
+    gap: "12px",
+    background: "#f9fafb",
+    padding: "16px",
+    borderRadius: "16px",
+    border: "1px solid #e5e7eb",
+  },
+  supportEmpty: {
+    margin: "auto",
+    color: "#9ca3af",
+    textAlign: "center",
+    fontWeight: "500",
+  },
+  supportBubble: {
+    maxWidth: "85%",
+    borderRadius: "16px",
+    padding: "12px 16px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    fontSize: "0.95rem",
+    lineHeight: "1.4",
+  },
+  supportInput: {
+    width: "100%",
+    minHeight: "100px",
+    borderRadius: "12px",
+    border: "1px solid #d1d5db",
+    padding: "12px 16px",
+    fontSize: "0.95rem",
+    outline: "none",
+    resize: "vertical",
+    fontFamily: "inherit",
+    boxSizing: "border-box",
+  },
+  supportActions: {
+    display: "flex",
+    justifyContent: "flex-end",
+    gap: "12px",
+    marginTop: "8px",
+  },
+  supportCloseButton: {
+    border: "1px solid #d1d5db",
+    borderRadius: "10px",
+    padding: "10px 20px",
+    background: "#ffffff",
+    color: "#374151",
+    cursor: "pointer",
+    fontWeight: "600",
+    transition: "all 0.2s",
   },
   moreItems: {
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    height: "60px",
-    background: "#f8f9fa",
-    borderRadius: "6px",
-    border: "1px solid #eee",
-    fontSize: "0.75rem",
-    color: "#666",
+    height: "106px", // match itemBox approx height
+    background: "#f9fafb",
+    borderRadius: "12px",
+    border: "1px dashed #d1d5db",
+    fontSize: "0.9rem",
+    fontWeight: "600",
+    color: "#6b7280",
   },
   orderFooter: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: "12px",
-    paddingTop: "8px",
-    borderTop: "1px dashed #eee",
+    marginTop: "20px",
+    paddingTop: "20px",
+    borderTop: "1px solid #e5e7eb",
+    flexWrap: "wrap",
+    gap: "16px",
+  },
+  totalBlock: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+  },
+  couponRow: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    fontSize: "0.95rem",
+    fontWeight: "600",
+    color: "#ef4444",
   },
   total: {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    fontSize: "0.95rem",
-    fontWeight: "bold",
-    color: "#28a745",
+    fontSize: "1.15rem",
+    fontWeight: "800",
+    color: "#111827",
   },
   date: {
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    fontSize: "0.8rem",
-    color: "#666",
+    fontSize: "0.9rem",
+    color: "#6b7280",
+    fontWeight: "500",
   },
   historySection: {
-    marginTop: "12px",
-    paddingTop: "8px",
-    borderTop: "1px dashed #eee",
+    marginTop: "20px",
+    paddingTop: "20px",
+    borderTop: "1px solid #e5e7eb",
+    background: "#f9fafb",
+    padding: "16px",
+    borderRadius: "12px",
   },
   historyList: {
-    paddingLeft: "15px",
+    paddingLeft: "24px",
     margin: 0,
+    color: "#4b5563",
   },
   historyItem: {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
-    fontSize: "0.8rem",
-    marginBottom: "6px",
-    color: "#555",
+    gap: "10px",
+    fontSize: "0.9rem",
+    marginBottom: "10px",
+    fontWeight: "500",
   },
   moreHistory: {
-    fontSize: "0.75rem",
-    color: "#999",
-    textAlign: "center",
-    marginTop: "4px",
+    fontSize: "0.85rem",
+    color: "#9ca3af",
+    marginTop: "8px",
+    listStyle: "none",
+    fontWeight: "500",
   },
   icon: {
-    color: "#666",
-    fontSize: "0.9rem",
+    color: "#6b7280",
+    fontSize: "1.1rem",
   },
   smallIcon: {
-    color: "#666",
-    fontSize: "0.75rem",
+    color: "#9ca3af",
+    fontSize: "0.85rem",
   },
   status_pending: {
-    color: "#ffc107",
+    color: "#d97706", // Amber
+    background: "#fef3c7",
   },
   status_under_confirmation: {
-    color: "#17a2b8",
+    color: "#0284c7", // Light Blue
+    background: "#e0f2fe",
   },
   status_processing: {
-    color: "#007bff",
+    color: "#2563eb", // Blue
+    background: "#dbeafe",
   },
   status_packing: {
-    color: "#6f42c1",
+    color: "#7c3aed", // Violet
+    background: "#ede9fe",
   },
   status_delivered: {
-    color: "#28a745",
-  },
-  "@media (max-width: 1200px)": {
-    ordersGrid: {
-      gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    },
+    color: "#059669", // Emerald
+    background: "#d1fae5",
   },
   "@media (max-width: 768px)": {
     ordersGrid: {
-      gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+      gap: "16px",
     },
-  },
-  "@media (max-width: 480px)": {
-    ordersGrid: {
-      gridTemplateColumns: "1fr",
+    itemBox: {
+      flexDirection: "column",
+      alignItems: "flex-start",
+    },
+    itemImage: {
+      width: "100%",
+      height: "120px",
     },
   },
 };

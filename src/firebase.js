@@ -2,13 +2,13 @@ import { initializeApp } from "firebase/app";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "YOUR_KEY",
-  authDomain: "YOUR_DOMAIN",
-  projectId: "YOUR_ID",
-  storageBucket: "YOUR_BUCKET",
-  messagingSenderId: "YOUR_ID",
-  appId: "YOUR_APP_ID",
-  measurementId: "YOUR_measurement_ID"
+  apiKey: "AIzaSyDOmxCviU0bU1O2ldC9x1ssw2SaESVUKEc",
+  authDomain: "jigirikart.firebaseapp.com",
+  projectId: "jigirikart",
+  storageBucket: "jigirikart.firebasestorage.app",
+  messagingSenderId: "233302280795",
+  appId: "1:233302280795:web:59e17e3b4d8a96d1a28d7e",
+  measurementId: "G-6BT6LS7HM4"
 };
 
 const app = initializeApp(firebaseConfig);

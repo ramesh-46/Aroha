@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import Swal from "./sweetalertConfig";
 
 function ResetPassword() {
   const [form, setForm] = useState({ mobile: "", email: "", recoveryCode: "", newPassword: "" });
@@ -17,30 +18,30 @@ function ResetPassword() {
 
       if (res.data.success && res.data.verified) {
         setVerified(true);
-        alert(res.data.message);
+        Swal.fire(res.data.message, "", "warning");
       } else {
-        alert(res.data.message);
+        Swal.fire(res.data.message, "", "warning");
       }
     } catch (err) {
       console.error(err);
-      alert("Something went wrong!");
+      Swal.fire("Something went wrong!", "", "error");
     }
   };
 
   const handleReset = async () => {
-    if (!form.newPassword) return alert("Enter new password!");
+    if (!form.newPassword) return Swal.fire("Enter new password!", "", "error");
 
     try {
       const res = await axios.post("http://localhost:5000/auth/reset-password", form);
       if (res.data.success && res.data.updated) {
-        alert(res.data.message);
+        Swal.fire(res.data.message, "", "warning");
         navigate("/login"); // redirect to login after reset
       } else {
-        alert(res.data.message);
+        Swal.fire(res.data.message, "", "warning");
       }
     } catch (err) {
       console.error(err);
-      alert("Something went wrong!");
+      Swal.fire("Something went wrong!", "", "error");
     }
   };
 

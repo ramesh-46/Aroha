@@ -5,6 +5,7 @@ const path = require("path");
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const User = require("../models/User");
+const sellerAuthMiddleware = require("../middleware/sellerAuthMiddleware");
 
 const router = express.Router();
 
@@ -73,7 +74,7 @@ router.get("/session-info", (req, res) => {
 });
 
 // 3. Get all users
-router.get("/all-users", async (req, res) => {
+router.get("/all-users", sellerAuthMiddleware, async (req, res) => {
   try {
     const users = await User.find({}, { _id: 0, name: 1, mobile: 1 });
     res.json({ success: true, users });
@@ -84,7 +85,7 @@ router.get("/all-users", async (req, res) => {
 });
 
 // 4. Send promotion
-router.post("/send-promotion", async (req, res) => {
+router.post("/send-promotion", sellerAuthMiddleware, async (req, res) => {
   const { message, users } = req.body;
   if (!message || !users || users.length === 0)
     return res.status(400).json({ success: false, message: "Message or users missing" });
@@ -115,7 +116,7 @@ router.post("/send-promotion", async (req, res) => {
 });
 
 // 5. Logout route (delete session manually)
-router.post("/logout", async (req, res) => {
+router.post("/logout", sellerAuthMiddleware, async (req, res) => {
   try {
     deleteSession();
     qrCodeString = "";

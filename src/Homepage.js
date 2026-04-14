@@ -1,15 +1,115 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import Swal from "./sweetalertConfig";
 
 // --- Main App ---
 const Homepage = () => {
+  const [saleData, setSaleData] = useState(null);
+
+  useEffect(() => {
+    const fetchSale = async () => {
+      try {
+        const res = await axios.get("http://localhost:5000/settings");
+        setSaleData(res.data);
+      } catch (err) {
+        console.error("Failed to load sale settings", err);
+      }
+    };
+
+    fetchSale();
+  }, []);
+
   return (
     <div style={styles.app}>
       <Header />
+      <SaleSpotlight saleData={saleData} />
       <Hero />
       <Main />
       <Footer />
     </div>
+  );
+};
+
+const getSaleCountdown = (saleData) => {
+  if (!saleData?.settings) return null;
+  const now = Date.now();
+  const startsAt = saleData.settings.saleStartsAt ? new Date(saleData.settings.saleStartsAt).getTime() : null;
+  const endsAt = saleData.settings.saleEndsAt ? new Date(saleData.settings.saleEndsAt).getTime() : null;
+
+  let target = null;
+  let label = "";
+
+  if (saleData.saleStatus === "upcoming" && startsAt) {
+    target = startsAt;
+    label = "Sale starts in";
+  } else if (saleData.saleStatus === "live" && endsAt) {
+    target = endsAt;
+    label = "Sale ends in";
+  } else {
+    return null;
+  }
+
+  const diff = Math.max(target - now, 0);
+  const totalMinutes = Math.floor(diff / 60000);
+  const days = Math.floor(totalMinutes / (60 * 24));
+  const hours = Math.floor((totalMinutes % (60 * 24)) / 60);
+  const minutes = totalMinutes % 60;
+
+  return { label, days, hours, minutes };
+};
+
+const SaleSpotlight = ({ saleData }) => {
+  const [tick, setTick] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTick(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+
+  void tick;
+  const countdown = getSaleCountdown(saleData);
+  const saleImages = saleData?.settings?.saleImages || [];
+  const isLive = saleData?.saleStatus === "live";
+  const flashPercent = Number(saleData?.settings?.flashSaleDiscountPercent) || 0;
+  const flashCategory = saleData?.settings?.flashSaleCategory || "";
+
+  if (!saleData?.settings) return null;
+
+  return (
+    <section style={styles.saleSection}>
+      {isLive && (
+        <div style={styles.liveSaleBanner}>
+          {saleData.settings.saleBannerMessage || "Live sale is happening now."}
+        </div>
+      )}
+      <div style={styles.saleBox}>
+        <div>
+          <p style={styles.saleEyebrow}>Seasonal campaign</p>
+          <h2 style={styles.saleTitle}>Sale Box</h2>
+          {flashPercent > 0 && (
+            <p style={styles.saleHighlight}>
+              Flash discount: {flashPercent}% off {flashCategory ? `on ${flashCategory}` : "across featured items"}
+            </p>
+          )}
+          {countdown && (
+            <div style={styles.countdownWrap}>
+              <span style={styles.countdownLabel}>{countdown.label}</span>
+              <div style={styles.countdownGrid}>
+                <div style={styles.countdownItem}><strong>{countdown.days}</strong><span>Days</span></div>
+                <div style={styles.countdownItem}><strong>{countdown.hours}</strong><span>Hours</span></div>
+                <div style={styles.countdownItem}><strong>{countdown.minutes}</strong><span>Minutes</span></div>
+              </div>
+            </div>
+          )}
+        </div>
+        <div style={styles.saleImages}>
+          {saleImages.slice(0, 3).map((image, index) => (
+            <img key={`${image}-${index}`} src={image} alt={`Sale ${index + 1}`} style={styles.saleImage} />
+          ))}
+        </div>
+      </div>
+    </section>
   );
 };
 
@@ -456,7 +556,7 @@ const Footer = () => {
     if (password === '*****') {
       navigate('/AddProduct');
     } else {
-      alert('Incorrect password');
+      Swal.fire('Incorrect password', "", "error");
     }
   };
 
@@ -688,6 +788,79 @@ const styles = {
   },
   main: {
     padding: "0 2rem 4rem",
+  },
+  saleSection: {
+    padding: "1.5rem 2rem 0",
+  },
+  liveSaleBanner: {
+    background: "#b91c1c",
+    color: "#fff",
+    borderRadius: "18px 18px 0 0",
+    padding: "0.85rem 1.2rem",
+    fontWeight: 700,
+    letterSpacing: "0.02em",
+  },
+  saleBox: {
+    background: "linear-gradient(135deg, #fff7ed 0%, #ffe4e6 55%, #fee2e2 100%)",
+    borderRadius: "0 0 24px 24px",
+    padding: "1.5rem",
+    display: "grid",
+    gridTemplateColumns: "1.2fr 1fr",
+    gap: "1.5rem",
+    alignItems: "center",
+    boxShadow: "0 16px 40px rgba(185, 28, 28, 0.12)",
+  },
+  saleEyebrow: {
+    margin: "0 0 0.45rem",
+    textTransform: "uppercase",
+    letterSpacing: "0.14em",
+    color: "#be123c",
+    fontSize: "0.8rem",
+    fontWeight: 700,
+  },
+  saleTitle: {
+    margin: "0 0 0.75rem",
+    fontFamily: "'Cormorant Garamond', serif",
+    fontSize: "clamp(2rem, 5vw, 3rem)",
+    color: "#111827",
+  },
+  saleHighlight: {
+    margin: "0 0 0.85rem",
+    color: "#9f1239",
+    fontWeight: 700,
+  },
+  countdownWrap: {
+    display: "grid",
+    gap: "0.75rem",
+  },
+  countdownLabel: {
+    fontWeight: 700,
+    color: "#7f1d1d",
+  },
+  countdownGrid: {
+    display: "flex",
+    gap: "0.8rem",
+    flexWrap: "wrap",
+  },
+  countdownItem: {
+    minWidth: "92px",
+    background: "rgba(255,255,255,0.75)",
+    borderRadius: "16px",
+    padding: "0.9rem 1rem",
+    display: "grid",
+    gap: "0.25rem",
+    textAlign: "center",
+  },
+  saleImages: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "0.8rem",
+  },
+  saleImage: {
+    width: "100%",
+    height: "180px",
+    objectFit: "cover",
+    borderRadius: "18px",
   },
   sectionTitle: {
     fontFamily: "'Cormorant Garamond', serif",

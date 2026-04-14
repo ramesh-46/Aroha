@@ -2,8 +2,6 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ClipLoader } from "react-spinners";
-import { signInWithPopup } from "firebase/auth";
-import { auth, provider } from "./firebase";
 
 function Login() {
   const [mobile, setMobile] = useState("");
@@ -32,29 +30,6 @@ function Login() {
     }
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-
-      const res = await axios.post("http://localhost:5000/auth/google-login", {
-        name: user.displayName,
-        email: user.email
-      });
-
-      if (!res.data.success) {
-        navigate("/signup", { state: { email: user.email, name: user.displayName } });
-        return;
-      }
-
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-      navigate("/dashboard");
-
-    } catch (err) {
-      navigate("/signup");
-    }
-  };
-
   return (
     <div style={formContainer}>
       <h2>User Login</h2>
@@ -76,11 +51,6 @@ function Login() {
         {loading ? <ClipLoader color="#fff" size={20} /> : "Login"}
       </button>
 
-      {/* Continue with Google */}
-      <button onClick={handleGoogleLogin} style={loginBtnStyle}>
-        Continue with Google
-      </button>
-
       {/* Forgot Password Link */}
       <p style={forgotText}>
         <button onClick={() => navigate("/ResetPassword")} style={forgotBtnStyle}>
@@ -99,6 +69,7 @@ function Login() {
         Skip Login → Go to Search Dashboard
       </button>
 
+      {/* Admin Login Button */}
       <button onClick={() => navigate("/SellerAuth")} style={adminBtnStyle}>
         Admin Login click here
       </button>
@@ -221,7 +192,7 @@ export default Login;
 //     }
 //     setLoading(true);
 //     try {
-//       const res = await axios.post("http://localhost:5000/auth/login", { mobile, password });
+//       const res = await axios.post("https://aroha.onrender.com/auth/login", { mobile, password });
 //       if (res?.data?.success) {
 //         localStorage.setItem("user", JSON.stringify(res.data.user));
 //         navigate("/dashboard");

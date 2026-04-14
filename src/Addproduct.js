@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import Swal from "./sweetalertConfig";
 import {
   FaPlus, FaImage, FaTag, FaShoppingCart, FaPercent,
   FaRupeeSign, FaTshirt, FaPalette, FaRuler, FaHashtag,
@@ -126,6 +127,18 @@ function AddProduct() {
 
   useEffect(() => {
     setFormData(prev => ({ ...prev, subCategory: "" }));
+    // Auto-fetch next SKU when category changes
+    if (formData.category) {
+      axios.get(`http://localhost:5000/products/next-sku/${formData.category}`)
+        .then(res => {
+          if (res.data.success) {
+             setFormData(prev => ({ ...prev, sku: res.data.sku }));
+          }
+        })
+        .catch(err => console.error("Failed to fetch SKU", err));
+    } else {
+      setFormData(prev => ({ ...prev, sku: "" }));
+    }
   }, [formData.category]);
 
   const handleChange = (e) => {
@@ -188,10 +201,15 @@ function AddProduct() {
     if (formData.color.length === 0) missingFields.push("Color (Select at least one)");
     if (formData.size.length === 0) missingFields.push("Size (Select at least one)");
     if (!formData.type) missingFields.push("Type / Material");
+    if (!formData.sku) missingFields.push("SKU");
     if (formData.images.length === 0) missingFields.push("Product Image Links (Add at least one link)");
 
     if (missingFields.length > 0) {
-      alert(`Cannot add product. The following required fields are missing:\n\n- ${missingFields.join("\n- ")}`);
+      Swal.fire({
+        title: "Missing Fields",
+        html: `Cannot add product. The following required fields are missing:<br><br>- ${missingFields.join("<br>- ")}`,
+        icon: "warning"
+      });
       return;
     }
     
@@ -222,24 +240,34 @@ function AddProduct() {
       await axios.post("http://localhost:5000/products", data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
-      alert("Product added successfully!");
+      Swal.fire({
+        title: "Success",
+        text: "Product added successfully!",
+        icon: "success"
+      });
       navigate("/dashboard");
     } catch (err) {
       console.error("Error adding product:", err);
-      alert("Failed to add product. Check console for details.");
+      Swal.fire({
+        title: "Error",
+        text: "Failed to add product. Check console for details.",
+        icon: "error"
+      });
     }
   };
 
   return (
     <div style={styles.container}>
-      <h2 style={styles.heading}><FaPlus /> Add New Product</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', maxWidth: '1200px', margin: '0 auto 24px' }}>
+        <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}><FaPlus /> Add New Product</h2>
         <button
-            type="button"
-            onClick={() => navigate("/seller-orders")}
-            style={styles.sellerOrdersButton}
-          >
-            <FaBoxOpen /> Go to Seller Orders
-          </button>
+          type="button"
+          onClick={() => navigate("/seller-orders")}
+          style={styles.sellerOrdersButton}
+        >
+          <FaBoxOpen /> Go to Seller Orders
+        </button>
+      </div>
       <form onSubmit={handleSubmit} style={styles.form}>
         {/* Basic Info Row */}
         <div style={styles.row}>
@@ -747,7 +775,7 @@ function AddProduct() {
             />
           </div>
           <div style={styles.inputGroup}>
-            <label style={styles.label}><FaHashtag /> SKU</label>
+            <label style={styles.label}><FaHashtag /> SKU*</label>
             <input
               type="text"
               name="sku"
@@ -755,6 +783,7 @@ function AddProduct() {
               onChange={handleChange}
               style={styles.input}
               placeholder="Unique SKU"
+              required
             />
           </div>
         </div>
@@ -822,43 +851,45 @@ function AddProduct() {
   );
 }
 
-// Styles
+// Styles (Premium System Look)
 const styles = {
   container: {
-    padding: "20px",
-    fontFamily: "'Inter', sans-serif",
-    color: "#333",
-    backgroundColor: "#f8f9fa",
+    padding: "40px 20px",
+    fontFamily: "'Inter', system-ui, sans-serif",
+    color: "#1f2937",
+    backgroundColor: "#f3f4f6", // lighter gray
     minHeight: "100vh",
   },
   heading: {
-    fontFamily: "'Cormorant Garamond', serif",
     fontSize: "2rem",
-    marginBottom: "20px",
-    color: "#2c3e50",
+    fontWeight: "700",
+    marginBottom: "24px",
+    color: "#111827",
     display: "flex",
     alignItems: "center",
-    gap: "10px",
+    gap: "12px",
+    maxWidth: "1200px",
+    margin: "0 auto 24px auto",
   },
   form: {
-    background: "#fff",
-    padding: "25px",
-    borderRadius: "12px",
-    boxShadow: "0 4px 12px rgba(0,0,0,0.08)",
+    background: "#ffffff",
+    padding: "32px",
+    borderRadius: "16px",
+    boxShadow: "0 10px 25px rgba(0, 0, 0, 0.05), 0 4px 6px rgba(0, 0, 0, 0.02)",
     maxWidth: "1200px",
     margin: "0 auto",
   },
   row: {
     display: "flex",
     flexWrap: "wrap",
-    gap: "15px",
-    marginBottom: "20px",
+    gap: "24px",
+    marginBottom: "24px",
   },
   inputGroup: {
-    flex: "1 1 calc(25% - 15px)",
-    minWidth: "200px",
+    flex: "1 1 calc(33.333% - 24px)",
+    minWidth: "260px",
     "@media (max-width: 768px)": {
-      flex: "1 1 calc(50% - 15px)",
+      flex: "1 1 calc(50% - 24px)",
     },
     "@media (max-width: 480px)": {
       flex: "1 1 100%",
@@ -866,71 +897,83 @@ const styles = {
   },
   label: {
     display: "block",
-    marginBottom: "5px",
-    fontWeight: "500",
-    color: "#444",
+    marginBottom: "8px",
+    fontWeight: "600",
+    fontSize: "0.9rem",
+    color: "#4b5563",
     display: "flex",
     alignItems: "center",
     gap: "6px",
   },
   input: {
     width: "100%",
-    padding: "10px",
-    borderRadius: "6px",
-    border: "1px solid #ddd",
+    padding: "12px 14px",
+    borderRadius: "8px",
+    border: "1px solid #d1d5db",
     fontSize: "0.95rem",
-    background: "#f8f9fa",
+    background: "#f9fafb",
+    color: "#111827",
+    transition: "all 0.2s ease",
+    outline: "none",
+    boxSizing: "border-box",
   },
   checkboxGroup: {
     display: "flex",
     flexWrap: "wrap",
-    gap: "10px",
-    margin: "5px 0",
+    gap: "12px",
+    margin: "8px 0",
   },
   checkboxLabel: {
     display: "flex",
     alignItems: "center",
-    gap: "5px",
+    gap: "6px",
     fontSize: "0.9rem",
+    fontWeight: "500",
+    color: "#374151",
     cursor: "pointer",
   },
   customInputGroup: {
     display: "flex",
-    gap: "5px",
-    marginTop: "5px",
+    gap: "8px",
+    marginTop: "8px",
   },
   customInput: {
     flex: 1,
-    padding: "8px",
-    borderRadius: "6px",
-    border: "1px solid #ddd",
+    padding: "10px 14px",
+    borderRadius: "8px",
+    border: "1px solid #d1d5db",
     fontSize: "0.9rem",
+    background: "#f9fafb",
+    outline: "none",
   },
   addButton: {
-    padding: "8px 12px",
-    background: "#2c3e50",
+    padding: "10px 14px",
+    background: "#111827",
     color: "#fff",
     border: "none",
-    borderRadius: "6px",
+    borderRadius: "8px",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
+    transition: "background 0.2s ease",
   },
   tags: {
     display: "flex",
     flexWrap: "wrap",
     gap: "8px",
-    marginTop: "8px",
+    marginTop: "12px",
   },
   tag: {
-    background: "#e9ecef",
-    padding: "4px 8px",
-    borderRadius: "12px",
-    fontSize: "0.8rem",
+    background: "#e5e7eb",
+    color: "#374151",
+    padding: "6px 12px",
+    borderRadius: "20px",
+    fontSize: "0.85rem",
+    fontWeight: "500",
     display: "flex",
     alignItems: "center",
-    gap: "4px",
+    gap: "6px",
   },
   tagRemove: {
     background: "none",
@@ -938,23 +981,27 @@ const styles = {
     cursor: "pointer",
     fontSize: "0.8rem",
     padding: "0 0 0 4px",
-    color: "#666",
+    color: "#9ca3af",
+    display: "flex",
+    alignItems: "center",
   },
   dimensions: {
     display: "flex",
-    gap: "10px",
+    gap: "12px",
   },
   dimensionInput: {
     flex: 1,
-    padding: "8px",
-    borderRadius: "6px",
-    border: "1px solid #ddd",
+    padding: "12px",
+    borderRadius: "8px",
+    border: "1px solid #d1d5db",
     fontSize: "0.9rem",
+    background: "#f9fafb",
+    outline: "none",
   },
   imagePreview: {
     display: "flex",
-    gap: "10px",
-    marginTop: "10px",
+    gap: "12px",
+    marginTop: "12px",
     flexWrap: "wrap",
   },
   previewContainer: {
@@ -962,59 +1009,70 @@ const styles = {
     display: "inline-block",
   },
   previewImage: {
-    width: "80px",
-    height: "80px",
+    width: "90px",
+    height: "90px",
     objectFit: "cover",
-    borderRadius: "6px",
-    border: "1px solid #ddd",
+    borderRadius: "8px",
+    border: "1px solid #e5e7eb",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
   },
   removeImage: {
     position: "absolute",
-    top: "5px",
-    right: "5px",
-    background: "rgba(0,0,0,0.5)",
+    top: "-6px",
+    right: "-6px",
+    background: "#ef4444",
     color: "#fff",
     border: "none",
     borderRadius: "50%",
-    width: "20px",
-    height: "20px",
+    width: "24px",
+    height: "24px",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
     cursor: "pointer",
-    fontSize: "0.7rem",
+    fontSize: "0.75rem",
+    boxShadow: "0 2px 4px rgba(239, 68, 68, 0.3)",
   },
   submitGroup: {
     display: "flex",
     justifyContent: "flex-end",
-    gap: "15px",
-    marginTop: "25px",
+    gap: "16px",
+    marginTop: "32px",
+    paddingTop: "24px",
+    borderTop: "1px solid #e5e7eb",
   },
   submitButton: {
-    padding: "12px 24px",
-    background: "#2c3e50",
+    padding: "14px 28px",
+    background: "#10b981", // Emerald success color
     color: "#fff",
     border: "none",
-    borderRadius: "6px",
-    fontSize: "1rem",
+    borderRadius: "8px",
+    fontSize: "1.05rem",
+    fontWeight: "600",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    transition: "background 0.3s",
+    transition: "all 0.2s ease",
+    boxShadow: "0 4px 6px rgba(16, 185, 129, 0.2)",
   },
   sellerOrdersButton: {
-    padding: "12px 24px",
-    background: "#000",
-    color: "#fff",
-    border: "none",
-    borderRadius: "6px",
-    fontSize: "1rem",
+    padding: "10px 20px",
+    background: "#ffffff",
+    color: "#111827",
+    border: "2px solid #111827",
+    borderRadius: "8px",
+    fontSize: "0.95rem",
+    fontWeight: "600",
     cursor: "pointer",
     display: "flex",
     alignItems: "center",
     gap: "8px",
-    transition: "background 0.3s",
+    transition: "all 0.2s ease",
+    marginBottom: "24px", // To space it out from form
+    maxWidth: "max-content",
+    marginLeft: "auto",
+    marginRight: "auto",
   },
 };
 

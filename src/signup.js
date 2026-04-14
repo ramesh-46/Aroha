@@ -56,7 +56,7 @@ useState(() => {
 
     setLoading(true);
     try {
-      const res = await axios.post("http://localhost:5000/auth/signup", form);
+      const res = await axios.post("https://aroha.onrender.com/auth/signup", form);
       if (res.data.success) {
         alert("Signup successful! Please login.");
         navigate("/login");
@@ -340,7 +340,7 @@ export default Signup;
 //   const handleSignup = async () => {
 //     setLoading(true);
 //     try {
-//       const res = await axios.post("http://localhost:5000/auth/signup", form);
+//       const res = await axios.post("https://aroha.onrender.com/auth/signup", form);
 //       if (res.data.success) {
 //         alert("Signup successful! Please login.");
 //         navigate("/login");

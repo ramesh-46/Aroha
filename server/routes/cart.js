@@ -20,6 +20,11 @@ router.post("/", async (req, res) => {
   if (!userId || !productId) return res.status(400).json({ message: "Missing userId or productId" });
 
   try {
+    const product = await Product.findById(productId);
+    if (!product || !product.isActive) {
+      return res.status(404).json({ message: "Product not available" });
+    }
+
     let cart = await Cart.findOne({ userId });
     if (!cart) {
       cart = new Cart({ userId, items: [] });
@@ -29,8 +34,18 @@ router.post("/", async (req, res) => {
     const itemIndex = cart.items.findIndex(item => item.productId.toString() === productId);
     if (itemIndex > -1) {
       // Update quantity
-      cart.items[itemIndex].quantity += quantity;
+      const nextQuantity = cart.items[itemIndex].quantity + quantity;
+      if (nextQuantity < 1) {
+        return res.status(400).json({ message: "Quantity should be at least 1" });
+      }
+      if (nextQuantity > product.stock) {
+        return res.status(400).json({ message: `Only ${product.stock} items available in stock` });
+      }
+      cart.items[itemIndex].quantity = nextQuantity;
     } else {
+      if ((quantity || 1) > product.stock) {
+        return res.status(400).json({ message: `Only ${product.stock} items available in stock` });
+      }
       cart.items.push({ productId, quantity });
     }
 

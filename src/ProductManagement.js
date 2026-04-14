@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import Swal from "./sweetalertConfig";
 import {
   FaBoxOpen,
   FaEdit,
@@ -76,7 +77,7 @@ function ProductManagement() {
       setProducts(res.data);
     } catch (err) {
       console.error("Failed to fetch seller products", err);
-      alert("Unable to load your products right now.");
+      Swal.fire("Unable to load your products right now.", "", "error");
     } finally {
       setLoading(false);
     }
@@ -137,17 +138,17 @@ function ProductManagement() {
     e.preventDefault();
 
     if (!priceForm.value) {
-      alert("Enter a fixed amount or percentage value.");
+      Swal.fire("Enter a fixed amount or percentage value.", "", "error");
       return;
     }
 
     if (priceForm.applyTo === "selectedProducts" && selectedProductIds.length === 0) {
-      alert("Select at least one product for this update.");
+      Swal.fire("Select at least one product for this update.", "", "error");
       return;
     }
 
     if (priceForm.applyTo === "selectedCategories" && priceForm.categories.length === 0) {
-      alert("Select at least one category for this update.");
+      Swal.fire("Select at least one category for this update.", "", "error");
       return;
     }
 
@@ -165,10 +166,10 @@ function ProductManagement() {
 
       setProducts(res.data.products || []);
       setSelectedProductIds([]);
-      alert(`Prices updated for ${res.data.updatedCount} products.`);
+      Swal.fire(`Prices updated for ${res.data.updatedCount} products.`, "", "success");
     } catch (err) {
       console.error("Bulk price update failed", err);
-      alert(err.response?.data?.message || "Failed to update prices.");
+      Swal.fire(err.response?.data?.message || "Failed to update prices.", "", "error");
     } finally {
       setPriceUpdating(false);
     }
@@ -183,7 +184,7 @@ function ProductManagement() {
       setProducts((prev) => prev.filter((product) => product._id !== productId));
     } catch (err) {
       console.error("Failed to delete product", err);
-      alert("Failed to delete product.");
+      Swal.fire("Failed to delete product.", "", "error");
     }
   };
 
@@ -214,7 +215,7 @@ function ProductManagement() {
       closeEditor();
     } catch (err) {
       console.error("Failed to update product", err);
-      alert("Failed to update product.");
+      Swal.fire("Failed to update product.", "", "error");
     }
   };
 

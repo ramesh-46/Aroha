@@ -86,13 +86,33 @@ const removeStoredImages = (images = []) => {
   });
 };
 
-const buildProductQuery = ({ q, category, subCategory, sellerId, productId }) => {
+const buildProductQuery = ({ q, category, subCategory, sellerId, productId, minPrice, maxPrice, minDiscount, sizes, brands }) => {
   const query = {};
 
   if (category) query.category = category;
   if (subCategory) query.subCategory = subCategory;
   if (sellerId && mongoose.Types.ObjectId.isValid(sellerId)) {
     query.sellerId = sellerId;
+  }
+  if (minDiscount) {
+    query.discount = { ...(query.discount || {}), $gte: Number(minDiscount) || 0 };
+  }
+  if (minPrice || maxPrice) {
+    query.finalPrice = {};
+    if (minPrice) query.finalPrice.$gte = Number(minPrice) || 0;
+    if (maxPrice) query.finalPrice.$lte = Number(maxPrice) || 0;
+  }
+  if (sizes) {
+    const normalizedSizes = `${sizes}`.split(",").map((item) => item.trim()).filter(Boolean);
+    if (normalizedSizes.length > 0) {
+      query.size = { $in: normalizedSizes };
+    }
+  }
+  if (brands) {
+    const normalizedBrands = `${brands}`.split(",").map((item) => item.trim()).filter(Boolean);
+    if (normalizedBrands.length > 0) {
+      query.brand = { $in: normalizedBrands };
+    }
   }
 
   const exactId = productId || q;
@@ -166,6 +186,14 @@ const getProductPayload = (body) => {
 };
 
 const roundCurrency = (value) => Math.max(0, Number(value.toFixed(2)));
+const sortProductsForDisplay = (products) => (
+  [...products].sort((a, b) => {
+    const aOut = (a.stock || 0) <= 0 ? 1 : 0;
+    const bOut = (b.stock || 0) <= 0 ? 1 : 0;
+    if (aOut !== bOut) return aOut - bOut;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  })
+);
 
 // --------------------
 // Add product with multiple images
@@ -174,6 +202,41 @@ const roundCurrency = (value) => Math.max(0, Number(value.toFixed(2)));
 router.post("/", upload.array("images", 5), async (req, res) => {
   try {
     const payload = getProductPayload(req.body);
+
+    // Auto-generate SKU if not provided
+    if (!payload.sku) {
+      const categoryStr = payload.category && typeof payload.category === 'string' 
+        ? payload.category.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase() 
+        : 'GEN';
+      
+      // Look for the highest SKU in this category to generate a sequential number
+      const lastProduct = await Product.findOne({ category: payload.category, sku: { $regex: `^${categoryStr}` } })
+                                       .sort({ createdAt: -1 });
+      
+      let nextNumber = 1;
+      if (lastProduct && lastProduct.sku) {
+        const match = lastProduct.sku.match(/(\d+)$/);
+        if (match) {
+          nextNumber = parseInt(match[1], 10) + 1;
+        } else {
+          const count = await Product.countDocuments({ category: payload.category });
+          nextNumber = count + 1;
+        }
+      }
+
+      let sequentialNumber = nextNumber.toString().padStart(4, '0');
+      let newSku = `${categoryStr}${sequentialNumber}`;
+      
+      // Ensure absolute uniqueness
+      while (await Product.findOne({ sku: newSku })) {
+        nextNumber++;
+        sequentialNumber = nextNumber.toString().padStart(4, '0');
+        newSku = `${categoryStr}${sequentialNumber}`;
+      }
+      
+      payload.sku = newSku;
+    }
+
     const newProduct = new Product({
       ...payload,
       soldBy: payload.soldBy || "AROHA"
@@ -200,7 +263,7 @@ router.get("/", async (req, res) => {
   try {
     const query = buildProductQuery(req.query);
     const products = await Product.find(query).sort({ createdAt: -1 });
-    res.json(products);
+    res.json(sortProductsForDisplay(products));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -212,8 +275,8 @@ router.get("/", async (req, res) => {
 router.get("/search", async (req, res) => {
   try {
     const query = buildProductQuery(req.query);
-    const results = await Product.find(query);
-    res.json(results);
+    const results = await Product.find(query).sort({ createdAt: -1 });
+    res.json(sortProductsForDisplay(results));
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -255,6 +318,43 @@ router.get("/attributes", async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+});
+
+// --------------------
+// Get next sequential SKU based on category
+// --------------------
+router.get("/next-sku/:category", async (req, res) => {
+  try {
+    const category = req.params.category;
+    const categoryStr = category.replace(/[^a-zA-Z0-9]/g, '').substring(0, 3).toUpperCase();
+    
+    const lastProduct = await Product.findOne({ category: category, sku: { $regex: `^${categoryStr}` } })
+                                     .sort({ createdAt: -1 });
+
+    let nextNumber = 1;
+    if (lastProduct && lastProduct.sku) {
+      const match = lastProduct.sku.match(/(\d+)$/);
+      if (match) {
+        nextNumber = parseInt(match[1], 10) + 1;
+      } else {
+        const count = await Product.countDocuments({ category: category });
+        nextNumber = count + 1;
+      }
+    }
+
+    let sequentialNumber = nextNumber.toString().padStart(4, '0');
+    let newSku = `${categoryStr}${sequentialNumber}`;
+    
+    while (await Product.findOne({ sku: newSku })) {
+      nextNumber++;
+      sequentialNumber = nextNumber.toString().padStart(4, '0');
+      newSku = `${categoryStr}${sequentialNumber}`;
+    }
+
+    res.json({ success: true, sku: newSku });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom"; // Import useNavigate for navigation
+import Swal from "./sweetalertConfig";
 
 function SellerOrders() {
   const [orders, setOrders] = useState([]);
@@ -37,7 +38,7 @@ function SellerOrders() {
       setEditOrderId(null);
     } catch (err) {
       console.log(err);
-      alert("Failed to update status");
+      Swal.fire("Error", "Failed to update status", "error");
     }
   };
 
@@ -125,15 +126,27 @@ function SellerOrders() {
                 <p>Customer: {order.customerName}</p>
                 <p>Mobile: {order.customerMobile}</p>
                 <p style={styles.address}>Address: {order.deliveryAddress.substring(0, 15)}...</p>
+                <p style={styles.address}>
+                  Location: {order.customerLocation?.lat && order.customerLocation?.lng
+                    ? `${order.customerLocation.lat}, ${order.customerLocation.lng}`
+                    : "Not shared"}
+                </p>
+                <p style={styles.address}>Coupon: {order.couponCode || "None"}</p>
               </div>
               {/* --- Items Preview (First 2 items) --- */}
               <div style={styles.itemsPreview}>
-                {order.items.slice(0, 2).map((i) => (
+                {order.items.slice(0, 2).map((i) => {
+                  const imageSrc = i.productSnapshot?.images?.length ? i.productSnapshot.images[0] : (i.productId?.images?.length ? i.productId.images[0] : null);
+                  const name = i.productSnapshot?.name || i.productId?.name || "N/A";
+                  const origPrice = (i.originalPrice !== undefined && i.originalPrice !== null) ? i.originalPrice : (Number(i.productId?.price) || 0);
+                  const discPrice = (i.discountedPrice !== undefined && i.discountedPrice !== null) ? i.discountedPrice : (Number(i.productId?.finalPrice) || 0);
+                  
+                  return (
                   <div key={i._id} style={styles.itemPreview}>
-                    {i.productId && i.productId.images && i.productId.images.length > 0 ? (
+                    {imageSrc ? (
                       <img
-                        src={`http://localhost:5000/uploads/${i.productId.images[0]}`}
-                        alt={i.productId.name}
+                        src={`http://localhost:5000/uploads/${imageSrc}`}
+                        alt={name}
                         style={styles.itemImage}
                       />
                     ) : (
@@ -142,21 +155,26 @@ function SellerOrders() {
                       </div>
                     )}
                     <div style={styles.itemDetails}>
-                      <p style={styles.itemName}>{i.productId ? i.productId.name.substring(0, 10) : "N/A"}...</p>
+                      <p style={styles.itemName}>{name.substring(0, 10)}...</p>
                       <p style={styles.itemQty}>Qty: {i.quantity}</p>
-                      <p style={styles.itemPrice}>₹{(i.productId ? (i.productId.finalPrice || i.productId.price) : 0) * i.quantity}</p>
+                      <p style={styles.itemPrice}>Original: ₹{Math.round(origPrice * i.quantity)}</p>
+                      <p style={styles.itemPrice}>Discounted: ₹{Math.round(discPrice * i.quantity)}</p>
                     </div>
                   </div>
-                ))}
+                )})}
                 {order.items.length > 2 && <p style={styles.moreItems}>+{order.items.length - 2} more</p>}
               </div>
-              <p style={styles.total}>
-                Total: ₹
-                {order.items.reduce(
-                  (sum, i) => sum + ((i.productId ? (i.productId.finalPrice || i.productId.price) : 0) * i.quantity),
-                  0
-                )}
-              </p>
+              <p style={styles.total}>Total: ₹{Math.round(order.totalAmount || 0)}</p>
+              {order.discountAmount > 0 && <p style={styles.meta}>Coupon Deduction: -₹{Math.round(order.discountAmount)}</p>}
+              {order.deliveryCharge > 0 && <p style={styles.meta}>Delivery: ₹{Math.round(order.deliveryCharge)}</p>}
+              {order.items[0]?.productSnapshot && (
+                <details style={styles.snapshotBox}>
+                  <summary>Full Product JSON</summary>
+                  <pre style={styles.snapshotText}>
+                    {JSON.stringify(order.items.map((item) => item.productSnapshot), null, 2)}
+                  </pre>
+                </details>
+              )}
               {/* --- Edit Status --- */}
               {editOrderId === order._id ? (
                 <div style={styles.editStatus}>
@@ -354,6 +372,24 @@ const styles = {
     fontSize: "1rem",
     fontWeight: "bold",
     textAlign: "right",
+  },
+  meta: {
+    margin: "4px 0",
+    fontSize: "0.8rem",
+    color: "#555",
+  },
+  snapshotBox: {
+    marginTop: "8px",
+    fontSize: "0.75rem",
+  },
+  snapshotText: {
+    whiteSpace: "pre-wrap",
+    wordBreak: "break-word",
+    maxHeight: "140px",
+    overflowY: "auto",
+    background: "#f8fafc",
+    padding: "8px",
+    borderRadius: "6px",
   },
   editStatus: {
     display: "flex",
