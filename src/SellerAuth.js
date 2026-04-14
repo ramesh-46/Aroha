@@ -38,8 +38,8 @@ function SellerAuth() {
 
     setLoading(true);
     try {
-      // const res = await axios.post("http://localhost:5000/seller/seller-signup", form);
-      const res = await axios.post("http://localhost:5000/seller/seller-signup", form);
+      // const res = await axios.post("https://aroha.onrender.com/seller/seller-signup", form);
+      const res = await axios.post("https://aroha.onrender.com/seller/seller-signup", form);
       if (res.data.success) {
         setMessage("Signup successful! Please login.");
         setTab("login");
@@ -56,7 +56,7 @@ function SellerAuth() {
 
   setLoading(true);
   try {
-    const res = await axios.post("http://localhost:5000/seller/seller-login", form);
+    const res = await axios.post("https://aroha.onrender.com/seller/seller-login", form);
     if (res.data.success) {
       setMessage("Login successful!");
 
@@ -80,7 +80,7 @@ function SellerAuth() {
 
     setLoading(true);
     try {
-      const res = await axios.post("http://localhost:5000/seller/seller-reset", form);
+      const res = await axios.post("https://aroha.onrender.com/seller/seller-reset", form);
       if (res.data.verified && !form.newPassword) {
         setMessage(res.data.message);
       } else if (res.data.updated) {

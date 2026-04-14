@@ -10,7 +10,7 @@ function SupportCenter() {
 
   const fetchQueries = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/support");
+      const res = await axios.get("https://aroha.onrender.com/support");
       setQueries(res.data.queries || []);
       if (!activeQuery && res.data.queries?.length) {
         setActiveQuery(res.data.queries[0]);
@@ -28,7 +28,7 @@ function SupportCenter() {
   const sendReply = async () => {
     if (!activeQuery?._id || !reply.trim()) return;
     try {
-      const res = await axios.post(`http://localhost:5000/support/${activeQuery._id}/reply`, {
+      const res = await axios.post(`https://aroha.onrender.com/support/${activeQuery._id}/reply`, {
         senderType: "admin",
         senderId: seller?._id,
         message: reply.trim()

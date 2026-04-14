@@ -12,7 +12,7 @@ function UserManagement() {
   const fetchUsers = async (query = "") => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:5000/auth/users${query ? `?q=${encodeURIComponent(query)}` : ""}`);
+      const res = await axios.get(`https://aroha.onrender.com/auth/users${query ? `?q=${encodeURIComponent(query)}` : ""}`);
       setUsers(res.data.users || []);
     } catch (err) {
       console.error("Failed to fetch users", err);
@@ -28,7 +28,7 @@ function UserManagement() {
 
   const openUser = async (user) => {
     try {
-      const res = await axios.get(`http://localhost:5000/auth/users/${user._id}/orders`);
+      const res = await axios.get(`https://aroha.onrender.com/auth/users/${user._id}/orders`);
       setSelectedUser(res.data.user);
       setUserOrders(res.data.orders || []);
     } catch (err) {

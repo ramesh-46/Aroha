@@ -10,7 +10,7 @@ function ResetPassword() {
 
   const handleVerify = async () => {
     try {
-      const res = await axios.post("http://localhost:5000/auth/reset-password", {
+      const res = await axios.post("https://aroha.onrender.com/auth/reset-password", {
         mobile: form.mobile,
         email: form.email,
         recoveryCode: form.recoveryCode
@@ -32,7 +32,7 @@ function ResetPassword() {
     if (!form.newPassword) return Swal.fire("Enter new password!", "", "error");
 
     try {
-      const res = await axios.post("http://localhost:5000/auth/reset-password", form);
+      const res = await axios.post("https://aroha.onrender.com/auth/reset-password", form);
       if (res.data.success && res.data.updated) {
         Swal.fire(res.data.message, "", "warning");
         navigate("/login"); // redirect to login after reset

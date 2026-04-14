@@ -10,7 +10,7 @@ const Homepage = () => {
   useEffect(() => {
     const fetchSale = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/settings");
+        const res = await axios.get("https://aroha.onrender.com/settings");
         setSaleData(res.data);
       } catch (err) {
         console.error("Failed to load sale settings", err);

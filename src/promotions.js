@@ -44,7 +44,7 @@ const PromotionPage = () => {
   const [saleImageInput, setSaleImageInput] = useState("");
 
   useEffect(() => {
-    axios.get("http://localhost:5000/products/attributes")
+    axios.get("https://aroha.onrender.com/products/attributes")
       .then((res) => {
         if (res.data?.categories?.length) {
           setCategories((prev) => [...new Set([...prev, ...res.data.categories])]);
@@ -55,7 +55,7 @@ const PromotionPage = () => {
 
   const fetchCoupons = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/coupons");
+      const res = await axios.get("https://aroha.onrender.com/coupons");
       if (res.data.success) {
         setCoupons(res.data.coupons);
       }
@@ -66,7 +66,7 @@ const PromotionPage = () => {
 
   const fetchSaleSettings = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/settings");
+      const res = await axios.get("https://aroha.onrender.com/settings");
       const settings = res.data.settings || {};
       setSaleData({
         saleBannerMessage: settings.saleBannerMessage || "",
@@ -89,7 +89,7 @@ const PromotionPage = () => {
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
-      const res = await axios.get("http://localhost:5000/promotion/qr");
+      const res = await axios.get("https://aroha.onrender.com/promotion/qr");
         if (res.data.success && res.data.qr) {
           setQrCode(res.data.qr);
           setConnectedInfo(null);
@@ -105,7 +105,7 @@ const PromotionPage = () => {
   }, []);
 
   useEffect(() => {
-    axios.get("http://localhost:5000/promotion/all-users", { headers: adminHeaders })
+    axios.get("https://aroha.onrender.com/promotion/all-users", { headers: adminHeaders })
       .then((res) => {
         if (res.data.success) {
           setUsers(res.data.users);
@@ -120,7 +120,7 @@ const PromotionPage = () => {
     if (!couponData.discountValue) return Swal.fire("Enter discount value", "", "error");
 
     try {
-      const res = await axios.post("http://localhost:5000/coupons/generate", {
+      const res = await axios.post("https://aroha.onrender.com/coupons/generate", {
         ...couponData,
         category: couponData.category || "",
         startsAt: couponData.startsAt || null,
@@ -140,7 +140,7 @@ const PromotionPage = () => {
   const handleDeleteCoupon = async (id) => {
     try {
       if (!window.confirm("Delete this coupon?")) return;
-      const res = await axios.delete(`http://localhost:5000/coupons/${id}`, { headers: adminHeaders });
+      const res = await axios.delete(`https://aroha.onrender.com/coupons/${id}`, { headers: adminHeaders });
       if (res.data.success) fetchCoupons();
     } catch (err) {
       Swal.fire("Failed to delete coupon", "", "error");
@@ -150,7 +150,7 @@ const PromotionPage = () => {
   const handleSaveSale = async (e) => {
     e.preventDefault();
     try {
-      await axios.put("http://localhost:5000/settings", {
+      await axios.put("https://aroha.onrender.com/settings", {
         saleBannerMessage: saleData.saleBannerMessage,
         saleImages: saleData.saleImages,
         saleStartsAt: saleData.saleStartsAt || null,
@@ -178,7 +178,7 @@ const PromotionPage = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:5000/promotion/send-promotion", {
+      const res = await axios.post("https://aroha.onrender.com/promotion/send-promotion", {
         message,
         users: selectedUsers
       }, { headers: adminHeaders });

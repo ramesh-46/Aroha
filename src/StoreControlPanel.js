@@ -30,7 +30,7 @@ function StoreControlPanel() {
   const fetchSettings = async () => {
     try {
       setLoading(true);
-      const res = await axios.get("http://localhost:5000/settings");
+      const res = await axios.get("https://aroha.onrender.com/settings");
       const settings = res.data.settings || initialState;
       setForm({
         checkoutEnabled: settings.checkoutEnabled ?? true,
@@ -71,7 +71,7 @@ function StoreControlPanel() {
     e.preventDefault();
     setSaving(true);
     try {
-      await axios.put("http://localhost:5000/settings", {
+      await axios.put("https://aroha.onrender.com/settings", {
         ...form,
         saleStartsAt: form.saleStartsAt || null,
         saleEndsAt: form.saleEndsAt || null

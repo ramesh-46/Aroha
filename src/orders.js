@@ -20,7 +20,7 @@ function Orders() {
     if (!user) return;
     try {
       setLoading(true);
-      const res = await axios.get(`http://localhost:5000/orders/user/${user._id}`);
+      const res = await axios.get(`https://aroha.onrender.com/orders/user/${user._id}`);
       setOrders(res.data);
       setError(null);
     } catch (err) {
@@ -40,7 +40,7 @@ function Orders() {
 
   const fetchSupportThreads = async () => {
     try {
-      const res = await axios.get(`http://localhost:5000/support?userId=${user._id}`);
+      const res = await axios.get(`https://aroha.onrender.com/support?userId=${user._id}`);
       setSupportThreads(res.data.queries || []);
     } catch (err) {
       console.error("Failed to fetch support queries", err);
@@ -57,7 +57,7 @@ function Orders() {
     }
     
     if (img) {
-      return img.startsWith("http") ? img : `http://localhost:5000/uploads/${img}`;
+      return img.startsWith("http") ? img : `https://aroha.onrender.com/uploads/${img}`;
     }
     return "https://via.placeholder.com/150?text=No+Image";
   };
@@ -105,7 +105,7 @@ function Orders() {
     try {
       let thread = activeSupport.thread;
       if (!thread) {
-        const res = await axios.post("http://localhost:5000/support", {
+        const res = await axios.post("https://aroha.onrender.com/support", {
           userId: user._id,
           orderId: activeSupport.order._id,
           productId: activeSupport.item.productId?._id,
@@ -114,7 +114,7 @@ function Orders() {
         });
         thread = res.data.query;
       } else {
-        const res = await axios.post(`http://localhost:5000/support/${thread._id}/reply`, {
+        const res = await axios.post(`https://aroha.onrender.com/support/${thread._id}/reply`, {
           senderType: "user",
           senderId: user._id,
           message: supportMessage.trim()

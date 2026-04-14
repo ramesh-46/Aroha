@@ -80,7 +80,7 @@ function AddProduct() {
 
   useEffect(() => {
     // Fetch attributes from backend
-    axios.get("http://localhost:5000/products/attributes")
+    axios.get("https://aroha.onrender.com/products/attributes")
       .then(res => {
         if (res.data) {
           if (res.data.categories && res.data.categories.length > 0) {
@@ -129,7 +129,7 @@ function AddProduct() {
     setFormData(prev => ({ ...prev, subCategory: "" }));
     // Auto-fetch next SKU when category changes
     if (formData.category) {
-      axios.get(`http://localhost:5000/products/next-sku/${formData.category}`)
+      axios.get(`https://aroha.onrender.com/products/next-sku/${formData.category}`)
         .then(res => {
           if (res.data.success) {
              setFormData(prev => ({ ...prev, sku: res.data.sku }));
@@ -237,7 +237,7 @@ function AddProduct() {
         data.append("soldBy", owner.companyName || owner.name || "AROHA Seller");
       }
 
-      await axios.post("http://localhost:5000/products", data, {
+      await axios.post("https://aroha.onrender.com/products", data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
       Swal.fire({

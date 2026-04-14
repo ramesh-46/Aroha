@@ -12,7 +12,7 @@ const UserCoupons = () => {
 
   const fetchCoupons = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/coupons");
+      const res = await axios.get("https://aroha.onrender.com/coupons");
       if (res.data.success) {
         setCoupons(res.data.coupons);
       }

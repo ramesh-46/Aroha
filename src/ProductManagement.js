@@ -31,7 +31,7 @@ const initialEditState = {
 const getImageSrc = (image) => {
   if (!image) return "https://via.placeholder.com/320x220?text=Product";
   if (image.startsWith("http://") || image.startsWith("https://")) return image;
-  return `http://localhost:5000/uploads/${image}`;
+  return `https://aroha.onrender.com/uploads/${image}`;
 };
 
 function ProductManagement() {
@@ -56,7 +56,7 @@ function ProductManagement() {
 
   const fetchAttributes = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/products/attributes");
+      const res = await axios.get("https://aroha.onrender.com/products/attributes");
       setCategories(res.data.categories || []);
     } catch (err) {
       console.error("Failed to fetch categories", err);
@@ -73,7 +73,7 @@ function ProductManagement() {
       if (searchId.trim()) params.append("productId", searchId.trim());
       if (categoryFilter) params.append("category", categoryFilter);
 
-      const res = await axios.get(`http://localhost:5000/products/search?${params.toString()}`);
+      const res = await axios.get(`https://aroha.onrender.com/products/search?${params.toString()}`);
       setProducts(res.data);
     } catch (err) {
       console.error("Failed to fetch seller products", err);
@@ -154,7 +154,7 @@ function ProductManagement() {
 
     setPriceUpdating(true);
     try {
-      const res = await axios.post("http://localhost:5000/products/bulk-price-update", {
+      const res = await axios.post("https://aroha.onrender.com/products/bulk-price-update", {
         sellerId: seller._id,
         applyTo: priceForm.applyTo,
         adjustmentType: priceForm.adjustmentType,
@@ -180,7 +180,7 @@ function ProductManagement() {
     if (!confirmed) return;
 
     try {
-      await axios.delete(`http://localhost:5000/products/${productId}`);
+      await axios.delete(`https://aroha.onrender.com/products/${productId}`);
       setProducts((prev) => prev.filter((product) => product._id !== productId));
     } catch (err) {
       console.error("Failed to delete product", err);
@@ -208,7 +208,7 @@ function ProductManagement() {
         images: JSON.stringify(editForm.images.split(",").map((item) => item.trim()).filter(Boolean))
       };
 
-      const res = await axios.put(`http://localhost:5000/products/${editForm._id}`, payload);
+      const res = await axios.put(`https://aroha.onrender.com/products/${editForm._id}`, payload);
       setProducts((prev) =>
         prev.map((product) => (product._id === editForm._id ? res.data.product : product))
       );

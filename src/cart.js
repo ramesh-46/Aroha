@@ -43,7 +43,7 @@ function Cart() {
   const fetchCart = async () => {
     if (!user) return;
     try {
-      const res = await axios.get(`http://localhost:5000/cart/${user._id}`);
+      const res = await axios.get(`https://aroha.onrender.com/cart/${user._id}`);
       setCart(res.data);
     } catch (err) {
       console.log(err);
@@ -54,7 +54,7 @@ function Cart() {
   const fetchOrders = async () => {
     if (!user) return;
     try {
-      const res = await axios.get(`http://localhost:5000/orders/${user._id}`);
+      const res = await axios.get(`https://aroha.onrender.com/orders/${user._id}`);
       setPreviousOrders(res.data);
     } catch (err) {
       console.log(err);
@@ -68,7 +68,7 @@ function Cart() {
         params.append("lat", location.lat);
         params.append("lng", location.lng);
       }
-      const res = await axios.get(`http://localhost:5000/orders/checkout-settings${params.toString() ? `?${params.toString()}` : ""}`);
+      const res = await axios.get(`https://aroha.onrender.com/orders/checkout-settings${params.toString() ? `?${params.toString()}` : ""}`);
       setCheckoutSettings(res.data);
     } catch (err) {
       console.error("Failed to fetch checkout settings", err);
@@ -115,7 +115,7 @@ function Cart() {
     if (newQty < 1) return;
 
     try {
-      await axios.post("http://localhost:5000/cart", {
+      await axios.post("https://aroha.onrender.com/cart", {
         userId: user._id,
         productId,
         quantity: newQty - item.quantity // update difference
@@ -168,7 +168,7 @@ function Cart() {
           quantity: item.quantity
         }));
 
-      const res = await axios.post("http://localhost:5000/coupons/apply", {
+      const res = await axios.post("https://aroha.onrender.com/coupons/apply", {
         code: couponCode,
         items: selectedCartItems
       });
@@ -199,7 +199,7 @@ function Cart() {
         quantity: i.quantity
       }));
 
-      const res = await axios.post("http://localhost:5000/orders", {
+      const res = await axios.post("https://aroha.onrender.com/orders", {
         userId: user._id,
         items: formattedItems,
         customerName: customerDetails.name,
@@ -214,7 +214,7 @@ function Cart() {
 
       // Remove ordered items from cart
       for (let i of itemsToOrder) {
-        await axios.delete(`http://localhost:5000/cart/removeItem/${user._id}/${i.productId._id}`);
+        await axios.delete(`https://aroha.onrender.com/cart/removeItem/${user._id}/${i.productId._id}`);
       }
 
       setShowOrderModal(false);
@@ -255,7 +255,7 @@ function Cart() {
                   onChange={() => toggleSelect(item.productId._id)} 
                   style={styles.checkbox}
                 />
-                <img src={item.productId.images?.[0]?.startsWith("http") ? item.productId.images[0] : `http://localhost:5000/uploads/${item.productId.images?.[0]}`} alt={item.productId.name} style={styles.imgStyle} />
+                <img src={item.productId.images?.[0]?.startsWith("http") ? item.productId.images[0] : `https://aroha.onrender.com/uploads/${item.productId.images?.[0]}`} alt={item.productId.name} style={styles.imgStyle} />
                 <h4 style={styles.itemName}>{item.productId.name}</h4>
                 <p style={styles.itemPrice}>₹{getEffectiveUnitPrice(item.productId)}</p>
                 <div style={styles.qtyManager}>
