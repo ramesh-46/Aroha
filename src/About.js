@@ -3,12 +3,12 @@ import React from "react";
 function About() {
   return (
     <div style={container}>
-      <h1 style={title}>About AROHA HUB</h1>
+      <h1 style={title}>About Jigiri Kart</h1>
 
       <div style={section}>
-        <h2 style={sectionTitle}>Welcome to AROHA HUB</h2>
+        <h2 style={sectionTitle}>Welcome to Jigiri Kart</h2>
         <p style={paragraph}>
-          AROHA HUB is a small eCommerce platform connecting local sellers and buyers. 
+          Jigiri Kart is a small eCommerce platform connecting local sellers and buyers. 
           Our mission is to make it easy for sellers to start their business legally without licences or GST, and for users to discover and purchase unique products directly from them. 
           All operations follow the rules for unregistered small sellers in India, ensuring a safe and legal environment.
         </p>
@@ -32,7 +32,7 @@ function About() {
       <div style={section}>
         <h2 style={sectionTitle}>For Buyers 🟢</h2>
         <p style={paragraph}>
-          Buyers can safely browse and purchase products directly from local sellers on AROHA HUB. 
+          Buyers can safely browse and purchase products directly from local sellers on Jigiri Kart. 
           As sellers are small-scale and unregistered, products are sold legally without GST. 
           Payments are handled securely via personal UPI or bank transfers, and buyers are advised to check product details and seller information before purchase.
         </p>
@@ -111,7 +111,7 @@ function About() {
 
       <div style={section}>
         <p style={footerNote}>
-          AROHA HUB enables small sellers to operate legally and allows buyers to discover and purchase unique products safely. 
+          Jigiri Kart enables small sellers to operate legally and allows buyers to discover and purchase unique products safely. 
           This platform is designed for hobbyists, local sellers, and small businesses under the legal unregistered small seller rules in India.
         </p>
       </div>

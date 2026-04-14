@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Swal from "./sweetalertConfig";
+import { FaTrashAlt, FaTag, FaTruck, FaShieldAlt, FaWallet, FaShoppingBag } from "react-icons/fa";
 
 function Cart() {
   const [cart, setCart] = useState({ items: [] });
@@ -95,7 +96,7 @@ function Cart() {
     }
   }, []);
 
-  if (!user) return <p style={{ padding: "20px" }}>Please log in to view your cart.</p>;
+  if (!user) return <p style={styles.loginPrompt}>Please log in to view your cart.</p>;
 
   // Select/unselect items
   const toggleSelect = (productId) => {
@@ -118,7 +119,7 @@ function Cart() {
       await axios.post("https://aroha.onrender.com/cart", {
         userId: user._id,
         productId,
-        quantity: newQty - item.quantity // update difference
+        quantity: newQty - item.quantity
       });
       fetchCart();
     } catch (err) {
@@ -136,22 +137,21 @@ function Cart() {
     if (appliedCoupon.computedDiscountAmount !== undefined) {
       discountAmount = Math.round(appliedCoupon.computedDiscountAmount);
     } else {
-    let eligibleAmount = totalAmount;
-    if (appliedCoupon.category && appliedCoupon.category.trim() !== "") {
-      eligibleAmount = cart.items
-        .filter(item => selectedItems.includes(item.productId._id) && item.productId.category === appliedCoupon.category)
-        .reduce((sum, item) => sum + Math.round((item.productId.finalPrice || item.productId.price) * item.quantity), 0);
-    }
-    
-    // Only apply discount if we meet minOrderValue and have eligible amount
-    if (totalAmount >= appliedCoupon.minOrderValue && eligibleAmount > 0) {
-      if (appliedCoupon.isPercentage) {
-        discountAmount = Math.round((eligibleAmount * appliedCoupon.discountValue) / 100);
-      } else {
-        discountAmount = Math.round(appliedCoupon.discountValue);
-        if (discountAmount > eligibleAmount) discountAmount = eligibleAmount; // cap flat discount
+      let eligibleAmount = totalAmount;
+      if (appliedCoupon.category && appliedCoupon.category.trim() !== "") {
+        eligibleAmount = cart.items
+          .filter(item => selectedItems.includes(item.productId._id) && item.productId.category === appliedCoupon.category)
+          .reduce((sum, item) => sum + Math.round((item.productId.finalPrice || item.productId.price) * item.quantity), 0);
       }
-    }
+      
+      if (totalAmount >= appliedCoupon.minOrderValue && eligibleAmount > 0) {
+        if (appliedCoupon.isPercentage) {
+          discountAmount = Math.round((eligibleAmount * appliedCoupon.discountValue) / 100);
+        } else {
+          discountAmount = Math.round(appliedCoupon.discountValue);
+          if (discountAmount > eligibleAmount) discountAmount = eligibleAmount;
+        }
+      }
     }
   }
 
@@ -195,7 +195,7 @@ function Cart() {
     try {
       const formattedItems = itemsToOrder.map(i => ({
         productId: i.productId._id,
-        sku: i.productId.sku, // Pass the product SKU
+        sku: i.productId.sku,
         quantity: i.quantity
       }));
 
@@ -212,7 +212,6 @@ function Cart() {
         couponDetails: appliedCoupon
       });
 
-      // Remove ordered items from cart
       for (let i of itemsToOrder) {
         await axios.delete(`https://aroha.onrender.com/cart/removeItem/${user._id}/${i.productId._id}`);
       }
@@ -223,7 +222,6 @@ function Cart() {
       setAppliedCoupon(null);
       setCouponCode("");
       
-      // Navigate to success page
       navigate("/order-success", { state: { order: res.data } });
     } catch (err) {
       console.log(err);
@@ -233,512 +231,547 @@ function Cart() {
 
   return (
     <div style={styles.pageContainer}>
-      <h2 style={styles.pageHeading}>ShoppingCart</h2>
+      <div style={styles.headerSection}>
+        <h2 style={styles.pageHeading}>Your Cart</h2>
+        <p style={styles.subHeading}>{cart.items.length} {cart.items.length === 1 ? 'item' : 'items'}</p>
+      </div>
 
-      {cart.items.length === 0 ? <p style={styles.emptyText}>Your cart is empty.</p> : (
-        <div style={styles.cartGrid}>
-          {cart.items.map(item => {
-            const isSelected = selectedItems.includes(item.productId._id);
-            return (
-              <div
-                key={item.productId._id}
-                style={{
-                  ...styles.cartBox,
-                  borderColor: isSelected ? "#10b981" : "#e5e7eb",
-                  background: isSelected ? "#ecfdf5" : "#fff",
-                  boxShadow: isSelected ? "0 4px 12px rgba(16, 185, 129, 0.15)" : "0 4px 12px rgba(0,0,0,0.05)"
-                }}
-              >
-                <input 
-                  type="checkbox" 
-                  checked={isSelected} 
-                  onChange={() => toggleSelect(item.productId._id)} 
-                  style={styles.checkbox}
-                />
-                <img src={item.productId.images?.[0]?.startsWith("http") ? item.productId.images[0] : `https://aroha.onrender.com/uploads/${item.productId.images?.[0]}`} alt={item.productId.name} style={styles.imgStyle} />
-                <h4 style={styles.itemName}>{item.productId.name}</h4>
-                <p style={styles.itemPrice}>₹{getEffectiveUnitPrice(item.productId)}</p>
-                <div style={styles.qtyManager}>
-                  <button onClick={() => updateQuantity(item.productId._id, false)} style={styles.qtyBtn}>-</button>
-                  <span style={styles.qtyText}>{item.quantity}</span>
-                  <button onClick={() => updateQuantity(item.productId._id, true)} style={styles.qtyBtn}>+</button>
-                </div>
-                <p style={styles.itemTotal}>Total: ₹{getEffectiveUnitPrice(item.productId) * item.quantity}</p>
-              </div>
-            );
-          })}
+      {cart.items.length === 0 ? (
+        <div style={styles.emptyCart}>
+          <FaShoppingBag size={48} color="#d4af37" />
+          <p>Your cart is empty</p>
+          <button style={styles.continueShopBtn} onClick={() => navigate("/dashboard")}>Continue Shopping</button>
         </div>
-      )}
-
-      {/* Invoice & Place Order */}
-      {selectedItems.length > 0 && (
-        <div style={styles.invoiceBox}>
-          <h3 style={styles.invoiceHeading}>Order Summary</h3>
-          <ul style={styles.invoiceList}>
-            {cart.items.filter(item => selectedItems.includes(item.productId._id)).map(item => {
-              const originalTotal = getEffectiveUnitPrice(item.productId) * item.quantity;
-              let discountOnThisItem = 0;
-              
-              if (appliedCoupon && totalAmount >= appliedCoupon.minOrderValue) {
-                if (!appliedCoupon.category || appliedCoupon.category.trim() === "" || item.productId.category === appliedCoupon.category) {
-                  if (appliedCoupon.isPercentage) {
-                    discountOnThisItem = Math.round((originalTotal * appliedCoupon.discountValue) / 100);
-                  } else {
-                    const eligibleAmount = appliedCoupon.category && appliedCoupon.category.trim() !== "" 
-                      ? cart.items.filter(i => selectedItems.includes(i.productId._id) && i.productId.category === appliedCoupon.category).reduce((sum, i) => sum + Math.round((i.productId.finalPrice || i.productId.price) * i.quantity), 0)
-                      : totalAmount;
-                    if (eligibleAmount > 0) {
-                      discountOnThisItem = Math.round((originalTotal / eligibleAmount) * discountAmount);
-                    }
-                  }
-                }
-              }
-              const discountedTotal = Math.round(originalTotal - discountOnThisItem);
-
+      ) : (
+        <>
+          <div style={styles.cartGrid}>
+            {cart.items.map(item => {
+              const isSelected = selectedItems.includes(item.productId._id);
               return (
-                <li key={item.productId._id} style={styles.invoiceItem}>
-                  <span>{item.productId.name} <span style={styles.invoiceQty}>x {item.quantity}</span></span>
-                  <span>
-                    ₹{originalTotal}
-                    {discountOnThisItem > 0 && <span style={styles.discountBadge}>(-₹{discountOnThisItem} ➡️ ₹{discountedTotal})</span>}
-                  </span>
-                </li>
+                <div key={item.productId._id} style={{ ...styles.cartCard, borderColor: isSelected ? "#d4af37" : "#2a2a2a" }}>
+                  <input 
+                    type="checkbox" 
+                    checked={isSelected} 
+                    onChange={() => toggleSelect(item.productId._id)} 
+                    style={styles.checkbox}
+                  />
+                  <img 
+                    src={item.productId.images?.[0]?.startsWith("http") ? item.productId.images[0] : `https://aroha.onrender.com/uploads/${item.productId.images?.[0]}`} 
+                    alt={item.productId.name} 
+                    style={styles.productImage} 
+                  />
+                  <div style={styles.productInfo}>
+                    <h4 style={styles.productName}>{item.productId.name}</h4>
+                    <p style={styles.productBrand}>{item.productId.brand}</p>
+                    <div style={styles.priceRow}>
+                      <span style={styles.currentPrice}>₹{getEffectiveUnitPrice(item.productId)}</span>
+                      {item.productId.price > getEffectiveUnitPrice(item.productId) && (
+                        <span style={styles.oldPrice}>₹{item.productId.price}</span>
+                      )}
+                    </div>
+                    <div style={styles.quantityControl}>
+                      <button onClick={() => updateQuantity(item.productId._id, false)} style={styles.qtyBtn}>-</button>
+                      <span style={styles.qtyValue}>{item.quantity}</span>
+                      <button onClick={() => updateQuantity(item.productId._id, true)} style={styles.qtyBtn}>+</button>
+                    </div>
+                    <div style={styles.itemTotal}>
+                      Total: <strong>₹{getEffectiveUnitPrice(item.productId) * item.quantity}</strong>
+                    </div>
+                  </div>
+                </div>
               );
             })}
-          </ul>
-          <div style={styles.subtotalRow}>
-            <span>Subtotal:</span>
-            <span>₹{totalAmount}</span>
           </div>
-          
-          <div style={styles.couponSection}>
-            <input 
-              type="text" 
-              placeholder="Enter Coupon Code" 
-              value={couponCode} 
-              onChange={(e) => setCouponCode(e.target.value)} 
-              style={styles.couponInput} 
-              disabled={appliedCoupon !== null}
-            />
-            {appliedCoupon ? (
-               <button style={styles.removeCouponBtn} onClick={() => { setAppliedCoupon(null); setCouponCode(""); }}>Remove</button>
-            ) : (
-               <button onClick={handleApplyCoupon} style={styles.applyCouponBtn}>Apply</button>
-            )}
-          </div>
-          {couponError && <p style={styles.errorText}>{couponError}</p>}
-          {appliedCoupon && discountAmount > 0 && <p style={styles.successText}>Discount Applied: -₹{discountAmount}</p>}
-          {checkoutSettings && (
-            <div style={styles.deliverySection}>
-              <p style={{ margin: "4px 0", color: checkoutSettings.isFreeDeliveryApplied ? "#10b981" : "#4b5563", fontWeight: "bold" }}>
-                {checkoutSettings.message}
-              </p>
-              <p style={{ margin: "4px 0" }}>Delivery Charge: ₹{deliveryCharge}</p>
+
+          {selectedItems.length > 0 && (
+            <div style={styles.orderSummary}>
+              <h3 style={styles.summaryTitle}>Order Summary</h3>
+              <div style={styles.summaryDetails}>
+                <div style={styles.summaryRow}>
+                  <span>Subtotal ({selectedItems.length} items)</span>
+                  <span>₹{totalAmount}</span>
+                </div>
+                {appliedCoupon && discountAmount > 0 && (
+                  <div style={styles.summaryRow}>
+                    <span>Coupon Discount</span>
+                    <span style={{ color: "#d4af37" }}>-₹{discountAmount}</span>
+                  </div>
+                )}
+                <div style={styles.summaryRow}>
+                  <span>Delivery Charge</span>
+                  <span>₹{deliveryCharge}</span>
+                </div>
+                <div style={{ ...styles.summaryRow, fontSize: "1.2rem", fontWeight: "700", borderTop: "1px solid #2a2a2a", paddingTop: "12px" }}>
+                  <span>Total Payable</span>
+                  <span style={{ color: "#44ff37", fontSize: "1.4rem" }}>₹{finalAmountToPay}</span>
+                </div>
+              </div>
+
+              <div style={styles.couponArea}>
+                <input 
+                  type="text" 
+                  placeholder="Coupon code" 
+                  value={couponCode} 
+                  onChange={(e) => setCouponCode(e.target.value)} 
+                  style={styles.couponInput} 
+                  disabled={appliedCoupon !== null}
+                />
+                {appliedCoupon ? (
+                  <button style={styles.removeCouponBtn} onClick={() => { setAppliedCoupon(null); setCouponCode(""); }}>Remove</button>
+                ) : (
+                  <button onClick={handleApplyCoupon} style={styles.applyCouponBtn}>Apply</button>
+                )}
+              </div>
+              {couponError && <p style={styles.errorMsg}>{couponError}</p>}
+              {appliedCoupon && discountAmount > 0 && <p style={styles.successMsg}>✓ Discount applied</p>}
+              
+              {checkoutSettings && (
+                <div style={styles.deliveryInfo}>
+                  <FaTruck style={{ marginRight: "8px", color: "#d4af37" }} />
+                  <span>{checkoutSettings.message}</span>
+                </div>
+              )}
+
+              <button
+                style={checkoutSettings?.checkoutEnabled === false ? styles.disabledCheckoutBtn : styles.checkoutBtn}
+                onClick={() => setShowOrderModal(true)}
+                disabled={checkoutSettings?.checkoutEnabled === false}
+              >
+                {checkoutSettings?.checkoutEnabled === false ? "Checkout Disabled" : "Proceed to Checkout"}
+              </button>
             </div>
           )}
-          
-          <div style={styles.finalTotalRow}>
-            <span>Total Payable:</span>
-            <span style={styles.finalTotalValue}>₹{finalAmountToPay}</span>
-          </div>
-          
-          <button
-            style={checkoutSettings?.checkoutEnabled === false ? { ...styles.placeOrderBtn, background: "#9ca3af", cursor: "not-allowed" } : styles.placeOrderBtn}
-            onClick={() => setShowOrderModal(true)}
-            disabled={checkoutSettings?.checkoutEnabled === false}
-          >
-            {checkoutSettings?.checkoutEnabled === false ? "Checkout Disabled" : "Place Order"}
-          </button>
-        </div>
+        </>
       )}
 
-      {/* Customer Details Modal */}
-      {showOrderModal && (
-        <div style={styles.modalStyle}>
-          <div style={styles.modalContent}>
-            <h3 style={styles.modalTitle}>Delivery Details</h3>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Full Name</label>
-              <input type="text" placeholder="John Doe" value={customerDetails.name} onChange={e => setCustomerDetails({...customerDetails, name: e.target.value})} style={styles.inputStyle} />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Mobile Number</label>
-              <input type="text" placeholder="+91 9999999999" value={customerDetails.mobile} onChange={e => setCustomerDetails({...customerDetails, mobile: e.target.value})} style={styles.inputStyle} />
-            </div>
-            <div style={styles.formGroup}>
-              <label style={styles.formLabel}>Complete Address</label>
-              <textarea placeholder="House No, Street, City, State, PIN" value={customerDetails.address} onChange={e => setCustomerDetails({...customerDetails, address: e.target.value})} style={{...styles.inputStyle, minHeight: "80px", resize: "vertical"}} />
-            </div>
-            <div style={styles.modalActions}>
-              <button style={styles.confirmBtn} onClick={handlePlaceOrder}>Confirm Order</button>
-              <button style={styles.cancelBtn} onClick={() => setShowOrderModal(false)}>Cancel</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Previous Orders handled in the Orders page now, but left here if needed */}
+      {/* Previous Orders Section */}
       {previousOrders.length > 0 && (
-        <div style={styles.previousOrdersContainer}>
-          <h3 style={styles.pageHeading}>📦 Previous Orders</h3>
-          {previousOrders.map(order => (
-            <div key={order._id} style={styles.previousOrderBox}>
-              <div style={styles.previousOrderHeader}>
-                <span style={styles.previousOrderId}>Order #{order._id.substring(0,8).toUpperCase()}</span>
-                <span style={styles.previousOrderStatus}>{order.status}</span>
+        <div style={styles.previousOrders}>
+          <h3 style={styles.previousTitle}>Recent Orders</h3>
+          <div style={styles.ordersGrid}>
+            {previousOrders.slice(0, 3).map(order => (
+              <div key={order._id} style={styles.orderCard}>
+                <div style={styles.orderHeader}>
+                  <span style={styles.orderId}>#{order._id.slice(-8).toUpperCase()}</span>
+                  <span style={{ ...styles.orderStatus, color: order.status === "delivered" ? "#d4af37" : "#888" }}>{order.status}</span>
+                </div>
+                <div style={styles.orderItems}>
+                  {order.items.slice(0, 2).map((item, idx) => (
+                    <span key={idx}>{item.productId.name} x{item.quantity}</span>
+                  ))}
+                  {order.items.length > 2 && <span>+{order.items.length - 2} more</span>}
+                </div>
+                <div style={styles.orderTotal}>₹{Math.round(order.totalAmount)}</div>
               </div>
-              <ul style={styles.previousOrderList}>
-                {order.items.map(i => (
-                  <li key={i.productId} style={styles.previousOrderItem}>{i.productId.name} <span style={{color: '#6b7280'}}>x {i.quantity}</span></li>
-                ))}
-              </ul>
-              <div style={styles.previousOrderFooter}>
-                <span style={styles.previousOrderTotal}>₹{Math.round(order.totalAmount)}</span>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
+      {/* Order Modal */}
+      {showOrderModal && (
+        <div style={styles.modalOverlay}>
+          <div style={styles.modalContainer}>
+            <h3 style={styles.modalTitle}>Delivery Details</h3>
+            <input 
+              type="text" 
+              placeholder="Full Name" 
+              value={customerDetails.name} 
+              onChange={e => setCustomerDetails({...customerDetails, name: e.target.value})} 
+              style={styles.modalInput} 
+            />
+            <input 
+              type="tel" 
+              placeholder="Mobile Number" 
+              value={customerDetails.mobile} 
+              onChange={e => setCustomerDetails({...customerDetails, mobile: e.target.value})} 
+              style={styles.modalInput} 
+            />
+            <textarea 
+              placeholder="Complete Address" 
+              value={customerDetails.address} 
+              onChange={e => setCustomerDetails({...customerDetails, address: e.target.value})} 
+              style={styles.modalTextarea}
+            />
+            <div style={styles.modalActions}>
+              <button style={styles.confirmOrderBtn} onClick={handlePlaceOrder}>Confirm Order</button>
+              <button style={styles.cancelModalBtn} onClick={() => setShowOrderModal(false)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-// Premium System Level Styles for Cart
 const styles = {
   pageContainer: {
-    padding: "40px 20px",
-    fontFamily: "'Inter', system-ui, sans-serif",
-    backgroundColor: "#f9fafb",
-    minHeight: "100vh",
-    color: "#111827",
-    maxWidth: "1200px",
+    maxWidth: "1780px",
     margin: "0 auto",
+    padding: "40px 24px",
+    fontFamily: "'Inter', 'Segoe UI', sans-serif",
+    backgroundColor: "#ffffff",
+    minHeight: "100vh",
+    color: "#ffffff"
+  },
+  headerSection: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+    borderBottom: "1px solid #2a2a2a",
+    paddingBottom: "16px",
+    marginBottom: "32px",
+    flexWrap: "wrap"
   },
   pageHeading: {
     fontSize: "2rem",
-    fontWeight: "800",
-    marginBottom: "24px",
-    color: "#111827",
+    fontWeight: "600",
+    letterSpacing: "-0.5px",
+    margin: 0,
+    color: "#000000"
   },
-  emptyText: {
-    fontSize: "1.1rem",
-    color: "#6b7280",
+  subHeading: {
+    fontSize: "1rem",
+    color: "#2d2727",
+    margin: 0
+  },
+  emptyCart: {
     textAlign: "center",
-    padding: "40px",
-    background: "#fff",
-    borderRadius: "16px",
-    boxShadow: "0 4px 6px rgba(0,0,0,0.02)",
+    padding: "80px 20px",
+    backgroundColor: "#626262",
+    borderRadius: "24px",
+    border: "1px solid #d23b3b"
+  },
+  continueShopBtn: {
+    marginTop: "24px",
+    padding: "12px 32px",
+    backgroundColor: "#f4f4f4",
+    color: "#0a0a0a",
+    border: "none",
+    borderRadius: "40px",
+    fontWeight: "600",
+    cursor: "pointer",
+    fontSize: "1rem"
   },
   cartGrid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    gap: "20px",
+    gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+    gap: "24px",
+    marginBottom: "48px"
   },
-  cartBox: {
-    padding: "20px",
-    border: "1px solid #e5e7eb",
-    borderRadius: "16px",
-    textAlign: "center",
-    transition: "all 0.2s ease",
-    position: "relative",
+  cartCard: {
     display: "flex",
-    flexDirection: "column",
+    gap: "16px",
+    backgroundColor: "#111111",
+    borderRadius: "20px",
+    padding: "16px",
+    border: "1px solid #2a2a2a",
+    position: "relative",
+    transition: "all 0.2s ease"
   },
   checkbox: {
     position: "absolute",
-    top: "15px",
-    left: "15px",
-    width: "18px",
-    height: "18px",
-    cursor: "pointer",
-    accentColor: "#10b981",
+    top: "16px",
+    left: "16px",
+    width: "20px",
+    height: "20px",
+    accentColor: "#73bbff",
+    cursor: "pointer"
   },
-  imgStyle: {
-    width: "100%",
-    height: "140px",
+  productImage: {
+    width: "100px",
+    height: "100px",
     objectFit: "cover",
-    borderRadius: "8px",
-    marginBottom: "12px",
+    borderRadius: "12px",
+    marginLeft: "28px"
   },
-  itemName: {
-    margin: "0 0 8px 0",
-    fontSize: "1.05rem",
+  productInfo: {
+    flex: 1,
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px"
+  },
+  productName: {
+    fontSize: "1rem",
     fontWeight: "600",
+    margin: 0,
+    color: "#ffffff"
   },
-  itemPrice: {
-    margin: "0 0 12px 0",
-    color: "#4b5563",
-    fontWeight: "500",
+  productBrand: {
+    fontSize: "0.8rem",
+    color: "#ffe2e2",
+    margin: 0
   },
-  qtyManager: {
+  priceRow: {
+    display: "flex",
+    gap: "12px",
+    alignItems: "center"
+  },
+  currentPrice: {
+    fontSize: "1.1rem",
+    fontWeight: "700",
+    color: "#37ff00"
+  },
+  oldPrice: {
+    fontSize: "0.85rem",
+    textDecoration: "line-through",
+    color: "#ffbebe"
+  },
+  quantityControl: {
     display: "flex",
     alignItems: "center",
-    justifyContent: "center",
     gap: "12px",
-    marginBottom: "12px",
-    marginTop: "auto",
+    marginTop: "4px"
   },
   qtyBtn: {
-    width: "30px",
-    height: "30px",
-    borderRadius: "50%",
-    border: "1px solid #d1d5db",
-    background: "#fff",
-    color: "#111827",
+    width: "28px",
+    height: "28px",
+    borderRadius: "8px",
+    border: "1px solid #2a2a2a",
+    backgroundColor: "#1a1a1a",
+    color: "#fff",
     cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    fontWeight: "bold",
-    transition: "all 0.2s",
+    fontWeight: "bold"
   },
-  qtyText: {
-    fontWeight: "600",
-    minWidth: "20px",
+  qtyValue: {
+    minWidth: "24px",
+    textAlign: "center",
+    fontWeight: "500"
   },
   itemTotal: {
-    margin: "0",
-    fontWeight: "700",
-    color: "#10b981",
-  },
-  invoiceBox: {
-    marginTop: "32px",
-    padding: "32px",
-    border: "1px solid #e5e7eb",
-    borderRadius: "16px",
-    background: "#ffffff",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.05)",
-  },
-  invoiceHeading: {
-    fontSize: "1.5rem",
-    fontWeight: "700",
-    marginBottom: "20px",
-    paddingBottom: "16px",
-    borderBottom: "1px solid #e5e7eb",
-  },
-  invoiceList: {
-    listStyle: "none",
-    padding: 0,
-    margin: "0 0 20px 0",
-  },
-  invoiceItem: {
-    display: "flex",
-    justifyContent: "space-between",
-    padding: "10px 0",
-    borderBottom: "1px dashed #e5e7eb",
-    fontSize: "1.05rem",
-    color: "#374151",
-  },
-  invoiceQty: {
-    color: "#6b7280",
-    fontSize: "0.95rem",
-    marginLeft: "4px",
-  },
-  discountBadge: {
-    color: "#10b981",
-    marginLeft: "8px",
-    fontWeight: "600",
     fontSize: "0.9rem",
+    color: "#cccccc",
+    marginTop: "4px"
   },
-  subtotalRow: {
+  orderSummary: {
+    backgroundColor: "#111111",
+    borderRadius: "24px",
+    padding: "28px",
+    border: "1px solid #2a2a2a",
+    maxWidth: "480px",
+    margin: "0 auto"
+  },
+  summaryTitle: {
+    fontSize: "1.4rem",
+    fontWeight: "600",
+    marginBottom: "20px",
+    color: "#ffffff"
+  },
+  summaryDetails: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "10px"
+  },
+  summaryRow: {
     display: "flex",
     justifyContent: "space-between",
-    fontSize: "1.1rem",
-    fontWeight: "600",
-    marginBottom: "24px",
-    color: "#111827",
+    fontSize: "1rem",
+    color: "#dddddd"
   },
-  couponSection: {
+  couponArea: {
     display: "flex",
     gap: "12px",
-    marginBottom: "12px",
+    margin: "24px 0 12px"
   },
   couponInput: {
     flex: 1,
     padding: "12px 16px",
-    borderRadius: "8px",
-    border: "1px solid #d1d5db",
-    fontSize: "1rem",
-    outline: "none",
-    background: "#f9fafb",
+    backgroundColor: "#1a1a1a",
+    border: "1px solid #2a2a2a",
+    borderRadius: "12px",
+    color: "#ffffff",
+    outline: "none"
   },
   applyCouponBtn: {
-    padding: "0 24px",
-    background: "#111827",
-    color: "#fff",
+    padding: "0 20px",
+    backgroundColor: "#ffffff",
+    color: "#0b0a0a",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "12px",
     fontWeight: "600",
-    cursor: "pointer",
-    transition: "background 0.2s",
+    cursor: "pointer"
   },
   removeCouponBtn: {
-    padding: "0 24px",
-    background: "#ef4444",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    fontWeight: "600",
-    cursor: "pointer",
-  },
-  errorText: {
-    color: "#ef4444",
-    fontSize: "0.9rem",
-    marginTop: "4px",
-  },
-  successText: {
-    color: "#10b981",
-    fontSize: "0.9rem",
-    fontWeight: "600",
-    marginTop: "4px",
-  },
-  deliverySection: {
-    marginTop: "16px",
-    paddingTop: "16px",
-    borderTop: "1px solid #e5e7eb",
-  },
-  finalTotalRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: "24px",
-    paddingTop: "24px",
-    borderTop: "2px solid #e5e7eb",
-  },
-  finalTotalValue: {
-    fontSize: "1.5rem",
-    fontWeight: "800",
-    color: "#10b981",
-  },
-  placeOrderBtn: {
-    width: "100%",
-    padding: "16px",
-    background: "#10b981",
+    padding: "0 20px",
+    backgroundColor: "#333",
     color: "#fff",
     border: "none",
     borderRadius: "12px",
+    cursor: "pointer"
+  },
+  errorMsg: {
+    color: "#e74c3c",
+    fontSize: "0.8rem",
+    marginTop: "4px"
+  },
+  successMsg: {
+    color: "#19d035",
+    fontSize: "0.8rem",
+    marginTop: "4px"
+  },
+  deliveryInfo: {
+    marginTop: "20px",
+    padding: "12px",
+    backgroundColor: "#1a1a1a",
+    borderRadius: "12px",
+    display: "flex",
+    alignItems: "center",
+    fontSize: "0.85rem",
+    color: "#ccc"
+  },
+  checkoutBtn: {
+    width: "100%",
+    marginTop: "24px",
+    padding: "16px",
+    backgroundColor: "#ffffff",
+    color: "#0a0a0a",
+    border: "none",
+    borderRadius: "40px",
+    fontSize: "1rem",
+    fontWeight: "700",
+    cursor: "pointer"
+  },
+  disabledCheckoutBtn: {
+    width: "100%",
+    marginTop: "24px",
+    padding: "16px",
+    backgroundColor: "#555",
+    color: "#aaa",
+    border: "none",
+    borderRadius: "40px",
+    fontSize: "1rem",
+    fontWeight: "700",
+    cursor: "not-allowed"
+  },
+  previousOrders: {
+    marginTop: "56px",
+    borderTop: "1px solid #2a2a2a",
+    paddingTop: "32px"
+  },
+  previousTitle: {
+    fontSize: "1.3rem",
+    fontWeight: "500",
+    marginBottom: "20px",
+    color: "#ffffff"
+  },
+  ordersGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+    gap: "20px"
+  },
+  orderCard: {
+    backgroundColor: "#111111",
+    borderRadius: "16px",
+    padding: "16px",
+    border: "1px solid #2a2a2a"
+  },
+  orderHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    marginBottom: "12px"
+  },
+  orderId: {
+    fontFamily: "monospace",
+    fontSize: "0.8rem",
+    color: "#ffbdbd"
+  },
+  orderStatus: {
+    fontSize: "0.7rem",
+    textTransform: "uppercase"
+  },
+  orderItems: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "6px",
+    fontSize: "0.8rem",
+    color: "#ffffff",
+    marginBottom: "12px"
+  },
+  orderTotal: {
     fontSize: "1.1rem",
     fontWeight: "700",
-    marginTop: "24px",
-    cursor: "pointer",
-    transition: "transform 0.1s, box-shadow 0.2s",
-    boxShadow: "0 4px 12px rgba(16, 185, 129, 0.2)",
+    color: "#ffffff",
+    textAlign: "right"
   },
-  modalStyle: {
+  loginPrompt: {
+    textAlign: "center",
+    padding: "60px",
+    color: "#fff",
+    backgroundColor: "#0a0a0a",
+    minHeight: "100vh"
+  },
+  modalOverlay: {
     position: "fixed",
-    inset: 0,
-    background: "rgba(17, 24, 39, 0.6)",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.8)",
     display: "flex",
-    justifyContent: "center",
     alignItems: "center",
-    zIndex: 100,
-    backdropFilter: "blur(4px)",
-    padding: "20px",
+    justifyContent: "center",
+    zIndex: 1000,
+    backdropFilter: "blur(6px)"
   },
-  modalContent: {
-    background: "#fff",
+  modalContainer: {
+    backgroundColor: "#111111",
+    borderRadius: "28px",
     padding: "32px",
-    borderRadius: "20px",
-    width: "100%",
+    width: "90%",
     maxWidth: "480px",
-    boxShadow: "0 25px 50px -12px rgba(0,0,0,0.25)",
+    border: "1px solid #ffffff"
   },
   modalTitle: {
-    margin: "0 0 24px 0",
     fontSize: "1.5rem",
-    fontWeight: "700",
-    color: "#111827",
+    marginBottom: "24px",
+    color: "#ffffff"
   },
-  formGroup: {
-    marginBottom: "16px",
-  },
-  formLabel: {
-    display: "block",
-    marginBottom: "8px",
-    fontSize: "0.9rem",
-    fontWeight: "600",
-    color: "#4b5563",
-  },
-  inputStyle: {
+  modalInput: {
     width: "100%",
-    padding: "12px 16px",
-    borderRadius: "10px",
-    border: "1px solid #d1d5db",
+    padding: "14px",
+    marginBottom: "16px",
+    backgroundColor: "#1a1a1a",
+    border: "1px solid #2a2a2a",
+    borderRadius: "12px",
+    color: "#fff",
     fontSize: "1rem",
-    outline: "none",
-    background: "#f9fafb",
-    boxSizing: "border-box",
+    boxSizing: "border-box"
+  },
+  modalTextarea: {
+    width: "100%",
+    padding: "14px",
+    marginBottom: "24px",
+    backgroundColor: "#1a1a1a",
+    border: "1px solid #2a2a2a",
+    borderRadius: "12px",
+    color: "#fff",
+    fontSize: "1rem",
+    minHeight: "100px",
+    fontFamily: "inherit",
+    boxSizing: "border-box"
   },
   modalActions: {
     display: "flex",
-    gap: "12px",
-    marginTop: "32px",
+    gap: "16px"
   },
-  confirmBtn: {
+  confirmOrderBtn: {
     flex: 2,
     padding: "14px",
-    background: "#10b981",
-    color: "#fff",
+    backgroundColor: "#52e629",
+    color: "#ffffff",
     border: "none",
-    borderRadius: "10px",
+    borderRadius: "40px",
     fontWeight: "700",
-    fontSize: "1.05rem",
-    cursor: "pointer",
+    cursor: "pointer"
   },
-  cancelBtn: {
+  cancelModalBtn: {
     flex: 1,
     padding: "14px",
-    background: "#f3f4f6",
-    color: "#374151",
+    backgroundColor: "#2a2a2a",
+    color: "#fff",
     border: "none",
-    borderRadius: "10px",
-    fontWeight: "600",
-    fontSize: "1.05rem",
-    cursor: "pointer",
-  },
-  previousOrdersContainer: {
-    marginTop: "48px",
-  },
-  previousOrderBox: {
-    background: "#ffffff",
-    border: "1px solid #e5e7eb",
-    borderRadius: "16px",
-    padding: "20px",
-    marginBottom: "16px",
-  },
-  previousOrderHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    marginBottom: "12px",
-    paddingBottom: "12px",
-    borderBottom: "1px solid #e5e7eb",
-  },
-  previousOrderId: {
-    fontWeight: "700",
-    color: "#111827",
-  },
-  previousOrderStatus: {
-    color: "#3b82f6",
-    fontWeight: "600",
-  },
-  previousOrderList: {
-    listStyle: "none",
-    padding: 0,
-    margin: "0 0 16px 0",
-  },
-  previousOrderItem: {
-    color: "#374151",
-    marginBottom: "4px",
-  },
-  previousOrderFooter: {
-    display: "flex",
-    justifyContent: "flex-end",
-  },
-  previousOrderTotal: {
-    fontWeight: "700",
-    fontSize: "1.1rem",
-    color: "#10b981",
+    borderRadius: "40px",
+    cursor: "pointer"
   }
 };
 

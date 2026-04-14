@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import {
@@ -6,9 +6,10 @@ import {
   FaTimes, FaTag, FaTshirt, FaChild, FaGem, FaShoppingBag,
   FaShoppingBasket, FaMale, FaFemale, FaChevronLeft, FaChevronRight,
   FaCopy, FaTwitter, FaFacebook, FaWhatsapp, FaCheckCircle, FaExclamationCircle,
-  FaTruck, FaUndo, FaLock
+  FaTruck, FaUndo, FaLock, FaClock, FaBolt, FaCalendarAlt, FaFire
 } from "react-icons/fa";
 import Header, { MobileBottomNav } from "./Header";
+
 
 // Error Popup Component
 const ErrorPopup = ({ message, onClose }) => {
@@ -16,6 +17,7 @@ const ErrorPopup = ({ message, onClose }) => {
     const timer = setTimeout(onClose, 4000);
     return () => clearTimeout(timer);
   }, [onClose]);
+
 
   return (
     <div style={styles.errorPopupOverlay} onClick={onClose}>
@@ -28,12 +30,14 @@ const ErrorPopup = ({ message, onClose }) => {
   );
 };
 
+
 // Success Toast
 const SuccessToast = ({ message, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
     return () => clearTimeout(timer);
   }, [onClose]);
+
 
   return (
     <div style={styles.successToast}>
@@ -42,6 +46,7 @@ const SuccessToast = ({ message, onClose }) => {
     </div>
   );
 };
+
 
 function Dashboard() {
   const [products, setProducts] = useState([]);
@@ -61,14 +66,22 @@ function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+  // Sale Banner States
+  const [saleSettings, setSaleSettings] = useState(null);
+  const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [saleImageIndex, setSaleImageIndex] = useState(0);
+  const saleIntervalRef = useRef(null);
+
   const navigate = useNavigate();
   const location = useLocation();
   const { productId } = useParams();
   const user = JSON.parse(localStorage.getItem("user"));
   const isLoggedIn = !!user;
 
+
   const showToast = (message) => setToast({ message });
   const showError = (message) => setErrorPopup(message);
+
 
   // Fetch metadata
   useEffect(() => {
@@ -92,6 +105,69 @@ function Dashboard() {
     fetchMetadata();
   }, []);
 
+  // Fetch Sale Settings
+  useEffect(() => {
+    const fetchSaleSettings = async () => {
+      try {
+        const res = await axios.get("https://aroha.onrender.com/settings");
+        if (res.data && res.data.settings) {
+          setSaleSettings(res.data);
+        }
+      } catch (err) {
+        console.error("Failed to load sale settings", err);
+      }
+    };
+    fetchSaleSettings();
+  }, []);
+
+  // Timer Logic
+  useEffect(() => {
+    if (!saleSettings) return;
+
+    const calculateTimeLeft = () => {
+      const now = new Date().getTime();
+      const status = saleSettings.saleStatus;
+      // If upcoming, count down to start. If active, count down to end.
+      const targetDateStr = status === "upcoming" ? saleSettings.settings.saleStartsAt : saleSettings.settings.saleEndsAt;
+      
+      if (!targetDateStr) return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+
+      const targetDate = new Date(targetDateStr).getTime();
+      const difference = targetDate - now;
+
+      if (difference > 0) {
+        return {
+          days: Math.floor(difference / (1000 * 60 * 60 * 24)),
+          hours: Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60)),
+          seconds: Math.floor((difference % (1000 * 60)) / 1000)
+        };
+      }
+      return { days: 0, hours: 0, minutes: 0, seconds: 0 };
+    };
+
+    // Initial calculation
+    setTimeLeft(calculateTimeLeft());
+
+    // Update every second
+    const timer = setInterval(() => {
+      setTimeLeft(calculateTimeLeft());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [saleSettings]);
+
+  // Auto-scroll Sale Images
+  useEffect(() => {
+    if (saleSettings?.settings?.saleImages?.length > 1) {
+      saleIntervalRef.current = setInterval(() => {
+        setSaleImageIndex((prev) => (prev + 1) % saleSettings.settings.saleImages.length);
+      }, 3000); // Change image every 3 seconds
+    }
+    return () => clearInterval(saleIntervalRef.current);
+  }, [saleSettings]);
+
+
   // Fetch products
   const fetchProducts = async () => {
     setLoading(true);
@@ -114,9 +190,11 @@ function Dashboard() {
     }
   };
 
+
   useEffect(() => {
     fetchProducts();
   }, [search, filters]);
+
 
   useEffect(() => {
     if (productId && products.length > 0) {
@@ -131,6 +209,7 @@ function Dashboard() {
     }
   }, [productId, products]);
 
+
   const handleNavigate = (path) => {
     if (!isLoggedIn && path !== "/login") {
       navigate("/login");
@@ -140,12 +219,14 @@ function Dashboard() {
     }
   };
 
+
   const handleLogout = () => {
     localStorage.removeItem("user");
     localStorage.removeItem("token");
     navigate("/login");
     showToast("Logged out successfully");
   };
+
 
   const handleAddToCart = async (productId, e) => {
     if (e) e.stopPropagation();
@@ -161,6 +242,7 @@ function Dashboard() {
     }
   };
 
+
   const toggleFilter = (filterType, value) => {
     setFilters(prev => {
       if (filterType === "sizes" || filterType === "brands") {
@@ -175,10 +257,12 @@ function Dashboard() {
     });
   };
 
+
   const clearFilters = () => {
     setFilters({ category: "", subCategory: "", gender: "", minPrice: "", maxPrice: "", minDiscount: "", minRating: "", sizes: [], brands: [] });
     showToast("Filters cleared");
   };
+
 
   const renderStars = (rating) => {
     const stars = [];
@@ -192,6 +276,7 @@ function Dashboard() {
     return stars;
   };
 
+
   const getCategoryIcon = (category) => {
     if (!category) return <FaTag size={20} />;
     const cat = category.toLowerCase();
@@ -204,10 +289,12 @@ function Dashboard() {
     return <FaShoppingBasket size={22} />;
   };
 
+
   const getSimilarProducts = (product) => {
     if (!product) return [];
     return products.filter(p => p._id !== product._id && (p.category === product.category || p.subCategory === product.subCategory)).slice(0, 4);
   };
+
 
   const handleShare = (product, platform) => {
     const url = `${window.location.origin}/product/${product._id}`;
@@ -224,6 +311,7 @@ function Dashboard() {
     }
   };
 
+
   const parseProductData = (product) => {
     const color = typeof product.color === 'string' ? JSON.parse(product.color) : product.color || [];
     const size = typeof product.size === 'string' ? JSON.parse(product.size) : product.size || [];
@@ -235,12 +323,15 @@ function Dashboard() {
     return { color, size, images, discount, finalPrice, rating, isOutOfStock };
   };
 
+
   const nextImage = () => setCurrentImageIndex((prev) => (prev + 1) % (selectedProduct?.images?.length || 1));
   const prevImage = () => setCurrentImageIndex((prev) => (prev - 1 + (selectedProduct?.images?.length || 1)) % (selectedProduct?.images?.length || 1));
+
 
   const selectProduct = (product) => {
     navigate(`/product/${product._id}`);
   };
+
 
   const goBackToList = () => {
     navigate("/dashboard");
@@ -250,10 +341,12 @@ function Dashboard() {
     setSelectedColor("");
   };
 
+
   // Product Detail View
   if (selectedProduct) {
     const { color, size, images, discount, finalPrice, rating, isOutOfStock } = parseProductData(selectedProduct);
     const similarProducts = getSimilarProducts(selectedProduct);
+
 
     return (
       <div style={styles.container}>
@@ -266,10 +359,12 @@ function Dashboard() {
           isMenuOpen={isMenuOpen}
         />
 
+
         <main style={styles.mainDetail}>
           <button onClick={goBackToList} style={styles.backToListBtn}>
             <FaChevronLeft style={{ marginRight: "6px" }} /> Back to Shopping
           </button>
+
 
           <div style={styles.detailWrapper}>
             {/* Left - Images */}
@@ -295,16 +390,19 @@ function Dashboard() {
               )}
             </div>
 
+
             {/* Right - Product Details */}
             <div style={styles.rightColumn}>
               <div style={styles.breadcrumb}>{selectedProduct.category} / {selectedProduct.subCategory}</div>
               <h1 style={styles.title}>{selectedProduct.name}</h1>
+
 
               <div style={styles.infoRow}>
                 <span style={styles.brandLabel}>Brand:</span>
                 <span style={styles.brandValue}>{selectedProduct.brand}</span>
                 <span style={styles.tag}>{selectedProduct.collection}</span>
               </div>
+
 
               <div style={styles.infoRow}>
                 <span style={styles.price}>₹{finalPrice.toLocaleString('en-IN')}</span>
@@ -314,6 +412,7 @@ function Dashboard() {
                 </>)}
               </div>
 
+
               <div style={styles.stockRow}>
                 {isOutOfStock ? (
                   <span style={styles.outOfStock}><FaTimes style={{ marginRight: "4px" }} />Out of Stock</span>
@@ -322,6 +421,7 @@ function Dashboard() {
                 )}
                 <span style={styles.rating}><FaStar style={{ marginRight: "4px", color: "#ffc107" }} />{rating} ({selectedProduct.reviews?.length || 0})</span>
               </div>
+
 
               {color.length > 0 && (
                 <div style={styles.compactOption}>
@@ -334,6 +434,7 @@ function Dashboard() {
                 </div>
               )}
 
+
               {size.length > 0 && (
                 <div style={styles.compactOption}>
                   <label style={styles.label}>Size:</label>
@@ -345,26 +446,31 @@ function Dashboard() {
                 </div>
               )}
 
+
               <div style={styles.quickSpecs}>
                 <div style={styles.specItem}><span style={styles.specLabel}>SKU:</span> {selectedProduct.sku}</div>
                 <div style={styles.specItem}><span style={styles.specLabel}>Type:</span> {selectedProduct.type || "N/A"}</div>
                 {selectedProduct.weight && <div style={styles.specItem}><span style={styles.specLabel}>Weight:</span> {selectedProduct.weight}g</div>}
               </div>
 
+
               <div style={styles.descBox}>
                 <h4 style={styles.sectionTitle}>Description</h4>
                 <p style={styles.desc}>{selectedProduct.description || `Premium quality ${selectedProduct.name} from ${selectedProduct.brand}.`}</p>
               </div>
 
+
               <button onClick={(e) => handleAddToCart(selectedProduct._id, e)} style={isOutOfStock ? styles.disabledCart : styles.cartBtn} disabled={isOutOfStock}>
                 <FaShoppingBasket style={{ marginRight: "8px" }} />{isOutOfStock ? "Out of Stock" : "Add to Cart"}
               </button>
+
 
               <div style={styles.trustBadges}>
                 <div style={styles.trustItem}><FaLock size={14} /> Secure</div>
                 <div style={styles.trustItem}><FaTruck size={14} /> Free Ship</div>
                 <div style={styles.trustItem}><FaUndo size={14} /> Returns</div>
               </div>
+
 
               <div style={styles.shareRow}>
                 <span style={styles.shareLabel}>Share:</span>
@@ -375,6 +481,7 @@ function Dashboard() {
               </div>
             </div>
           </div>
+
 
           {similarProducts.length > 0 && (
             <div style={styles.similarSection}>
@@ -402,13 +509,16 @@ function Dashboard() {
           )}
         </main>
 
+
         <MobileBottomNav onNavigate={handleNavigate} currentPath={location.pathname} />
+
 
         {toast && <SuccessToast message={toast.message} onClose={() => setToast(null)} />}
         {errorPopup && <ErrorPopup message={errorPopup} onClose={() => setErrorPopup(null)} />}
       </div>
     );
   }
+
 
   // Dashboard Grid View
   return (
@@ -422,13 +532,101 @@ function Dashboard() {
         isMenuOpen={isMenuOpen}
       />
 
+
       <main style={styles.main}>
+        
+        {/* SALE BANNER SECTION */}
+        {saleSettings && saleSettings.settings?.saleImages?.length > 0 && (
+          <div style={styles.saleBannerContainer}>
+            <div style={styles.saleBannerContent}>
+              
+              {/* Left Side: Text & Timer (Narrower) */}
+              <div style={styles.saleTextSection}>
+                <div style={styles.saleTag}>
+                  <FaFire style={{marginRight: 6}} /> 
+                  {saleSettings.saleStatus === 'upcoming' ? 'UPCOMING SALE' : 'FLASH SALE LIVE'}
+                </div>
+                
+                <h2 style={styles.saleTitle}>
+                  {saleSettings.saleStatus === 'upcoming' ? 'Get Ready!' : 'Shop the Sale'}
+                </h2>
+                
+                <p style={styles.saleMessage}>
+                  {saleSettings.settings.saleBannerMessage || "Unmissable deals on your favorite styles!"}
+                </p>
+
+                <div style={styles.timerContainer}>
+                  <div style={styles.timeBox}>
+                    <span style={styles.timeVal}>{timeLeft.days}</span>
+                    <span style={styles.timeLabel}>Days</span>
+                  </div>
+                  <span style={styles.timeSeparator}>:</span>
+                  <div style={styles.timeBox}>
+                    <span style={styles.timeVal}>{timeLeft.hours}</span>
+                    <span style={styles.timeLabel}>Hrs</span>
+                  </div>
+                  <span style={styles.timeSeparator}>:</span>
+                  <div style={styles.timeBox}>
+                    <span style={styles.timeVal}>{timeLeft.minutes}</span>
+                    <span style={styles.timeLabel}>Min</span>
+                  </div>
+                  <span style={styles.timeSeparator}>:</span>
+                  <div style={styles.timeBox}>
+                    <span style={styles.timeVal}>{timeLeft.seconds}</span>
+                    <span style={styles.timeLabel}>Sec</span>
+                  </div>
+                </div>
+
+                <div style={styles.saleMeta}>
+                   <FaCalendarAlt style={{marginRight: 5}}/> 
+                   {saleSettings.saleStatus === 'upcoming' ? 'Starts: ' : 'Ends: '}
+                   {new Date(saleSettings.saleStatus === 'upcoming' ? saleSettings.settings.saleStartsAt : saleSettings.settings.saleEndsAt).toLocaleDateString()}
+                </div>
+              </div>
+
+              {/* Right Side: Auto Scrolling Images (Wider) */}
+              <div style={styles.saleImageSection}>
+                <div style={styles.saleImageWrapper}>
+                  {saleSettings.settings.saleImages.map((img, idx) => (
+                     <img 
+                        key={idx}
+                        src={img} 
+                        alt="Sale" 
+                        style={{
+                          ...styles.saleImg,
+                          opacity: saleImageIndex === idx ? 1 : 0,
+                          zIndex: saleImageIndex === idx ? 1 : 0,
+                          transform: saleImageIndex === idx ? 'scale(1)' : 'scale(1.05)'
+                        }} 
+                     />
+                  ))}
+                  
+                  {/* Image Indicators */}
+                  <div style={styles.saleIndicators}>
+                    {saleSettings.settings.saleImages.map((_, idx) => (
+                      <div 
+                        key={idx} 
+                        style={{
+                          ...styles.indicatorDot,
+                          background: saleImageIndex === idx ? '#fff' : 'rgba(255,255,255,0.4)'
+                        }} 
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
         <div style={styles.dashboardHeader}>
           <h1 style={styles.pageTitle}>Shopping Dashboard</h1>
           <button onClick={() => setShowFilters(!showFilters)} style={styles.filterBtn}>
             <FaSlidersH style={{ marginRight: "6px" }} /> {showFilters ? "Hide" : "Show"} Filters
           </button>
         </div>
+
 
         <div style={styles.categories}>
           {[...new Set([...Object.keys(categoriesMap), "Children", "Jewelry"])].filter(cat => !cat.toLowerCase().includes("test")).map(cat => (
@@ -437,6 +635,7 @@ function Dashboard() {
             </button>
           ))}
         </div>
+
 
         {showFilters && (
           <div style={styles.filtersPanel}>
@@ -458,6 +657,7 @@ function Dashboard() {
             <button onClick={clearFilters} style={styles.clearBtn}>Clear Filters</button>
           </div>
         )}
+
 
         {loading ? <div style={styles.loading}>Loading products...</div> : (
           <div style={styles.grid}>
@@ -493,7 +693,9 @@ function Dashboard() {
         )}
       </main>
 
+
       <MobileBottomNav onNavigate={handleNavigate} currentPath={location.pathname} />
+
 
       {toast && <SuccessToast message={toast.message} onClose={() => setToast(null)} />}
       {errorPopup && <ErrorPopup message={errorPopup} onClose={() => setErrorPopup(null)} />}
@@ -501,11 +703,155 @@ function Dashboard() {
   );
 }
 
+
 // Styles (fully responsive)
 const styles = {
   container: { fontFamily: "'Inter', -apple-system, sans-serif", background: "#fafafa", minHeight: "100vh", paddingBottom: "70px" },
   main: { maxWidth: "1400px", margin: "0 auto", padding: "20px" },
   mainDetail: { maxWidth: "1400px", margin: "0 auto", padding: "20px", paddingBottom: "80px" },
+  
+  // Sale Banner Styles - Updated Design
+  saleBannerContainer: {
+    width: "100%",
+    marginBottom: "30px",
+    borderRadius: "24px",
+    overflow: "hidden",
+    boxShadow: "0 15px 40px rgba(0,0,0,0.15)",
+    background: "#111",
+    transition: "transform 0.3s ease, box-shadow 0.3s ease",
+  },
+  saleBannerContent: {
+    display: "flex",
+    flexDirection: "row",
+    minHeight: "380px",
+    width: "100%"
+  },
+  saleTextSection: {
+    flex: "0 0 35%", // Fixed narrower width for text
+    padding: "40px 30px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "flex-start",
+    // Attractive Gradient Background
+    background: "linear-gradient(135deg, #1a0b0b 0%, #2d1212 50%, #000000 100%)",
+    color: "#fff",
+    zIndex: 2,
+    position: "relative",
+    overflow: "hidden"
+  },
+  // Optional pattern overlay for texture
+  saleImageSection: {
+    flex: "1", // Takes remaining wider space
+    position: "relative",
+    overflow: "hidden",
+    background: "#000"
+  },
+  saleImageWrapper: {
+    position: "relative",
+    width: "100%",
+    height: "100%"
+  },
+  saleImg: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+    transition: "opacity 0.8s ease-in-out, transform 6s linear"
+  },
+  saleIndicators: {
+    position: "absolute",
+    bottom: "20px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    display: "flex",
+    gap: "8px",
+    zIndex: 10
+  },
+  indicatorDot: {
+    width: "8px",
+    height: "8px",
+    borderRadius: "50%",
+    transition: "background 0.3s"
+  },
+  saleTag: {
+    background: "linear-gradient(90deg, #ef4444 0%, #dc2626 100%)",
+    color: "#fff",
+    padding: "6px 14px",
+    borderRadius: "4px",
+    fontSize: "11px",
+    fontWeight: "800",
+    marginBottom: "20px",
+    display: "inline-flex",
+    alignItems: "center",
+    letterSpacing: "1.5px",
+    boxShadow: "0 4px 12px rgba(239, 68, 68, 0.3)"
+  },
+  saleTitle: {
+    fontSize: "clamp(28px, 4vw, 38px)",
+    fontWeight: "800",
+    margin: "0 0 12px 0",
+    lineHeight: "1.1",
+    color: "#fff",
+    textShadow: "0 2px 10px rgba(0,0,0,0.3)"
+  },
+  saleMessage: {
+    fontSize: "15px",
+    color: "#ccc",
+    marginBottom: "30px",
+    lineHeight: "1.6",
+    maxWidth: "95%",
+    fontWeight: "400"
+  },
+  timerContainer: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    marginBottom: "24px",
+    background: "rgba(0,0,0,0.3)",
+    padding: "12px",
+    borderRadius: "12px",
+    border: "1px solid rgba(255,255,255,0.1)"
+  },
+  timeBox: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    minWidth: "50px"
+  },
+  timeVal: {
+    fontSize: "28px",
+    fontWeight: "800",
+    color: "#00f572", // RED COLOR AS REQUESTED
+    fontVariantNumeric: "tabular-nums",
+    textShadow: "0 0 15px rgba(239, 68, 68, 0.4)", // Glow effect
+    lineHeight: "1"
+  },
+  timeLabel: {
+    fontSize: "9px",
+    textTransform: "uppercase",
+    color: "#888",
+    marginTop: "4px",
+    fontWeight: "600"
+  },
+  timeSeparator: {
+    fontSize: "24px",
+    color: "#444",
+    fontWeight: "700",
+    marginTop: "-10px"
+  },
+  saleMeta: {
+    fontSize: "12px",
+    color: "#666",
+    display: "flex",
+    alignItems: "center",
+    background: "rgba(255,255,255,0.05)",
+    padding: "6px 12px",
+    borderRadius: "20px"
+  },
+
   dashboardHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", flexWrap: "wrap", gap: "16px" },
   pageTitle: { fontSize: "clamp(22px, 5vw, 28px)", fontWeight: "700", color: "#1a1a1a", margin: 0 },
   filterBtn: { padding: "10px 20px", background: "linear-gradient(135deg, #1a1a1a 0%, #333 100%)", color: "#fff", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: "600", fontSize: "13px", display: "flex", alignItems: "center", whiteSpace: "nowrap" },
@@ -606,6 +952,7 @@ const styles = {
   noImage: { width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", background: "#f0f0f0", color: "#999", fontSize: "12px" }
 };
 
+
 const styleSheet = document.createElement("style");
 styleSheet.textContent = `
   @keyframes modalSlide { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
@@ -619,6 +966,14 @@ styleSheet.textContent = `
     .cardPrice { font-size: 16px; }
     .detailWrapper { padding: 16px; gap: 20px; }
     .quickSpecs { grid-template-columns: 1fr; }
+    
+    /* Responsive Sale Banner */
+    .saleBannerContent { flex-direction: column-reverse; }
+    .saleImageSection { height: 220px; flex: none; }
+    .saleTextSection { padding: 24px; align-items: center; text-align: center; flex: auto; }
+    .timerContainer { justify-content: center; }
+    .saleMeta { justify-content: center; }
+    .saleMessage { text-align: center; }
   }
   @media (max-width: 480px) {
     .grid { grid-template-columns: 1fr 1fr; }
@@ -630,8 +985,13 @@ styleSheet.textContent = `
     .priceRow { flex-direction: column; }
     .trustBadges { flex-direction: column; align-items: center; }
     .infoRow { flex-direction: column; align-items: flex-start; }
+    
+    .timeBox { padding: 6px 8px; minWidth: 45px; }
+    .timeVal { font-size: 22px; }
+    .saleTitle { font-size: 24px; }
   }
 `;
 document.head.appendChild(styleSheet);
+
 
 export default Dashboard;

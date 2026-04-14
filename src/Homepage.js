@@ -76,41 +76,41 @@ const SaleSpotlight = ({ saleData }) => {
 
   if (!saleData?.settings) return null;
 
-  return (
-    <section style={styles.saleSection}>
-      {isLive && (
-        <div style={styles.liveSaleBanner}>
-          {saleData.settings.saleBannerMessage || "Live sale is happening now."}
-        </div>
-      )}
-      <div style={styles.saleBox}>
-        <div>
-          <p style={styles.saleEyebrow}>Seasonal campaign</p>
-          <h2 style={styles.saleTitle}>Sale Box</h2>
-          {flashPercent > 0 && (
-            <p style={styles.saleHighlight}>
-              Flash discount: {flashPercent}% off {flashCategory ? `on ${flashCategory}` : "across featured items"}
-            </p>
-          )}
-          {countdown && (
-            <div style={styles.countdownWrap}>
-              <span style={styles.countdownLabel}>{countdown.label}</span>
-              <div style={styles.countdownGrid}>
-                <div style={styles.countdownItem}><strong>{countdown.days}</strong><span>Days</span></div>
-                <div style={styles.countdownItem}><strong>{countdown.hours}</strong><span>Hours</span></div>
-                <div style={styles.countdownItem}><strong>{countdown.minutes}</strong><span>Minutes</span></div>
-              </div>
-            </div>
-          )}
-        </div>
-        <div style={styles.saleImages}>
-          {saleImages.slice(0, 3).map((image, index) => (
-            <img key={`${image}-${index}`} src={image} alt={`Sale ${index + 1}`} style={styles.saleImage} />
-          ))}
-        </div>
-      </div>
-    </section>
-  );
+  // return (
+  //   <section style={styles.saleSection}>
+  //     {isLive && (
+  //       <div style={styles.liveSaleBanner}>
+  //         {saleData.settings.saleBannerMessage || "Live sale is happening now."}
+  //       </div>
+  //     )}
+  //     <div style={styles.saleBox}>
+  //       {/* <div>
+  //         <p style={styles.saleEyebrow}>Seasonal campaign</p>
+  //         <h2 style={styles.saleTitle}>Sale Box</h2>
+  //         {flashPercent > 0 && (
+  //           <p style={styles.saleHighlight}>
+  //             Flash discount: {flashPercent}% off {flashCategory ? `on ${flashCategory}` : "across featured items"}
+  //           </p>
+  //         )}
+  //         {countdown && (
+  //           <div style={styles.countdownWrap}>
+  //             <span style={styles.countdownLabel}>{countdown.label}</span>
+  //             <div style={styles.countdownGrid}>
+  //               <div style={styles.countdownItem}><strong>{countdown.days}</strong><span>Days</span></div>
+  //               <div style={styles.countdownItem}><strong>{countdown.hours}</strong><span>Hours</span></div>
+  //               <div style={styles.countdownItem}><strong>{countdown.minutes}</strong><span>Minutes</span></div>
+  //             </div>
+  //           </div>
+  //         )}
+  //       </div> */}
+  //       <div style={styles.saleImages}>
+  //         {saleImages.slice(0, 3).map((image, index) => (
+  //           <img key={`${image}-${index}`} src={image} alt={`Sale ${index + 1}`} style={styles.saleImage} />
+  //         ))}
+  //       </div>
+  //     </div>
+  //   </section>
+  // );
 };
 
 // --- Popup Modal ---
@@ -319,7 +319,7 @@ const Main = () => {
       <section>
         <div style={styles.introText}>
           <p>
-            AROHA HUB sources premium Indian-inspired clothing directly from manufacturers and lists on leading marketplaces. We serve retailers and online shoppers through partner platforms.
+            JGIRI KART sources premium Indian-inspired clothing directly from manufacturers and lists on leading marketplaces. We serve retailers and online shoppers through partner platforms.
           </p>
         </div>
       </section>
@@ -416,7 +416,7 @@ const Header = () => {
             style={styles.logoImg}
             loading="lazy"
           />
-          <span style={styles.brandName}>AROHA HUB</span>
+          <span style={styles.brandName}>JGIRI KART</span>
         </div>
         <div style={styles.contactInfo}>
           <a href="mailto:arohahubinfo@proton.me" style={styles.contactLink}>
@@ -533,7 +533,7 @@ const Hero = () => {
         />
       ))}
       <div style={styles.heroContent}>
-        <h1 style={styles.heroH1}>AROHA HUB — Modern • Traditional • Premium</h1>
+        <h1 style={styles.heroH1}>JGIRI KART — Modern • Traditional • Premium</h1>
         <p style={styles.heroP}>Wholesale • Manufacturer • Marketplace Sellers</p>
         <div style={styles.marketplaceBadges}>
           {["Meesho", "Flipkart", "Amazon", "Ajio"].map((platform, index) => (
@@ -594,7 +594,7 @@ const extraLinks = [
               style={styles.logoImg}
               loading="lazy"
             />
-            <span style={styles.brandName}>AROHA HUB</span>
+            <span style={styles.brandName}>JGIRI KART</span>
           </div>
           <p>Hyderabad, Telangana 500016</p>
           <p>arohahubinfo@proton.me</p>
@@ -625,7 +625,7 @@ const extraLinks = [
         ))}
       </div>
       <div style={styles.copyright}>
-        <p>© 2025 AROHA HUB. All images credited to Unsplash / Pexels.</p>
+        <p>© 2025 JGIRI KART. All images credited to Unsplash / Pexels.</p>
       </div>
 
       {/* Popup JSX */}
