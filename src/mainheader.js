@@ -27,9 +27,9 @@ const NavIcon = ({ name }) => {
   );
 };
 
-function MainHeader({ selectedCategory, setSelectedCategory, onFilterClick }) {
+function MainHeader({ selectedCategory, setSelectedCategory, onFilterClick, onNavClick }) {
   const [hoveredBtn, setHoveredBtn] = useState(null);
-  const mainCategories = ["All", "Men", "Women", "Jewelry", "Accessories", "Groceries"];
+  const mainCategories = ["All", "Men", "Women", "Jewelry", "Accessories", "Children"];
 
   const styles = {
     header: {
@@ -164,6 +164,8 @@ function MainHeader({ selectedCategory, setSelectedCategory, onFilterClick }) {
               }}
               onMouseEnter={() => setHoveredBtn(item.id)}
               onMouseLeave={() => setHoveredBtn(null)}
+              // Pass the item ID to the parent handler which determines navigation vs state change
+              onClick={() => onNavClick && onNavClick(item.id)}
             >
               <NavIcon name={item.icon} />
               {item.label}
