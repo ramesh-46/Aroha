@@ -26,6 +26,10 @@ import StoreControlPanel from "./StoreControlPanel";
 import UserManagement from "./UserManagement";
 import SupportCenter from "./SupportCenter";
 
+import MainDashboard from "./maindashboard";
+import MainHeader from "./mainheader";
+
+
 function App() {
   return (
     <Router>
@@ -62,6 +66,13 @@ function App() {
         <Route path="/order-success" element={<OrderSuccess />} />
         <Route path="/coupons" element={<UserCoupons />} />
 
+<Route path="/MainDashboard" element={<MainDashboard />} />
+<Route path="/MainHeader" element={<MainHeader />} />
+
+
+
+
+
         {/* Catch-all redirect */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
@@ -70,5 +81,6 @@ function App() {
     </Router>
   );
 }
+
 
 export default App;
