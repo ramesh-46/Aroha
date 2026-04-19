@@ -94,6 +94,10 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: "Server Error", error: err.message });
 });
 
+
+app.get("/ping", (req, res) => {
+  res.send("Server is alive");
+});
 // --------------------
 // Start server
 // --------------------
