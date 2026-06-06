@@ -28,7 +28,7 @@ import SupportCenter from "./SupportCenter";
 
 import MainDashboard from "./maindashboard";
 import MainHeader from "./mainheader";
-
+import Wishlist from "./Wishlist";
 
 function App() {
   return (
@@ -68,6 +68,7 @@ function App() {
 
 <Route path="/MainDashboard" element={<MainDashboard />} />
 <Route path="/MainHeader" element={<MainHeader />} />
+ <Route path="/wishlist" element={<Wishlist />} />
 
 
 
