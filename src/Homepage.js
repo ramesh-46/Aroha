@@ -564,21 +564,32 @@ const extraLinks = [
   { name: "Help", href: "#help" },
   { name: "Donation", href: "#donation" },
   { name: "Notice", href: "#notice" },
-  { 
-    name: "About", 
-    href: "#", 
+
+  {
+    name: "Seller",
+    href: "#",
+    onClick: (e) => {
+      e.preventDefault();
+      navigate("/SellerAuth");
+    }
+  },
+
+  {
+    name: "About",
+    href: "#",
     onClick: (e) => {
       e.preventDefault();
       navigate("/About");
-    } 
+    }
   },
-  { 
-    name: "Terms and Conditions", 
-    href: "#", 
-    onClick: (e) => { 
-      e.preventDefault(); 
-      navigate("/Termsandconditions"); 
-    } 
+
+  {
+    name: "Terms and Conditions",
+    href: "#",
+    onClick: (e) => {
+      e.preventDefault();
+      navigate("/Termsandconditions");
+    }
   }
 ];
 
