@@ -58,7 +58,7 @@ function UserLogin() {
       if (res?.data?.success) {
         localStorage.setItem("user", JSON.stringify(res.data.user));
         showToast("Welcome back. Your experience awaits.");
-        setTimeout(() => navigate("/dashboard"), 1000);
+        setTimeout(() => navigate("/maindashboard"), 1000);
       } else {
         showToast("Access denied. Please verify your details.");
         setLoading(false);
@@ -92,7 +92,7 @@ function UserLogin() {
           JSON.stringify({ ...res.data.user, photoUrl: user.photoURL })
         );
         showToast("Successfully signed in.");
-        setTimeout(() => navigate("/dashboard"), 1000);
+        setTimeout(() => navigate("/maindashboard"), 1000);
       } else {
         navigate("/signup", {
           state: {
@@ -164,7 +164,7 @@ function UserLogin() {
               Sign up
             </button>
 
-            <button onClick={() => navigate("/dashboard")} style={skipBtn}>
+            <button onClick={() => navigate("/maindashboard")} style={skipBtn}>
               Explore without login →
             </button>
           </div>
