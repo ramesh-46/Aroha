@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import Swal from "./sweetalertConfig";
-import { FaTrashAlt, FaTruck, FaShoppingBag, FaSearch, FaFilter, FaMinus, FaPlus } from "react-icons/fa";
+import { FaTrashAlt, FaTruck, FaShoppingBag, FaSearch, FaFilter, FaMinus, FaPlus, FaChevronDown } from "react-icons/fa";
 
 // --- ICONS COMPONENT ---
 const IconSVG = ({ name }) => {
@@ -14,14 +14,14 @@ const IconSVG = ({ name }) => {
   };
 
   return (
-    <svg 
-      width="20" 
-      height="20" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2.5" 
-      strokeLinecap="round" 
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
       strokeLinejoin="round"
     >
       <path d={paths[name]} />
@@ -43,13 +43,16 @@ function Cart() {
   const [customerLocation, setCustomerLocation] = useState(null);
   const [activeTab, setActiveTab] = useState("cart");
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  
+
   const user = JSON.parse(localStorage.getItem("user"));
   const navigate = useNavigate();
 
   // --- EFFECTS ---
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => {
+      const isMobileView = window.innerWidth <= 768;
+      setIsMobile(isMobileView);
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -80,7 +83,6 @@ function Cart() {
     try {
       const res = await axios.get(`https://aroha.onrender.com/cart/${user._id}`);
       setCart(res.data);
-      // Auto-select all items when cart loads if none selected
       if (res.data.items.length > 0 && selectedItems.length === 0) {
         setSelectedItems(res.data.items.map(i => i.productId._id));
       }
@@ -139,10 +141,15 @@ function Cart() {
   // --- HANDLERS ---
   const handleNavClick = (tabId) => {
     setActiveTab(tabId);
-    if (tabId === 'home') navigate('/');
-    else if (tabId === 'wishlist') navigate('/wishlist');
-    else if (tabId === 'cart') navigate('/cart');
-    else if (tabId === 'profile') navigate('/profile');
+    if (tabId === "home") {
+      navigate("/maindashboard");
+    } else if (tabId === "heart") {
+      navigate("/wishlist");
+    } else if (tabId === "cart") {
+      navigate("/cart");
+    } else if (tabId === "user") {
+      navigate("/profile");
+    }
   };
 
   const toggleSelect = (productId) => {
@@ -160,14 +167,13 @@ function Cart() {
     const newQty = increment ? item.quantity + 1 : item.quantity - 1;
     if (newQty < 1) return;
 
-    // Optimistic UI update could go here, but we'll wait for server
     try {
       await axios.post("https://aroha.onrender.com/cart", {
         userId: user._id,
         productId,
-        quantity: newQty - item.quantity // Sending the delta
+        quantity: newQty - item.quantity
       });
-      fetchCart(); // Refresh to get accurate totals
+      fetchCart();
     } catch (err) {
       console.log(err);
       Swal.fire("Error", "Could not update quantity", "error");
@@ -203,7 +209,7 @@ function Cart() {
         code: couponCode,
         items: selectedCartItems
       });
-      
+
       if (res.data.success) {
         const coupon = res.data.coupon;
         setAppliedCoupon({ ...coupon, computedDiscountAmount: res.data.discountAmount });
@@ -219,7 +225,7 @@ function Cart() {
   const handlePlaceOrder = async () => {
     const itemsToOrder = cart.items.filter(item => selectedItems.includes(item.productId._id));
     if (!itemsToOrder.length) return Swal.fire("Select items to order!", "", "error");
-    
+
     if (!customerDetails.name || !customerDetails.mobile || !customerDetails.address) {
       return Swal.fire("Details Missing", "Please fill in all delivery details.", "warning");
     }
@@ -248,7 +254,6 @@ function Cart() {
         couponDetails: appliedCoupon
       });
 
-      // Clear cart items that were ordered
       for (let i of itemsToOrder) {
         await axios.delete(`https://aroha.onrender.com/cart/removeItem/${user._id}/${i.productId._id}`);
       }
@@ -258,7 +263,7 @@ function Cart() {
       setCustomerDetails({ name: "", mobile: "", address: "" });
       setAppliedCoupon(null);
       setCouponCode("");
-      
+
       navigate("/order-success", { state: { order: res.data } });
     } catch (err) {
       console.log(err);
@@ -282,7 +287,7 @@ function Cart() {
           .filter(item => selectedItems.includes(item.productId._id) && item.productId.category === appliedCoupon.category)
           .reduce((sum, item) => sum + Math.round((item.productId.finalPrice || item.productId.price) * item.quantity), 0);
       }
-      
+
       if (totalAmount >= appliedCoupon.minOrderValue && eligibleAmount > 0) {
         if (appliedCoupon.isPercentage) {
           discountAmount = Math.round((eligibleAmount * appliedCoupon.discountValue) / 100);
@@ -309,21 +314,92 @@ function Cart() {
           padding: 20px;
           font-family: 'Inter', sans-serif;
           background-color: #f9fafb;
-          min-height: 100vh;
-          padding-bottom: 80px;
+          min-height: calc(100vh - 80px);
+          padding-bottom: ${isMobile ? '80px' : '20px'};
         }
-        
+
         /* Header */
         .cart-header {
-          display: flex;
+          display: ${isMobile ? 'none' : 'flex'};
           justify-content: space-between;
           align-items: center;
           margin-bottom: 24px;
-          padding-bottom: 16px;
+          padding: 16px 0;
           border-bottom: 1px solid #e5e7eb;
         }
-        .cart-title h2 { margin: 0; font-size: 1.5rem; color: #111; }
-        .cart-count { color: #6b7280; font-size: 0.9rem; }
+
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+        }
+
+        .logo {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #000;
+          letter-spacing: 1px;
+        }
+
+        .header-center {
+          flex: 1;
+          max-width: 500px;
+          margin: 0 20px;
+          position: relative;
+        }
+
+        .search-bar {
+          display: flex;
+          align-items: center;
+          background: #fff;
+          border: 1px solid #ddd;
+          border-radius: 20px;
+          padding: 8px 16px;
+          width: 100%;
+        }
+
+        .search-bar input {
+          border: none;
+          outline: none;
+          width: 100%;
+          font-size: 0.9rem;
+          color: #666;
+        }
+
+        .search-bar .search-icon {
+          color: #999;
+          margin-right: 8px;
+        }
+
+        .search-bar .dropdown-icon {
+          color: #999;
+          margin-left: 8px;
+        }
+
+        .header-right {
+          display: flex;
+          gap: 20px;
+          align-items: center;
+        }
+
+        .nav-item-desktop {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          color: #666;
+          font-size: 0.8rem;
+          gap: 4px;
+          cursor: pointer;
+          padding: 8px 12px;
+          border-radius: 8px;
+          transition: all 0.2s;
+        }
+
+        .nav-item-desktop:hover, .nav-item-desktop.active {
+          color: #000;
+          background: #f3f4f6;
+          font-weight: 600;
+        }
 
         /* Layout Grid */
         .cart-content-grid {
@@ -396,7 +472,7 @@ function Cart() {
         }
         .qty-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .qty-val { margin: 0 10px; font-weight: 600; font-size: 0.95rem; }
-        
+
         .item-total-price { font-weight: 700; font-size: 1.1rem; color: #111; margin-top: auto; }
         .remove-btn {
           background: none;
@@ -521,7 +597,7 @@ function Cart() {
           position: fixed; bottom: 0; left: 0; right: 0;
           background: white;
           border-top: 1px solid #eee;
-          display: flex;
+          display: ${isMobile ? 'flex' : 'none'};
           justify-content: space-around;
           padding: 10px 0;
           z-index: 900;
@@ -531,55 +607,72 @@ function Cart() {
           color: #9ca3af; font-size: 0.75rem; gap: 4px; cursor: pointer;
         }
         .nav-item.active { color: #000; font-weight: 600; }
-        
+
         .login-prompt { text-align: center; padding: 50px; font-size: 1.2rem; color: #666; }
       `}</style>
 
-      {/* HEADER */}
-      <div className="cart-header">
-        <div className="cart-title">
-          <h2>Shopping Cart</h2>
-          <span className="cart-count">{cart.items.length} items</span>
-        </div>
-        {/* Desktop Search Placeholder */}
-        {!isMobile && (
-          <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '1px solid #ddd', borderRadius: '20px', padding: '8px 16px', width: '300px' }}>
-            <FaSearch size={14} color="#999" />
-            <input type="text" placeholder="Search..." style={{ border: 'none', outline: 'none', marginLeft: '8px', width: '100%' }} />
+      {/* HEADER (ONLY ON LARGE SCREENS) */}
+      {!isMobile && (
+        <div className="cart-header">
+          <div className="header-left">
+            <div className="logo">AROHA HUB</div>
           </div>
-        )}
-      </div>
+          <div className="header-center">
+            <div className="search-bar">
+              <FaSearch className="search-icon" size={14} />
+              <input type="text" placeholder="Search luxury items..." />
+              <FaChevronDown className="dropdown-icon" size={12} />
+            </div>
+          </div>
+          <div className="header-right">
+            {[
+              { id: "home", label: "Home" },
+              { id: "heart", label: "Wishlist" },
+              { id: "cart", label: "Cart" },
+              { id: "user", label: "Profile" }
+            ].map((tab) => (
+              <div
+                key={tab.id}
+                className={`nav-item-desktop ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => handleNavClick(tab.id)}
+              >
+                <IconSVG name={tab.id} />
+                <span>{tab.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {cart.items.length === 0 ? (
         <div className="empty-cart-state">
           <FaShoppingBag size={64} className="empty-icon" />
           <h3>Your cart is empty</h3>
           <p>Looks like you haven't added anything yet.</p>
-          <button className="shop-now-btn" onClick={() => navigate("/")}>Start Shopping</button>
+          <button className="shop-now-btn" onClick={() => navigate("/maindashboard")}>Start Shopping</button>
         </div>
       ) : (
         <div className="cart-content-grid">
-          
           {/* LEFT COLUMN: CART ITEMS */}
           <div className="cart-list">
             {cart.items.map(item => {
               const isSelected = selectedItems.includes(item.productId._id);
               const unitPrice = getEffectiveUnitPrice(item.productId);
               const itemTotal = unitPrice * item.quantity;
-              
+
               return (
                 <div key={item.productId._id} className="cart-item-row">
                   <div className="item-left">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       className="item-checkbox"
-                      checked={isSelected} 
-                      onChange={() => toggleSelect(item.productId._id)} 
+                      checked={isSelected}
+                      onChange={() => toggleSelect(item.productId._id)}
                     />
-                    <img 
-                      src={item.productId.images?.[0]?.startsWith("http") ? item.productId.images[0] : `https://aroha.onrender.com/uploads/${item.productId.images?.[0]}`} 
-                      alt={item.productId.name} 
-                      className="item-image" 
+                    <img
+                      src={item.productId.images?.[0]?.startsWith("http") ? item.productId.images[0] : `https://aroha.onrender.com/uploads/${item.productId.images?.[0]}`}
+                      alt={item.productId.name}
+                      className="item-image"
                     />
                     <div className="item-details">
                       <h4 className="item-name">{item.productId.name}</h4>
@@ -592,20 +685,20 @@ function Cart() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="item-right">
                     <div className="qty-control">
-                      <button 
+                      <button
                         className="qty-btn"
-                        onClick={() => updateQuantity(item.productId._id, false)} 
+                        onClick={() => updateQuantity(item.productId._id, false)}
                         disabled={item.quantity <= 1}
                       >
                         <FaMinus size={10} />
                       </button>
                       <span className="qty-val">{item.quantity}</span>
-                      <button 
+                      <button
                         className="qty-btn"
-                        onClick={() => updateQuantity(item.productId._id, true)} 
+                        onClick={() => updateQuantity(item.productId._id, true)}
                       >
                         <FaPlus size={10} />
                       </button>
@@ -613,7 +706,7 @@ function Cart() {
                     <div className="item-total-price">
                       ₹{itemTotal.toLocaleString()}
                     </div>
-                    <button 
+                    <button
                       className="remove-btn"
                       onClick={() => removeItem(item.productId._id)}
                     >
@@ -629,36 +722,36 @@ function Cart() {
           {selectedItems.length > 0 ? (
             <div className="order-summary-card">
               <h3 className="summary-title">Order Summary</h3>
-              
+
               <div className="summary-row">
                 <span>Subtotal ({selectedItems.length} items)</span>
                 <span>₹{totalAmount.toLocaleString()}</span>
               </div>
-              
+
               {appliedCoupon && discountAmount > 0 && (
                 <div className="summary-row" style={{ color: "#059669" }}>
                   <span>Coupon Discount</span>
                   <span>-₹{discountAmount.toLocaleString()}</span>
                 </div>
               )}
-              
+
               <div className="summary-row">
                 <span>Delivery Charge</span>
                 <span>₹{deliveryCharge.toLocaleString()}</span>
               </div>
-              
+
               <div className="summary-total">
                 <span>Total Payable</span>
                 <span className="total-green">₹{finalAmountToPay.toLocaleString()}</span>
               </div>
 
               <div className="coupon-box">
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   className="coupon-input"
-                  placeholder="Enter coupon code" 
-                  value={couponCode} 
-                  onChange={(e) => setCouponCode(e.target.value)} 
+                  placeholder="Enter coupon code"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
                   disabled={appliedCoupon !== null}
                 />
                 {appliedCoupon ? (
@@ -667,10 +760,10 @@ function Cart() {
                   <button className="coupon-btn" onClick={handleApplyCoupon}>Apply</button>
                 )}
               </div>
-              
+
               {couponError && <p className="coupon-error">{couponError}</p>}
               {appliedCoupon && discountAmount > 0 && <p className="coupon-success">✓ Coupon applied successfully</p>}
-              
+
               {checkoutSettings && (
                 <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <FaTruck /> {checkoutSettings.message}
@@ -722,25 +815,25 @@ function Cart() {
         <div className="modal-overlay">
           <div className="modal-content">
             <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Delivery Details</h3>
-            <input 
-              type="text" 
+            <input
+              type="text"
               className="modal-input"
-              placeholder="Full Name" 
-              value={customerDetails.name} 
-              onChange={e => setCustomerDetails({...customerDetails, name: e.target.value})} 
+              placeholder="Full Name"
+              value={customerDetails.name}
+              onChange={e => setCustomerDetails({...customerDetails, name: e.target.value})}
             />
-            <input 
-              type="tel" 
+            <input
+              type="tel"
               className="modal-input"
-              placeholder="Mobile Number" 
-              value={customerDetails.mobile} 
-              onChange={e => setCustomerDetails({...customerDetails, mobile: e.target.value})} 
+              placeholder="Mobile Number"
+              value={customerDetails.mobile}
+              onChange={e => setCustomerDetails({...customerDetails, mobile: e.target.value})}
             />
-            <textarea 
+            <textarea
               className="modal-input"
-              placeholder="Complete Address" 
-              value={customerDetails.address} 
-              onChange={e => setCustomerDetails({...customerDetails, address: e.target.value})} 
+              placeholder="Complete Address"
+              value={customerDetails.address}
+              onChange={e => setCustomerDetails({...customerDetails, address: e.target.value})}
               rows="3"
             />
             <div className="modal-actions">
@@ -751,26 +844,24 @@ function Cart() {
         </div>
       )}
 
-      {/* MOBILE BOTTOM NAV */}
-      {isMobile && (
-        <div className="bottom-nav-mobile">
-          {[
-            { id: "home", label: "Home" }, 
-            { id: "heart", label: "Wishlist" }, 
-            { id: "cart", label: "Cart" }, 
-            { id: "user", label: "Profile" }
-          ].map((tab) => (
-            <div 
-              key={tab.id} 
-              className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
-              onClick={() => handleNavClick(tab.id)}
-            >
-              <IconSVG name={tab.id} />
-              <span>{tab.label}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* MOBILE BOTTOM NAV (ONLY ON SMALL SCREENS) */}
+      <div className="bottom-nav-mobile">
+        {[
+          { id: "home", label: "Home" },
+          { id: "heart", label: "Wishlist" },
+          { id: "cart", label: "Cart" },
+          { id: "user", label: "Profile" }
+        ].map((tab) => (
+          <div
+            key={tab.id}
+            className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => handleNavClick(tab.id)}
+          >
+            <IconSVG name={tab.id} />
+            <span>{tab.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
