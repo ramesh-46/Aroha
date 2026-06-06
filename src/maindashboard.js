@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import MainHeader from "./mainheader";
+import { useNavigate } from "react-router-dom";
 
 // --- ICONS ---
 const IconSVG = ({ name }) => {
@@ -17,7 +18,7 @@ const IconSVG = ({ name }) => {
     check: "M20 6L9 17l-5-5",
     loader: "M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
   };
-  
+
   const specificPaths = {
      plus: "M12 5v14M5 12h14",
      minus: "M5 12h14"
@@ -55,7 +56,7 @@ const CountdownTimer = ({ targetDate, isMobile }) => {
   const numSize = isMobile ? "14px" : "22px";
   const labelSize = isMobile ? "7px" : "10px";
   const gap = isMobile ? "4px" : "12px";
-  const timerColor = "#00ff22"; 
+  const timerColor = "#00ff22";
 
   const TimeBox = ({ val, label }) => (
     <div style={{ textAlign: "center", minWidth: isMobile ? "20px" : "45px" }}>
@@ -124,13 +125,14 @@ const LuxuryLoader = ({ message }) => (
 );
 
 function MainDashboard() {
+  const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [loadingState, setLoadingState] = useState("Initializing Aroha Hub...");
-  
+
   // NAVIGATION STATE
   const [activeTab, setActiveTab] = useState("home");
-  const [currentView, setCurrentView] = useState("list"); 
-  
+  const [currentView, setCurrentView] = useState("list");
+
   const [visibleItems, setVisibleItems] = useState([]);
   const [selectedProduct, setSelectedProduct] = useState(null);
 
@@ -154,11 +156,11 @@ function MainDashboard() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedSubCategory, setSelectedSubCategory] = useState("All");
   const [showFilterModal, setShowFilterModal] = useState(false);
-  
-  const [filters, setFilters] = useState({ 
-    sort: "latest", 
-    rating: "all", 
-    collection: "all" 
+
+  const [filters, setFilters] = useState({
+    sort: "latest",
+    rating: "all",
+    collection: "all"
   });
 
   const [dynamicCategories, setDynamicCategories] = useState(["All"]);
@@ -174,10 +176,10 @@ function MainDashboard() {
     const fetchData = async () => {
       try {
         setLoadingState("Curating your exclusive collection...");
-        
+
         const settingsRes = await fetch("https://aroha.onrender.com/settings");
         const settingsData = await settingsRes.json();
-        
+
         if (settingsData.success && settingsData.settings) {
           setSaleImages(settingsData.settings.saleImages || []);
           setSaleMessage(settingsData.settings.saleBannerMessage || "Unmissable deals!");
@@ -191,7 +193,7 @@ function MainDashboard() {
 
         const productsRes = await fetch("https://aroha.onrender.com/products");
         const productsData = await productsRes.json();
-        
+
         const cats = new Set(["All"]);
         const subCatsMap = { "All": ["All"] };
 
@@ -243,18 +245,18 @@ function MainDashboard() {
           if (prod) {
             setSelectedProduct(prod);
             setCurrentView("details");
-            setActiveTab("home"); 
+            setActiveTab("home");
             if(prod.sizes && prod.sizes.length > 0) setSelectedSize(prod.sizes[0]);
             if(prod.colors && prod.colors.length > 0) setSelectedColor(prod.colors[0]);
           }
         }
 
-        Array.from({ length: Math.min(8, mappedProducts.length) }).forEach((_, index) => 
+        Array.from({ length: Math.min(8, mappedProducts.length) }).forEach((_, index) =>
           setTimeout(() => setVisibleItems(prev => [...prev, index]), index * 100)
         );
 
-      } catch (error) { 
-        console.error("Failed to fetch ", error); 
+      } catch (error) {
+        console.error("Failed to fetch ", error);
         setLoadingState(null);
       }
     };
@@ -271,10 +273,10 @@ function MainDashboard() {
 
   const getFilteredProducts = () => {
     let result = [...products];
-    
+
     if (selectedCategory !== "All") result = result.filter(p => p.mainCategory === selectedCategory);
     if (selectedSubCategory !== "All") result = result.filter(p => p.subCategory.toLowerCase() === selectedSubCategory.toLowerCase());
-    
+
     if (filters.collection !== "all") {
        result = result.filter(p => p.collection && p.collection.toLowerCase().includes(filters.collection));
     }
@@ -298,13 +300,13 @@ function MainDashboard() {
   const handleProductClick = (product) => {
     setSelectedProduct(product);
     setCurrentView("details");
-    setSelectedSize(product.sizes && product.sizes.length > 0 ? product.sizes[0] : ""); 
+    setSelectedSize(product.sizes && product.sizes.length > 0 ? product.sizes[0] : "");
     setSelectedColor(product.colors && product.colors.length > 0 ? product.colors[0] : "");
-    setQuantity(1); 
+    setQuantity(1);
     setActiveDetailImage(0);
     setCartSuccessMsg("");
     setIsWishlisted(false);
-    
+
     const newUrl = `${window.location.pathname}?product=${product.id}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
     window.scrollTo(0, 0);
@@ -319,7 +321,7 @@ function MainDashboard() {
   const handleShare = async () => {
     if (!selectedProduct) return;
     const shareLink = `${window.location.origin}${window.location.pathname}?product=${selectedProduct.id}`;
-    
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -392,23 +394,19 @@ function MainDashboard() {
   };
 
   // UPDATED NAVIGATION HANDLER
-  const handleNavClick = (tabId) => {
-    if (tabId === 'cart') {
-      window.location.href = '/cart';
-    } else if (tabId === 'profile') {
-      window.location.href = '/profile';
-    } else if (tabId === 'home') {
-      setActiveTab("home");
-      setCurrentView("list"); 
-      setSelectedProduct(null);
-      window.history.pushState({ path: window.location.pathname }, '', window.location.pathname);
-    } else if (tabId === 'wishlist') {
-      setActiveTab("wishlist");
-      setCurrentView("list");
-      setSelectedProduct(null);
-      // Wishlist can be internal or external depending on preference. Keeping internal for SPA feel.
-    }
-  };
+ const handleNavClick = (tabId) => {
+  setActiveTab(tabId);
+
+  if (tabId === "home") {
+    navigate("/MainDashboard");
+  } else if (tabId === "wishlist") {
+    navigate("/wishlist");
+  } else if (tabId === "cart") {
+    navigate("/cart");
+  } else if (tabId === "profile") {
+    navigate("/profile");
+  }
+};
 
   // --- STYLES ---
   const styles = {
@@ -422,22 +420,22 @@ function MainDashboard() {
     catPill: (isActive) => ({ padding: "8px 18px", borderRadius: "20px", background: isActive ? "#111" : "#fff", color: isActive ? "#fff" : "#666", border: "1px solid #eee", fontSize: "13px", fontWeight: "600", whiteSpace: "nowrap", cursor: "pointer", transition: "all 0.3s ease", boxShadow: isActive ? "0 4px 10px rgba(0,0,0,0.1)" : "none" }),
     banner: { margin: isMobile ? "10px 16px" : "20px", padding: isMobile ? "12px 15px" : "40px 60px", borderRadius: isMobile ? "12px" : "20px", background: "#111", color: "#fff", position: "relative", overflow: "hidden", boxShadow: "0 8px 20px rgba(0,0,0,0.15)", aspectRatio: isMobile ? "16/9" : "unset", height: isMobile ? "auto" : "320px", display: "flex", flexDirection: "column", justifyContent: "center" },
     bannerContent: { position: "relative", zIndex: 10, maxWidth: isMobile ? "95%" : "600px", display: "flex", flexDirection: "column", justifyContent: "center", height: "100%" },
-    
+
     grid: { display: "grid", gridTemplateColumns: isMobile ? "1fr 1fr" : "repeat(4, 1fr)", gap: isMobile ? "12px" : "24px", padding: "0 16px" },
-    card: (index) => ({ 
-      borderRadius: "16px", 
-      background: "#fff", 
-      overflow: "hidden", 
-      boxShadow: "0 4px 12px rgba(0,0,0,0.05)", 
-      transition: "all 0.3s ease", 
-      cursor: "pointer", 
-      opacity: visibleItems.includes(index) ? 1 : 0, 
+    card: (index) => ({
+      borderRadius: "16px",
+      background: "#fff",
+      overflow: "hidden",
+      boxShadow: "0 4px 12px rgba(0,0,0,0.05)",
+      transition: "all 0.3s ease",
+      cursor: "pointer",
+      opacity: visibleItems.includes(index) ? 1 : 0,
       transform: visibleItems.includes(index) ? "translateY(0)" : "translateY(20px)",
       border: "1px solid rgba(0,0,0,0.03)",
       position: "relative"
     }),
     imageContainer: { width: "100%", aspectRatio: "1/1", background: "#f0f0f0", position: "relative", overflow: "hidden" },
-    
+
     imageOverlay: {
       position: "absolute",
       bottom: "8px",
@@ -456,13 +454,13 @@ function MainDashboard() {
 
     cardDetails: { padding: "12px" },
     productName: { fontSize: "14px", color: "#333", fontWeight: "600", marginBottom: "4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
-    
+
     priceRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "6px" },
     priceInfo: { display: "flex", alignItems: "baseline", gap: "6px", flexWrap: "wrap" },
     finalPrice: { fontWeight: "700", fontSize: "15px", color: "#000" },
     originalPrice: { fontSize: "12px", color: "#999", textDecoration: "line-through" },
     discountText: { fontSize: "12px", color: "#ff5722", fontWeight: "600" },
-    
+
     wishlistIconCard: {
       color: isWishlisted ? "#ff4d4d" : "#ccc",
       cursor: "pointer",
@@ -473,7 +471,7 @@ function MainDashboard() {
     bottomNav: { position: "fixed", bottom: 0, left: 0, right: 0, height: "60px", background: "rgba(255, 255, 255, 0.95)", backdropFilter: "blur(20px)", borderTopLeftRadius: "20px", borderTopRightRadius: "20px", display: isMobile ? "flex" : "none", justifyContent: "center", alignItems: "center", boxShadow: "0 -5px 15px rgba(0,0,0,0.05)", zIndex: 1000, paddingBottom: "5px", gap: "10px" },
     navPill: (isActive) => ({ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", padding: isActive ? "8px 16px" : "10px", borderRadius: "30px", background: isActive ? "#000" : "transparent", color: isActive ? "#fff" : "#9ca3af", transition: "all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)", cursor: "pointer", minWidth: isActive ? "100px" : "40px", boxShadow: isActive ? "0 4px 12px rgba(0,0,0,0.2)" : "none" }),
     navLabel: { fontSize: "13px", fontWeight: "600", whiteSpace: "nowrap" },
-    
+
     modalOverlay: { position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", zIndex: 2000, display: showFilterModal ? "flex" : "none", justifyContent: "center", alignItems: "flex-end" },
     modalSheet: { background: "#fff", width: "100%", maxWidth: "500px", maxHeight: "85vh", overflowY: "auto", borderTopLeftRadius: "24px", borderTopRightRadius: "24px", padding: "24px", animation: "slideUp 0.3s ease-out" },
     modalTitle: { fontSize: "18px", fontWeight: "700", marginBottom: "20px", color: "#111" },
@@ -482,7 +480,7 @@ function MainDashboard() {
     optionGrid: { display: "flex", gap: "10px", flexWrap: "wrap" },
     optionBtn: (isActive) => ({ padding: "10px 16px", borderRadius: "12px", border: "1px solid #eee", background: isActive ? "#111" : "#fff", color: isActive ? "#fff" : "#333", fontSize: "13px", fontWeight: "500", cursor: "pointer", transition: "all 0.2s ease" }),
     applyBtn: { width: "100%", padding: "16px", background: "#111", color: "#fff", border: "none", borderRadius: "16px", fontSize: "16px", fontWeight: "600", cursor: "pointer", marginTop: "10px" },
-    
+
     detailContainer: { padding: isMobile ? "16px" : "40px", maxWidth: "1200px", margin: "0 auto" },
     detailGrid: { display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: isMobile ? "20px" : "60px" },
     detailImageMain: { width: "100%", aspectRatio: "1/1", objectFit: "cover", borderRadius: "16px", background: "#f0f0f0", marginBottom: "10px" },
@@ -498,11 +496,11 @@ function MainDashboard() {
     colorCircle: (color, isActive) => ({ width: "32px", height: "32px", borderRadius: "50%", background: color.toLowerCase(), border: isActive ? "2px solid #111" : "2px solid transparent", cursor: "pointer", boxShadow: "0 2px 5px rgba(0,0,0,0.1)" }),
     qtyControl: { display: "flex", alignItems: "center", gap: "16px", border: "1px solid #ddd", borderRadius: "12px", padding: "8px 16px", width: "fit-content" },
     qtyBtn: { background: "none", border: "none", cursor: "pointer", color: "#111", display: "flex", alignItems: "center" },
-    
+
     actionButtons: { display: "flex", gap: "10px", marginTop: "10px" },
     addToCartBtn: { flex: 2, padding: "18px", background: cartSuccessMsg ? "#00C853" : "#111", color: "#fff", border: "none", borderRadius: "16px", fontSize: "18px", fontWeight: "700", cursor: "pointer", boxShadow: "0 4px 15px rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" },
     addToWishlistBtn: { flex: 1, padding: "18px", background: "#fff", color: isWishlisted ? "#ff4d4d" : "#111", border: "2px solid #eee", borderRadius: "16px", fontSize: "18px", fontWeight: "700", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", transition: "all 0.3s ease" },
-    
+
     stickyBottomMobile: { position: "fixed", bottom: "60px", left: 0, right: 0, background: "#fff", padding: "16px", borderTop: "1px solid #eee", zIndex: 999, display: isMobile ? "block" : "none" },
     placeholderPage: { padding: "40px 20px", textAlign: "center", color: "#666" }
   };
@@ -540,9 +538,9 @@ function MainDashboard() {
                    <IconSVG name="share" />
                  </button>
               </div>
-              
+
               <div style={styles.detailPrice}>
-                ₹{selectedProduct.price.toLocaleString()} 
+                ₹{selectedProduct.price.toLocaleString()}
                 {selectedProduct.originalPrice > selectedProduct.price && (
                   <>
                     <span style={{fontSize: "16px", color: "#888", textDecoration: "line-through", fontWeight: "400"}}>₹{selectedProduct.originalPrice.toLocaleString()}</span>
@@ -550,7 +548,7 @@ function MainDashboard() {
                   </>
                 )}
               </div>
-              
+
               <p style={{ color: "#666", lineHeight: "1.6", fontSize: "15px", margin: "10px 0" }}>
                 {selectedProduct.description}
               </p>
@@ -610,14 +608,14 @@ function MainDashboard() {
                   <div key={item.id} style={styles.card(index)} onClick={() => handleProductClick(item)}>
                     <div style={styles.imageContainer}>
                        {item.images && item.images[0] && <img src={item.images[0]} alt={item.name} style={{width: "100%", height: "100%", objectFit: "cover"}} />}
-                       
+
                        <div style={styles.imageOverlay}>
                          <span style={{color: "#FFD700"}}>★</span> {item.rating} | {item.orders}
                        </div>
                     </div>
                     <div style={styles.cardDetails}>
                       <div style={styles.productName}>{item.name}</div>
-                      
+
                       <div style={styles.priceRow}>
                         <div style={styles.priceInfo}>
                            <span style={styles.finalPrice}>₹{item.price.toLocaleString()}</span>
@@ -688,13 +686,28 @@ function MainDashboard() {
 
         {isMobile && (
           <div style={styles.bottomNav}>
-            {[{ id: "home", label: "Home" }, { id: "heart", label: "Wishlist" }, { id: "cart", label: "Cart" }, { id: "user", label: "Profile" }].map((tab) => {
+            {[
+  { id: "home", label: "Home" },
+  { id: "wishlist", label: "Wishlist" },
+  { id: "cart", label: "Cart" },
+  { id: "profile", label: "Profile" }
+].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
-                <div key={tab.id} style={styles.navPill(isActive)} onClick={() => handleNavClick(tab.id)}>
-                  <IconSVG name={tab.id} />
-                  <span style={{...styles.navLabel, display: isActive ? "block" : "none"}}>{tab.label}</span>
-                </div>
+             <div key={tab.id} style={styles.navPill(isActive)} onClick={() => handleNavClick(tab.id)}>
+  <IconSVG
+    name={
+      tab.id === "wishlist"
+        ? "heart"
+        : tab.id === "profile"
+        ? "user"
+        : tab.id
+    }
+  />
+  <span style={{...styles.navLabel, display: isActive ? "block" : "none"}}>
+    {tab.label}
+  </span>
+</div>
               );
             })}
           </div>
@@ -714,7 +727,12 @@ function MainDashboard() {
          </div>
          {isMobile && (
            <div style={styles.bottomNav}>
-             {[{ id: "home", label: "Home" }, { id: "heart", label: "Wishlist" }, { id: "cart", label: "Cart" }, { id: "user", label: "Profile" }].map((tab) => {
+             {[
+  { id: "home", label: "Home" },
+  { id: "wishlist", label: "Wishlist" },
+  { id: "cart", label: "Cart" },
+  { id: "profile", label: "Profile" }
+].map((tab) => {
                const isActive = activeTab === tab.id;
                return (
                  <div key={tab.id} style={styles.navPill(isActive)} onClick={() => handleNavClick(tab.id)}>
@@ -793,14 +811,14 @@ function MainDashboard() {
             <div key={item.id} style={styles.card(index)} onClick={() => handleProductClick(item)}>
               <div style={styles.imageContainer}>
                  {item.images && item.images[0] && <img src={item.images[0]} alt={item.name} style={{width: "100%", height: "100%", objectFit: "cover"}} />}
-                 
+
                  <div style={styles.imageOverlay}>
                    <span style={{color: "#FFD700"}}>★</span> {item.rating} | {item.orders}
                  </div>
               </div>
               <div style={styles.cardDetails}>
                 <div style={styles.productName}>{item.name}</div>
-                
+
                 <div style={styles.priceRow}>
                   <div style={styles.priceInfo}>
                      <span style={styles.finalPrice}>₹{item.price.toLocaleString()}</span>
@@ -827,7 +845,7 @@ function MainDashboard() {
       <div style={styles.modalOverlay} onClick={() => setShowFilterModal(false)}>
         <div style={styles.modalSheet} onClick={e => e.stopPropagation()}>
           <div style={styles.modalTitle}>Filter Products</div>
-          
+
           <div style={styles.filterSection}>
             <span style={styles.filterLabel}>Sort By</span>
             <div style={styles.optionGrid}>
@@ -865,18 +883,27 @@ function MainDashboard() {
 
       {isMobile && (
         <div style={styles.bottomNav}>
-          {[{ id: "home", label: "Home" }, { id: "heart", label: "Wishlist" }, { id: "cart", label: "Cart" }, { id: "user", label: "Profile" }].map((tab) => {
+          {[{ id: "home", label: "Home" },{ id: "wishlist", label: "Wishlist" },{ id: "cart", label: "Cart" },
+{ id: "profile", label: "Profile" },  ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <div key={tab.id} style={styles.navPill(isActive)} onClick={() => handleNavClick(tab.id)}>
-                <IconSVG name={tab.id} />
+               <IconSVG
+  name={
+    tab.id === "wishlist"
+      ? "heart"
+      : tab.id === "profile"
+      ? "user"
+      : tab.id
+  }
+/>
                 <span style={{...styles.navLabel, display: isActive ? "block" : "none"}}>{tab.label}</span>
               </div>
             );
           })}
         </div>
       )}
-      
+
       <style>{`@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }`}</style>
     </div>
   );
