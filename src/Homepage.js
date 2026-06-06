@@ -497,8 +497,9 @@ const Header = () => {
 const Hero = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const heroImages = [
-    "https://i.postimg.cc/m22Yh2zx/pexels-vikashkr50-27155549.jpg",
     "https://images.unsplash.com/photo-1580657018950-c7f7d6a6d990?q=80&w=1170&auto=format&fit=crop",
+    "https://i.postimg.cc/m22Yh2zx/pexels-vikashkr50-27155549.jpg",
+    
     "https://plus.unsplash.com/premium_photo-1664533227566-94bde440039f?q=80&w=1170&auto=format&fit=crop",
     "https://plus.unsplash.com/premium_photo-1661611277583-139a0653b166?q=80&w=1170&auto=format&fit=crop",
     "https://i.postimg.cc/WbHk3mcY/young-woman-beautiful-dress-hat.jpg",
