@@ -423,7 +423,7 @@ const Header = () => {
             arohahubinfo@proton.me
           </a>
           <a
-            href="https://wa.me/918019802281?text=I%20visited%20AROHA%20website%20-%20I%20want%20help%20with%20orders%20and%20catalog."
+            href="https://wa.me/919550354436?text=I%20visited%20AROHA%20website%20-%20I%20want%20help%20with%20orders%20and%20catalog."
             target="_blank"
             rel="noopener"
             style={styles.contactLink}
@@ -610,7 +610,7 @@ const extraLinks = [
           </div>
           <p>Hyderabad, Telangana 500016</p>
           <p>arohahubinfo@proton.me</p>
-          <p>+91 8019802281</p>
+          <p>+91 9550354436</p>
         </div>
         <div style={styles.footerMap}>
           <iframe
