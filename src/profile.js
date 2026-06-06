@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import {
   FaSearch, FaFilter, FaTruck, FaCheckCircle, FaClock, FaTimesCircle, FaBox,
   FaMapMarkerAlt, FaPhone, FaUser, FaCalendarAlt, FaReceipt, FaCreditCard,
-  FaBars, FaHome, FaHeart, FaShoppingCart
+  FaBars, FaHome, FaHeart, FaShoppingCart, FaEdit, FaEyeSlash, FaSignOutAlt,
+  FaChevronDown, FaStar, FaSpinner
 } from "react-icons/fa";
 
 // Icon Component
@@ -17,14 +18,14 @@ const IconSVG = ({ name }) => {
   };
 
   return (
-    <svg 
-      width="20" 
-      height="20" 
-      viewBox="0 0 24 24" 
-      fill="none" 
-      stroke="currentColor" 
-      strokeWidth="2.5" 
-      strokeLinecap="round" 
+    <svg
+      width="20"
+      height="20"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
       strokeLinejoin="round"
     >
       <path d={paths[name]} />
@@ -35,14 +36,16 @@ const IconSVG = ({ name }) => {
 function Profile() {
   const [form, setForm] = useState(JSON.parse(localStorage.getItem("user")) || {});
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState("profile");
+  const [activeTab, setActiveTab] = useState("user");
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [showOrders, setShowOrders] = useState(false);
   const [orders, setOrders] = useState([]);
   const [filteredOrders, setFilteredOrders] = useState([]);
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-  
+  const [isLoading, setIsLoading] = useState(false);
+  const [ordersLoaded, setOrdersLoaded] = useState(false); // Track if orders are already loaded
+
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
 
@@ -55,52 +58,63 @@ function Profile() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Fetch orders
+  // Fetch orders (memoized to prevent unnecessary re-creation)
+  const fetchOrders = useCallback(async () => {
+    if (!user) return;
+    setIsLoading(true);
+    try {
+      const res = await axios.get(`https://aroha.onrender.com/orders/${user._id}`);
+      const sortedOrders = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setOrders(sortedOrders);
+      setFilteredOrders(sortedOrders);
+      setOrdersLoaded(true);
+    } catch (err) {
+      console.log(err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user]);
+
+  // Fetch orders only when showOrders becomes true and orders are not already loaded
   useEffect(() => {
-    const fetchOrders = async () => {
-      if (!user) return;
-      try {
-        const res = await axios.get(`https://aroha.onrender.com/orders/${user._id}`);
-        const sortedOrders = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-        setOrders(sortedOrders);
-        setFilteredOrders(sortedOrders);
-      } catch (err) {
-        console.log(err);
-      }
-    };
-    if (showOrders) {
+    if (showOrders && !ordersLoaded) {
       fetchOrders();
     }
-  }, [showOrders, user]);
+  }, [showOrders, fetchOrders, ordersLoaded]);
 
   // Filter orders
   useEffect(() => {
     let filtered = [...orders];
-    
+
     if (statusFilter !== "all") {
       filtered = filtered.filter(order => order.status.toLowerCase() === statusFilter.toLowerCase());
     }
-    
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      filtered = filtered.filter(order => 
+      filtered = filtered.filter(order =>
         order._id.toLowerCase().includes(query) ||
-        order.items.some(item => 
+        order.items.some(item =>
           item.productId?.name?.toLowerCase().includes(query) ||
           item.productId?.brand?.toLowerCase().includes(query)
         )
       );
     }
-    
+
     setFilteredOrders(filtered);
   }, [statusFilter, searchQuery, orders]);
 
   const handleNavClick = (tabId) => {
     setActiveTab(tabId);
-    if (tabId === 'home') navigate('/dashboard');
-    else if (tabId === 'wishlist') navigate('/wishlist');
-    else if (tabId === 'cart') navigate('/cart');
-    else if (tabId === 'profile') navigate('/profile');
+    if (tabId === "home") {
+      navigate("/maindashboard");
+    } else if (tabId === "heart") {
+      navigate("/wishlist");
+    } else if (tabId === "cart") {
+      navigate("/cart");
+    } else if (tabId === "user") {
+      navigate("/profile");
+    }
   };
 
   const getStatusIcon = (status) => {
@@ -125,10 +139,10 @@ function Profile() {
 
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
+    return date.toLocaleDateString('en-IN', {
       day: 'numeric',
+      month: 'short',
+      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit'
     });
@@ -152,38 +166,533 @@ function Profile() {
     navigate("/");
   };
 
-  if (!user) return <p style={styles.loginPrompt}>Please log in to view your profile.</p>;
+  // Reset ordersLoaded when hiding orders
+  const toggleShowOrders = () => {
+    if (showOrders) {
+      setOrdersLoaded(false); // Reset loaded state when hiding
+    }
+    setShowOrders(!showOrders);
+  };
+
+  if (!user) return <p style={{ textAlign: 'center', padding: '60px', color: '#666' }}>Please log in to view your profile.</p>;
 
   return (
-    <div style={styles.pageContainer}>
-      {/* DESKTOP HEADER */}
+    <div className="profile-page-container">
+      {/* INJECT CSS STYLES */}
+      <style>{`
+        .profile-page-container {
+          max-width: 1200px;
+          margin: 0 auto;
+          font-family: 'Inter', sans-serif;
+          background-color: #f9fafb;
+          min-height: 100vh;
+          display: flex;
+          flex-direction: column;
+        }
+
+        /* Header */
+        .profile-header {
+          display: ${isMobile ? 'none' : 'flex'};
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px 20px;
+          border-bottom: 1px solid #e5e7eb;
+          background: white;
+          position: sticky;
+          top: 0;
+          z-index: 100;
+        }
+
+        .header-left {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+        }
+
+        .logo {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: #000;
+          letter-spacing: 1px;
+        }
+
+        .header-center {
+          flex: 1;
+          max-width: 500px;
+          margin: 0 20px;
+          position: relative;
+        }
+
+        .search-bar {
+          display: flex;
+          align-items: center;
+          background: #fff;
+          border: 1px solid #ddd;
+          border-radius: 20px;
+          padding: 8px 16px;
+          width: 100%;
+        }
+
+        .search-bar input {
+          border: none;
+          outline: none;
+          width: 100%;
+          font-size: 0.9rem;
+          color: #666;
+        }
+
+        .search-bar .search-icon {
+          color: #999;
+          margin-right: 8px;
+        }
+
+        .header-right {
+          display: flex;
+          gap: 20px;
+          align-items: center;
+        }
+
+        .nav-item-desktop {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          color: #666;
+          font-size: 0.8rem;
+          gap: 4px;
+          cursor: pointer;
+          padding: 8px 12px;
+          border-radius: 8px;
+          transition: all 0.2s;
+        }
+
+        .nav-item-desktop:hover, .nav-item-desktop.active {
+          color: #000;
+          background: #f3f4f6;
+          font-weight: 600;
+        }
+
+        /* Profile Content */
+        .profile-content {
+          flex: 1;
+          padding: 20px;
+        }
+
+        .page-title {
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin-bottom: 20px;
+          color: #111;
+        }
+
+        .profile-form {
+          background: white;
+          border-radius: 12px;
+          padding: 24px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+          margin-bottom: 20px;
+        }
+
+        .profile-image-container {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 20px;
+        }
+
+        .profile-image {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 3px solid #000;
+        }
+
+        .profile-fields {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 20px;
+        }
+
+        .input-group {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .label {
+          margin-bottom: 6px;
+          font-size: 0.9rem;
+          font-weight: 500;
+          color: #333;
+        }
+
+        .input {
+          padding: 10px;
+          border-radius: 8px;
+          border: 1px solid #ccc;
+          font-size: 0.9rem;
+          outline: none;
+        }
+
+        .action-buttons {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          flex-wrap: wrap;
+          margin-top: 20px;
+        }
+
+        .action-btn {
+          padding: 10px 20px;
+          border-radius: 8px;
+          border: none;
+          font-size: 0.9rem;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .edit-btn {
+          background: #111;
+          color: white;
+        }
+
+        .update-btn {
+          background: #28a745;
+          color: white;
+        }
+
+        .orders-btn {
+          background: #17a2b8;
+          color: white;
+        }
+
+        .logout-btn {
+          background: #dc3545;
+          color: white;
+        }
+
+        /* Orders Section */
+        .orders-section {
+          background: white;
+          border-radius: 12px;
+          padding: 20px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+          flex: 1;
+          overflow-y: auto;
+          max-height: ${isMobile ? 'calc(100vh - 300px)' : 'calc(100vh - 200px)'};
+        }
+
+        .orders-header {
+          margin-bottom: 20px;
+        }
+
+        .orders-title {
+          font-size: 1.25rem;
+          font-weight: 700;
+          margin: 0 0 8px 0;
+          color: #111;
+        }
+
+        .orders-count {
+          font-size: 0.9rem;
+          color: #666;
+          margin: 0;
+        }
+
+        /* Filters */
+        .filters-section {
+          display: flex;
+          gap: 16px;
+          margin-bottom: 20px;
+          flex-wrap: wrap;
+        }
+
+        .search-box {
+          flex: 1;
+          min-width: 250px;
+          display: flex;
+          align-items: center;
+          background: #fff;
+          border: 1px solid #e5e5e5;
+          border-radius: 8px;
+          padding: 10px 16px;
+        }
+
+        .search-box input {
+          border: none;
+          outline: none;
+          width: 100%;
+          font-size: 0.9rem;
+          color: #000;
+        }
+
+        .status-filters {
+          display: flex;
+          gap: 8px;
+          overflow-x: auto;
+          padding-bottom: 4px;
+        }
+
+        .status-btn {
+          padding: 8px 16px;
+          border-radius: 20px;
+          border: 1px solid #e5e5e5;
+          background: white;
+          color: #6b7280;
+          font-size: 0.85rem;
+          font-weight: 600;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+
+        .status-btn.active {
+          background: #111;
+          color: white;
+          border-color: #111;
+        }
+
+        /* Loader */
+        .loader-container {
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          padding: 40px;
+        }
+
+        .loader {
+          animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+
+        /* Orders List */
+        .orders-list {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        .order-card {
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          overflow: hidden;
+        }
+
+        .order-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px 20px;
+          border-bottom: 1px solid #f3f4f6;
+          background: #fafafa;
+        }
+
+        .order-info {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .order-id {
+          font-size: 1rem;
+          font-weight: 700;
+          color: #000;
+          display: flex;
+          align-items: center;
+        }
+
+        .order-date {
+          font-size: 0.85rem;
+          color: #666;
+          display: flex;
+          align-items: center;
+        }
+
+        .order-status {
+          display: flex;
+          align-items: center;
+          font-size: 0.9rem;
+        }
+
+        .order-status-text {
+          margin-left: 8px;
+          font-weight: 600;
+        }
+
+        /* Order Items */
+        .order-items {
+          padding: 16px 20px;
+        }
+
+        .item-row {
+          display: flex;
+          gap: 16px;
+          padding: 12px 0;
+          border-bottom: 1px solid #f3f4f6;
+        }
+
+        .item-row:last-child {
+          border-bottom: none;
+        }
+
+        .item-image {
+          width: 60px;
+          height: 60px;
+          object-fit: cover;
+          border-radius: 8px;
+          border: 1px solid #eee;
+        }
+
+        .item-details {
+          flex: 1;
+        }
+
+        .item-name {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: #000;
+          margin: 0 0 4px 0;
+        }
+
+        .item-brand {
+          font-size: 0.85rem;
+          color: #666;
+          margin: 0 0 8px 0;
+        }
+
+        .item-meta {
+          font-size: 0.8rem;
+          color: #999;
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .item-price {
+          text-align: right;
+          min-width: 100px;
+        }
+
+        .final-price {
+          font-size: 1rem;
+          font-weight: 700;
+          color: #10b981;
+        }
+
+        .original-price {
+          font-size: 0.85rem;
+          color: #999;
+          text-decoration: line-through;
+        }
+
+        /* Order Summary */
+        .order-summary {
+          padding: 16px 20px;
+          background: #fafafa;
+          border-top: 1px solid #f3f4f6;
+        }
+
+        .summary-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 12px;
+        }
+
+        .summary-item {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .summary-label {
+          font-size: 0.8rem;
+          color: #666;
+        }
+
+        .summary-value {
+          font-size: 0.95rem;
+          font-weight: 600;
+          color: #000;
+        }
+
+        .summary-item.total {
+          border-top: 1px solid #e5e7eb;
+          padding-top: 12px;
+          margin-top: 8px;
+        }
+
+        .summary-value.total {
+          color: #10b981;
+          font-size: 1.1rem;
+        }
+
+        /* Empty State */
+        .empty-state {
+          text-align: center;
+          padding: 40px 20px;
+          color: #666;
+        }
+
+        /* Bottom Nav */
+        .bottom-nav-mobile {
+          position: fixed;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          background: white;
+          border-top: 1px solid #eee;
+          display: ${isMobile ? 'flex' : 'none'};
+          justify-content: space-around;
+          padding: 10px 0;
+          z-index: 1000;
+        }
+
+        .nav-item {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          color: #9ca3af;
+          font-size: 0.75rem;
+          gap: 4px;
+          cursor: pointer;
+        }
+
+        .nav-item.active {
+          color: #000;
+          font-weight: 600;
+        }
+      `}</style>
+
+      {/* HEADER (ONLY ON LARGE SCREENS) */}
       {!isMobile && (
-        <div style={styles.desktopHeader}>
-          <div style={styles.logo}>AROHA HUB</div>
-          <div style={styles.searchBar}>
-            <FaSearch style={{ marginRight: "8px", color: "#666", fontSize: "14px" }} />
-            <input 
-              type="text" 
-              placeholder="Search luxury items..." 
-              style={styles.searchInput}
-            />
-            <div style={styles.filterIcon}>
-              <FaFilter style={{ fontSize: "14px" }} />
+        <div className="profile-header">
+          <div className="header-left">
+            <div className="logo">AROHA HUB</div>
+          </div>
+          <div className="header-center">
+            <div className="search-bar">
+              <FaSearch className="search-icon" size={14} />
+              <input type="text" placeholder="Search luxury items..." />
+              <FaChevronDown size={12} style={{ color: '#999', marginLeft: '8px' }} />
             </div>
           </div>
-          <div style={styles.navIcons}>
+          <div className="header-right">
             {[
-              { id: "home", label: "Home", icon: "home" },
-              { id: "heart", label: "Wishlist", icon: "heart" },
-              { id: "cart", label: "Cart", icon: "cart" },
-              { id: "user", label: "Profile", icon: "user" }
+              { id: "home", label: "Home" },
+              { id: "heart", label: "Wishlist" },
+              { id: "cart", label: "Cart" },
+              { id: "user", label: "Profile" }
             ].map((tab) => (
-              <div 
-                key={tab.id} 
-                style={styles.navIconItem(activeTab === tab.id)}
+              <div
+                key={tab.id}
+                className={`nav-item-desktop ${activeTab === tab.id ? 'active' : ''}`}
                 onClick={() => handleNavClick(tab.id)}
               >
-                <IconSVG name={tab.icon} />
+                {tab.id === "home" && <FaHome size={20} />}
+                {tab.id === "heart" && <FaHeart size={20} />}
+                {tab.id === "cart" && <FaShoppingCart size={20} />}
+                {tab.id === "user" && <FaUser size={20} />}
                 <span>{tab.label}</span>
               </div>
             ))}
@@ -192,33 +701,29 @@ function Profile() {
       )}
 
       {/* PROFILE CONTENT */}
-      <div style={styles.profileContent}>
-        <h1 style={styles.pageTitle}>Profile</h1>
-        
+      <div className="profile-content">
+        <h2 className="page-title">Profile</h2>
+
         {/* Profile Form */}
-        <div style={styles.profileForm}>
-          {/* Profile Image */}
+        <div className="profile-form">
           {form.photoUrl && (
-            <div style={styles.profileImageContainer}>
-              <img 
-                src={form.photoUrl} 
-                alt="Profile" 
-                style={styles.profileImage}
+            <div className="profile-image-container">
+              <img
+                src={form.photoUrl}
+                alt="Profile"
+                className="profile-image"
                 referrerPolicy="no-referrer"
-                onError={(e) => {
-                  e.target.src = "https://via.placeholder.com/120";
-                }}
+                onError={(e) => { e.target.src = "https://via.placeholder.com/120"; }}
               />
             </div>
           )}
 
-          {/* Profile Fields */}
-          <div style={styles.profileFields}>
+          <div className="profile-fields">
             {Object.keys(form)
               .filter((key) => key !== "password" && key !== "createdAt" && key !== "__v")
               .map((key) => (
-                <div key={key} style={styles.inputGroup}>
-                  <label style={styles.label}>
+                <div key={key} className="input-group">
+                  <label className="label">
                     {key === "_id"
                       ? "User ID"
                       : key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, " $1")}
@@ -226,65 +731,64 @@ function Profile() {
                   <input
                     value={form[key] || ""}
                     onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                    className="input"
+                    disabled={key === "_id" || !isEditing}
                     style={{
-                      ...styles.input,
                       backgroundColor: key === "_id" || !isEditing ? "#f5f5f5" : "#fff",
                       cursor: key === "_id" || !isEditing ? "not-allowed" : "text",
                     }}
-                    disabled={key === "_id" || !isEditing}
                   />
                 </div>
               ))}
           </div>
 
-          {/* Action Buttons */}
-          <div style={styles.actionButtons}>
+          <div className="action-buttons">
             {!isEditing ? (
-              <button onClick={() => setIsEditing(true)} style={styles.editBtn}>
+              <button onClick={() => setIsEditing(true)} className="action-btn edit-btn">
                 Edit
               </button>
             ) : (
-              <button onClick={handleUpdate} style={styles.updateBtn}>
+              <button onClick={handleUpdate} className="action-btn update-btn">
                 Save Changes
               </button>
             )}
-            
-            <button onClick={() => setShowOrders(!showOrders)} style={styles.ordersBtn}>
+
+            <button onClick={toggleShowOrders} className="action-btn orders-btn">
               {showOrders ? "Hide Orders" : "Show Orders"}
             </button>
-            
-            <button onClick={handleLogout} style={styles.logoutBtn}>
+
+            <button onClick={handleLogout} className="action-btn logout-btn">
               Logout
             </button>
           </div>
         </div>
 
-        {/* Orders Section */}
+        {/* ORDERS SECTION (SCROLLABLE) */}
         {showOrders && (
-          <div style={styles.ordersSection}>
-            <div style={styles.pageHeader}>
-              <h2 style={styles.ordersTitle}>My Orders</h2>
-              <p style={styles.pageSubtitle}>{filteredOrders.length} {filteredOrders.length === 1 ? 'order' : 'orders'} found</p>
+          <div className="orders-section">
+            <div className="orders-header">
+              <h3 className="orders-title">My Orders</h3>
+              <p className="orders-count">{filteredOrders.length} orders found</p>
             </div>
 
             {/* Filters */}
-            <div style={styles.filtersSection}>
-              <div style={styles.searchBox}>
-                <FaSearch style={{ color: "#9ca3af", marginRight: "8px" }} />
-                <input 
-                  type="text" 
-                  placeholder="Search by order ID or product name..." 
+            <div className="filters-section">
+              <div className="search-box">
+                <FaSearch style={{ color: "#999", marginRight: "8px" }} />
+                <input
+                  type="text"
+                  placeholder="Search by order ID or product name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  style={styles.searchInputField}
+                  style={{ width: '100%' }}
                 />
               </div>
-              <div style={styles.statusFilters}>
+              <div className="status-filters">
                 {["all", "pending", "shipped", "delivered", "cancelled"].map(status => (
-                  <button 
-                    key={status} 
+                  <button
+                    key={status}
+                    className={`status-btn ${statusFilter === status ? 'active' : ''}`}
                     onClick={() => setStatusFilter(status)}
-                    style={styles.statusBtn(statusFilter === status)}
                   >
                     {status.charAt(0).toUpperCase() + status.slice(1)}
                   </button>
@@ -292,112 +796,82 @@ function Profile() {
               </div>
             </div>
 
-            {/* Orders List */}
-            {filteredOrders.length === 0 ? (
-              <div style={styles.emptyState}>
-                <FaBox size={48} color="#d1d5db" />
+            {/* Loader or Orders List */}
+            {isLoading ? (
+              <div className="loader-container">
+                <FaSpinner className="loader" size={32} color="#10b981" />
+              </div>
+            ) : filteredOrders.length === 0 ? (
+              <div className="empty-state">
+                <FaBox size={48} color="#ddd" style={{ marginBottom: '16px' }} />
                 <h3>No orders found</h3>
                 <p>{searchQuery || statusFilter !== "all" ? "Try adjusting your filters" : "You haven't placed any orders yet"}</p>
               </div>
             ) : (
-              <div style={styles.ordersList}>
+              <div className="orders-list">
                 {filteredOrders.map(order => (
-                  <div key={order._id} style={styles.orderCard}>
+                  <div key={order._id} className="order-card">
                     {/* Order Header */}
-                    <div style={styles.orderHeader}>
-                      <div style={styles.orderInfo}>
-                        <div style={styles.orderId}>
-                          <FaReceipt style={{ marginRight: "8px", color: "#6b7280" }} />
+                    <div className="order-header">
+                      <div className="order-info">
+                        <div className="order-id">
+                          <FaReceipt style={{ marginRight: "8px", color: "#666" }} />
                           Order #{order._id.slice(-8).toUpperCase()}
                         </div>
-                        <div style={styles.orderDate}>
-                          <FaCalendarAlt style={{ marginRight: "6px", color: "#9ca3af" }} />
+                        <div className="order-date">
+                          <FaCalendarAlt style={{ marginRight: "6px", color: "#999" }} />
                           {formatDate(order.createdAt)}
                         </div>
                       </div>
-                      <div style={styles.orderStatus}>
+                      <div className="order-status">
                         {getStatusIcon(order.status)}
-                        <span style={{ color: getStatusColor(order.status), fontWeight: "600", marginLeft: "8px" }}>
+                        <span className="order-status-text" style={{ color: getStatusColor(order.status) }}>
                           {order.status}
                         </span>
                       </div>
                     </div>
 
                     {/* Order Items */}
-                    <div style={styles.orderItems}>
+                    <div className="order-items">
                       {order.items.map((item, idx) => (
-                        <div key={idx} style={styles.itemRow}>
-                          <img 
-                            src={Array.isArray(item.productSnapshot?.images) ? item.productSnapshot.images[0] : item.productId?.images?.[0]} 
-                            alt={item.productSnapshot?.name || item.productId?.name}
-                            style={styles.itemImage}
+                        <div key={idx} className="item-row">
+                          <img
+                            src={item.productId?.images?.[0] || "https://via.placeholder.com/60"}
+                            alt={item.productId?.name || "Product"}
+                            className="item-image"
                           />
-                          <div style={styles.itemDetails}>
-                            <h4 style={styles.itemName}>{item.productSnapshot?.name || item.productId?.name}</h4>
-                            <p style={styles.itemBrand}>{item.productSnapshot?.brand || item.productId?.brand}</p>
-                            <div style={styles.itemMeta}>
+                          <div className="item-details">
+                            <h4 className="item-name">{item.productId?.name || "Product"}</h4>
+                            <p className="item-brand">{item.productId?.brand || "Brand"}</p>
+                            <div className="item-meta">
                               <span>Qty: {item.quantity}</span>
-                              {item.productSnapshot?.size && <span>• Size: {item.productSnapshot.size}</span>}
-                              {item.productSnapshot?.color && <span>• Color: {item.productSnapshot.color}</span>}
                             </div>
                           </div>
-                          <div style={styles.itemPrice}>
-                            <div style={styles.finalPrice}>₹{Math.round(item.lineTotal).toLocaleString()}</div>
-                            {item.originalPrice > item.discountedPrice && (
-                              <div style={styles.originalPrice}>₹{Math.round(item.originalPrice * item.quantity).toLocaleString()}</div>
-                            )}
+                          <div className="item-price">
+                            <div className="final-price">
+                              ₹{Math.round((item.productId?.finalPrice || item.productId?.price) * item.quantity).toLocaleString()}
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
 
                     {/* Order Summary */}
-                    <div style={styles.orderSummary}>
-                      <div style={styles.summaryGrid}>
-                        <div style={styles.summaryItem}>
-                          <span style={styles.summaryLabel}>Subtotal</span>
-                          <span style={styles.summaryValue}>₹{Math.round(order.subtotalAmount).toLocaleString()}</span>
+                    <div className="order-summary">
+                      <div className="summary-grid">
+                        <div className="summary-item">
+                          <span className="summary-label">Subtotal</span>
+                          <span className="summary-value">₹{Math.round(order.totalAmount - (order.deliveryCharge || 0)).toLocaleString()}</span>
                         </div>
-                        {order.couponCode && (
-                          <div style={styles.summaryItem}>
-                            <span style={styles.summaryLabel}>Coupon ({order.couponCode})</span>
-                            <span style={{ ...styles.summaryValue, color: "#10b981" }}>-₹{Math.round(order.discountAmount).toLocaleString()}</span>
+                        {order.deliveryCharge > 0 && (
+                          <div className="summary-item">
+                            <span className="summary-label">Delivery</span>
+                            <span className="summary-value">₹{order.deliveryCharge.toLocaleString()}</span>
                           </div>
                         )}
-                        <div style={styles.summaryItem}>
-                          <span style={styles.summaryLabel}>Delivery</span>
-                          <span style={styles.summaryValue}>{order.deliveryCharge === 0 ? "Free" : `₹${order.deliveryCharge}`}</span>
-                        </div>
-                        <div style={{ ...styles.summaryItem, borderTop: "1px solid #e5e7eb", paddingTop: "12px", marginTop: "8px" }}>
-                          <span style={{ ...styles.summaryLabel, fontWeight: "700", color: "#000" }}>Total Paid</span>
-                          <span style={{ ...styles.summaryValue, fontWeight: "700", color: "#10b981", fontSize: "18px" }}>
-                            ₹{Math.round(order.totalAmount).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Delivery Info */}
-                    <div style={styles.deliverySection}>
-                      <div style={styles.deliveryInfo}>
-                        <FaUser style={{ color: "#6b7280", marginRight: "8px" }} />
-                        <div>
-                          <div style={styles.deliveryLabel}>Customer</div>
-                          <div style={styles.deliveryValue}>{order.customerName}</div>
-                        </div>
-                      </div>
-                      <div style={styles.deliveryInfo}>
-                        <FaPhone style={{ color: "#6b7280", marginRight: "8px" }} />
-                        <div>
-                          <div style={styles.deliveryLabel}>Mobile</div>
-                          <div style={styles.deliveryValue}>{order.customerMobile}</div>
-                        </div>
-                      </div>
-                      <div style={styles.deliveryInfo}>
-                        <FaMapMarkerAlt style={{ color: "#6b7280", marginRight: "8px" }} />
-                        <div>
-                          <div style={styles.deliveryLabel}>Address</div>
-                          <div style={styles.deliveryValue}>{order.deliveryAddress}</div>
+                        <div className="summary-item total">
+                          <span className="summary-label">Total Paid</span>
+                          <span className="summary-value total">₹{Math.round(order.totalAmount).toLocaleString()}</span>
                         </div>
                       </div>
                     </div>
@@ -409,471 +883,29 @@ function Profile() {
         )}
       </div>
 
-      {/* BOTTOM NAVIGATION - Mobile only */}
-      {isMobile && (
-        <div style={styles.bottomNav}>
-          {[
-            { id: "home", label: "Home" }, 
-            { id: "heart", label: "Wishlist" }, 
-            { id: "cart", label: "Cart" }, 
-            { id: "user", label: "Profile" }
-          ].map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <div 
-                key={tab.id} 
-                style={styles.navPill(isActive)} 
-                onClick={() => handleNavClick(tab.id)}
-              >
-                <IconSVG name={tab.id} />
-                {isActive && <span style={styles.navLabel}>{tab.label}</span>}
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* MOBILE BOTTOM NAV (ONLY ON SMALL SCREENS) */}
+      <div className="bottom-nav-mobile">
+        {[
+          { id: "home", label: "Home" },
+          { id: "heart", label: "Wishlist" },
+          { id: "cart", label: "Cart" },
+          { id: "user", label: "Profile" }
+        ].map((tab) => (
+          <div
+            key={tab.id}
+            className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
+            onClick={() => handleNavClick(tab.id)}
+          >
+            {tab.id === "home" && <FaHome size={20} />}
+            {tab.id === "heart" && <FaHeart size={20} />}
+            {tab.id === "cart" && <FaShoppingCart size={20} />}
+            {tab.id === "user" && <FaUser size={20} />}
+            <span>{tab.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
-
-const styles = {
-  pageContainer: {
-    maxWidth: "1200px",
-    margin: "0 auto",
-    padding: "24px",
-    paddingBottom: "100px",
-    fontFamily: "'Inter', 'Segoe UI', sans-serif",
-    backgroundColor: "#fafafa",
-    minHeight: "100vh"
-  },
-
-  // DESKTOP HEADER
-  desktopHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "12px 24px",
-    background: "#fff",
-    borderBottom: "1px solid #e5e5e5",
-    marginBottom: "24px",
-    height: "64px"
-  },
-  logo: {
-    fontSize: "22px",
-    fontWeight: "800",
-    color: "#000",
-    letterSpacing: "-0.5px"
-  },
-  searchBar: {
-    flex: 1,
-    maxWidth: "500px",
-    margin: "0 32px",
-    display: "flex",
-    alignItems: "center",
-    background: "#f5f5f5",
-    borderRadius: "24px",
-    padding: "10px 18px",
-    border: "1px solid #e5e5e5"
-  },
-  searchInput: {
-    flex: 1,
-    border: "none",
-    background: "transparent",
-    outline: "none",
-    fontSize: "14px",
-    color: "#333",
-    marginLeft: "8px"
-  },
-  filterIcon: {
-    width: "32px",
-    height: "32px",
-    borderRadius: "50%",
-    background: "#fff",
-    border: "1px solid #ddd",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    cursor: "pointer",
-    color: "#666"
-  },
-  navIcons: {
-    display: "flex",
-    gap: "24px"
-  },
-  navIconItem: (isActive) => ({
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: "4px",
-    cursor: "pointer",
-    color: isActive ? "#000" : "#666",
-    transition: "color 0.3s ease",
-    fontSize: "12px",
-    fontWeight: "500"
-  }),
-
-  // PROFILE CONTENT
-  profileContent: {
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "24px",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
-  },
-  pageTitle: {
-    fontSize: "28px",
-    fontWeight: "800",
-    color: "#000",
-    margin: "0 0 24px 0"
-  },
-  profileForm: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "24px"
-  },
-  profileImageContainer: {
-    display: "flex",
-    justifyContent: "center"
-  },
-  profileImage: {
-    width: "120px",
-    height: "120px",
-    borderRadius: "50%",
-    objectFit: "cover",
-    border: "3px solid #000"
-  },
-  profileFields: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-    gap: "20px"
-  },
-  inputGroup: {
-    display: "flex",
-    flexDirection: "column"
-  },
-  label: {
-    marginBottom: "6px",
-    fontSize: "14px",
-    fontWeight: "500",
-    color: "#333"
-  },
-  input: {
-    padding: "10px",
-    borderRadius: "8px",
-    border: "1px solid #ccc",
-    fontSize: "14px",
-    outline: "none"
-  },
-  actionButtons: {
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "12px",
-    flexWrap: "wrap"
-  },
-  editBtn: {
-    padding: "10px 20px",
-    background: "#000",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    fontSize: "14px"
-  },
-  updateBtn: {
-    padding: "10px 20px",
-    background: "#28a745",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    fontSize: "14px"
-  },
-  ordersBtn: {
-    padding: "10px 20px",
-    background: "#17a2b8",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    fontSize: "14px"
-  },
-  logoutBtn: {
-    padding: "10px 20px",
-    background: "#dc3545",
-    color: "#fff",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "600",
-    fontSize: "14px"
-  },
-
-  // ORDERS SECTION
-  ordersSection: {
-    marginTop: "32px",
-    background: "#fff",
-    borderRadius: "12px",
-    padding: "24px",
-    boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
-  },
-  ordersTitle: {
-    fontSize: "24px",
-    fontWeight: "800",
-    color: "#000",
-    margin: "0 0 8px 0"
-  },
-  pageSubtitle: {
-    fontSize: "14px",
-    color: "#6b7280",
-    margin: 0
-  },
-  pageHeader: {
-    marginBottom: "24px"
-  },
-
-  // FILTERS
-  filtersSection: {
-    display: "flex",
-    gap: "16px",
-    marginBottom: "24px",
-    flexWrap: "wrap"
-  },
-  searchBox: {
-    flex: 1,
-    minWidth: "300px",
-    display: "flex",
-    alignItems: "center",
-    background: "#fff",
-    border: "1px solid #e5e5e5",
-    borderRadius: "8px",
-    padding: "10px 16px"
-  },
-  searchInputField: {
-    flex: 1,
-    border: "none",
-    outline: "none",
-    fontSize: "14px",
-    color: "#000"
-  },
-  statusFilters: {
-    display: "flex",
-    gap: "8px",
-    overflowX: "auto",
-    paddingBottom: "4px"
-  },
-  statusBtn: (isActive) => ({
-    padding: "8px 16px",
-    borderRadius: "20px",
-    border: "1px solid #e5e5e5",
-    background: isActive ? "#000" : "#fff",
-    color: isActive ? "#fff" : "#6b7280",
-    fontSize: "13px",
-    fontWeight: "600",
-    cursor: "pointer",
-    whiteSpace: "nowrap"
-  }),
-
-  // ORDERS LIST
-  ordersList: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "16px"
-  },
-  orderCard: {
-    background: "#fff",
-    borderRadius: "12px",
-    border: "1px solid #e5e5e5",
-    overflow: "hidden"
-  },
-  orderHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: "16px 20px",
-    borderBottom: "1px solid #f3f4f6",
-    background: "#fafafa"
-  },
-  orderInfo: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px"
-  },
-  orderId: {
-    fontSize: "15px",
-    fontWeight: "700",
-    color: "#000",
-    display: "flex",
-    alignItems: "center"
-  },
-  orderDate: {
-    fontSize: "13px",
-    color: "#6b7280",
-    display: "flex",
-    alignItems: "center"
-  },
-  orderStatus: {
-    display: "flex",
-    alignItems: "center",
-    fontSize: "14px"
-  },
-
-  // ORDER ITEMS
-  orderItems: {
-    padding: "16px 20px"
-  },
-  itemRow: {
-    display: "flex",
-    gap: "16px",
-    padding: "12px 0",
-    borderBottom: "1px solid #f3f4f6"
-  },
-  itemImage: {
-    width: "80px",
-    height: "80px",
-    objectFit: "cover",
-    borderRadius: "8px",
-    border: "1px solid #e5e5e5"
-  },
-  itemDetails: {
-    flex: 1
-  },
-  itemName: {
-    fontSize: "15px",
-    fontWeight: "600",
-    color: "#000",
-    margin: "0 0 4px 0"
-  },
-  itemBrand: {
-    fontSize: "13px",
-    color: "#6b7280",
-    margin: "0 0 8px 0"
-  },
-  itemMeta: {
-    fontSize: "12px",
-    color: "#9ca3af",
-    display: "flex",
-    gap: "8px",
-    flexWrap: "wrap"
-  },
-  itemPrice: {
-    textAlign: "right",
-    minWidth: "120px"
-  },
-  finalPrice: {
-    fontSize: "16px",
-    fontWeight: "700",
-    color: "#10b981"
-  },
-  originalPrice: {
-    fontSize: "13px",
-    color: "#9ca3af",
-    textDecoration: "line-through"
-  },
-
-  // ORDER SUMMARY
-  orderSummary: {
-    padding: "16px 20px",
-    background: "#fafafa",
-    borderTop: "1px solid #f3f4f6"
-  },
-  summaryGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-    gap: "12px"
-  },
-  summaryItem: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px"
-  },
-  summaryLabel: {
-    fontSize: "12px",
-    color: "#6b7280"
-  },
-  summaryValue: {
-    fontSize: "15px",
-    fontWeight: "600",
-    color: "#000"
-  },
-
-  // DELIVERY SECTION
-  deliverySection: {
-    padding: "16px 20px",
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-    gap: "16px",
-    borderTop: "1px solid #f3f4f6"
-  },
-  deliveryInfo: {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: "12px"
-  },
-  deliveryLabel: {
-    fontSize: "11px",
-    color: "#9ca3af",
-    textTransform: "uppercase",
-    fontWeight: "600"
-  },
-  deliveryValue: {
-    fontSize: "14px",
-    color: "#000",
-    fontWeight: "500"
-  },
-
-  // EMPTY STATE
-  emptyState: {
-    textAlign: "center",
-    padding: "80px 20px",
-    background: "#fff",
-    borderRadius: "12px",
-    border: "1px solid #e5e5e5"
-  },
-
-  // LOGIN PROMPT
-  loginPrompt: {
-    textAlign: "center",
-    padding: "60px",
-    color: "#6b7280",
-    backgroundColor: "#fff",
-    minHeight: "100vh"
-  },
-
-  // BOTTOM NAV
-  bottomNav: {
-    position: "fixed",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: "65px",
-    background: "#fff",
-    display: "flex",
-    justifyContent: "space-around",
-    alignItems: "center",
-    boxShadow: "0 -2px 10px rgba(0,0,0,0.05)",
-    zIndex: 1000,
-    borderTop: "1px solid #f0f0f0",
-  },
-  navPill: (isActive) => ({
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "3px",
-    padding: isActive ? "8px 18px" : "10px 12px",
-    background: isActive ? "#000" : "transparent",
-    color: isActive ? "#fff" : "#999",
-    borderRadius: "20px",
-    cursor: "pointer",
-    transition: "all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-    minWidth: isActive ? "85px" : "50px",
-  }),
-  navLabel: {
-    fontSize: "11px",
-    fontWeight: "600",
-  },
-};
 
 export default Profile;
