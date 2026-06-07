@@ -127,12 +127,8 @@ const LuxuryLoader = ({ message }) => (
 function MainDashboard() {
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-<<<<<<< HEAD
   const [loadingState, setLoadingState] = useState("Initializing Aroha Hub...");
-=======
-  const [loadingState, setLoadingState] = useState(null);
   const [initialLoad, setInitialLoad] = useState(true);
->>>>>>> f3b2c4e (Updated application)
 
   // NAVIGATION STATE
   const [activeTab, setActiveTab] = useState("home");
@@ -180,13 +176,9 @@ function MainDashboard() {
 
     const fetchData = async () => {
       try {
-<<<<<<< HEAD
-        setLoadingState("Curating your exclusive collection...");
-=======
         if (initialLoad) {
           setLoadingState("Curating your exclusive collection...");
         }
->>>>>>> f3b2c4e (Updated application)
 
         const settingsRes = await fetch("https://aroha.onrender.com/settings");
         const settingsData = await settingsRes.json();
@@ -751,7 +743,15 @@ function MainDashboard() {
                const isActive = activeTab === tab.id;
                return (
                  <div key={tab.id} style={styles.navPill(isActive)} onClick={() => handleNavClick(tab.id)}>
-                   <IconSVG name={tab.id} />
+                   <IconSVG
+                     name={
+                       tab.id === "wishlist"
+                         ? "heart"
+                         : tab.id === "profile"
+                         ? "user"
+                         : tab.id
+                     }
+                   />
                    <span style={{...styles.navLabel, display: isActive ? "block" : "none"}}>{tab.label}</span>
                  </div>
                );
@@ -771,23 +771,27 @@ function MainDashboard() {
         <div style={styles.mobileTopSection}>
           <div style={styles.searchRow}>
             <div style={styles.searchBox}>
-              <span style={{ fontSize: "18px", color: "#666" }}><svg
-  width="18"
-  height="18"
-  viewBox="0 0 24 24"
-  fill="none"
-  stroke="#000"
-  strokeWidth="3"
-  strokeLinecap="round"
-  strokeLinejoin="round"
-  style={{ verticalAlign: "middle" }}
->
-  <circle cx="11" cy="11" r="7" />
-  <line x1="21" y1="21" x2="16.5" y2="16.5" />
-</svg></span>
+              <span style={{ fontSize: "18px", color: "#666" }}>
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="#000"
+                  strokeWidth="3"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  style={{ verticalAlign: "middle" }}
+                >
+                  <circle cx="11" cy="11" r="7" />
+                  <line x1="21" y1="21" x2="16.5" y2="16.5" />
+                </svg>
+              </span>
               <input type="text" placeholder="Explore Luxury..." style={styles.searchInput} />
             </div>
-            <div style={styles.filterBtnMobile} onClick={() => setShowFilterModal(true)}><IconSVG name="filter" /></div>
+            <div style={styles.filterBtnMobile} onClick={() => setShowFilterModal(true)}>
+              <IconSVG name="filter" />
+            </div>
           </div>
           <div style={styles.categoryScroll}>
             {dynamicCategories.map(cat => (
@@ -848,7 +852,6 @@ function MainDashboard() {
                      <IconSVG name="heart" />
                   </div>
                 </div>
-
               </div>
             </div>
           ))
@@ -861,11 +864,22 @@ function MainDashboard() {
         <div style={styles.modalSheet} onClick={e => e.stopPropagation()}>
           <div style={styles.modalTitle}>Filter Products</div>
 
-          <div style={styles.filterSection}>
+     <div style={styles.filterSection}>
             <span style={styles.filterLabel}>Sort By</span>
             <div style={styles.optionGrid}>
-              {[{ val: "latest", label: "Latest" }, { val: "low-high", label: "Price: Low to High" }, { val: "high-low", label: "Price: High to Low" }, { val: "most-ordered", label: "Most Ordered" }].map(opt => (
-                <button key={opt.val} style={styles.optionBtn(filters.sort === opt.val)} onClick={() => setFilters({...filters, sort: opt.val})}>{opt.label}</button>
+              {[
+                { val: "latest", label: "Latest" },
+                { val: "low-high", label: "Price: Low to High" },
+                { val: "high-low", label: "Price: High to Low" },
+                { val: "most-ordered", label: "Most Ordered" }
+              ].map(opt => (
+                <button
+                  key={opt.val}
+                  style={styles.optionBtn(filters.sort === opt.val)}
+                  onClick={() => setFilters({...filters, sort: opt.val})}
+                >
+                  {opt.label}
+                </button>
               ))}
             </div>
           </div>
@@ -874,7 +888,11 @@ function MainDashboard() {
             <span style={styles.filterLabel}>Minimum Rating</span>
             <div style={styles.optionGrid}>
               {["all", "5", "4", "3", "2", "1"].map(opt => (
-                <button key={opt} style={styles.optionBtn(filters.rating === opt)} onClick={() => setFilters({...filters, rating: opt})}>
+                <button
+                  key={opt}
+                  style={styles.optionBtn(filters.rating === opt)}
+                  onClick={() => setFilters({...filters, rating: opt})}
+                >
                   {opt === "all" ? "Any" : `${opt} Stars`}
                 </button>
               ))}
@@ -885,40 +903,53 @@ function MainDashboard() {
             <span style={styles.filterLabel}>Collection Type</span>
             <div style={styles.optionGrid}>
               {["all", "signature", "premium", "luxury"].map(opt => (
-                <button key={opt} style={styles.optionBtn(filters.collection === opt)} onClick={() => setFilters({...filters, collection: opt})}>
+                <button
+                  key={opt}
+                  style={styles.optionBtn(filters.collection === opt)}
+                  onClick={() => setFilters({...filters, collection: opt})}
+                >
                   {opt.charAt(0).toUpperCase() + opt.slice(1)}
                 </button>
               ))}
             </div>
           </div>
 
-          <button style={styles.applyBtn} onClick={() => setShowFilterModal(false)}>Apply Filters</button>
+          <button
+            style={styles.applyBtn}
+            onClick={() => setShowFilterModal(false)}
+          >
+            Apply Filters
+          </button>
         </div>
       </div>
 
       {isMobile && (
         <div style={styles.bottomNav}>
-          {[{ id: "home", label: "Home" },{ id: "wishlist", label: "Wishlist" },{ id: "cart", label: "Cart" },
-{ id: "profile", label: "Profile" },  ].map((tab) => {
+          {[
+            { id: "home", label: "Home" },
+            { id: "wishlist", label: "Wishlist" },
+            { id: "cart", label: "Cart" },
+            { id: "profile", label: "Profile" }
+          ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
-              <div key={tab.id} style={styles.navPill(isActive)} onClick={() => handleNavClick(tab.id)}>
-               <IconSVG
-  name={
-    tab.id === "wishlist"
-      ? "heart"
-      : tab.id === "profile"
-      ? "user"
-      : tab.id
-  }
-/>
-<<<<<<< HEAD
-                <span style={{...styles.navLabel, display: isActive ? "block" : "none"}}>{tab.label}</span>
-=======
+              <div
+                key={tab.id}
+                style={styles.navPill(isActive)}
+                onClick={() => handleNavClick(tab.id)}
+              >
+                <IconSVG
+                  name={
+                    tab.id === "wishlist"
+                      ? "heart"
+                      : tab.id === "profile"
+                      ? "user"
+                      : tab.id
+                  }
+                />
                 <span style={{...styles.navLabel, display: isActive ? "block" : "none"}}>
                   {tab.label}
                 </span>
->>>>>>> f3b2c4e (Updated application)
               </div>
             );
           })}
