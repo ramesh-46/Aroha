@@ -127,7 +127,12 @@ const LuxuryLoader = ({ message }) => (
 function MainDashboard() {
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+<<<<<<< HEAD
   const [loadingState, setLoadingState] = useState("Initializing Aroha Hub...");
+=======
+  const [loadingState, setLoadingState] = useState(null);
+  const [initialLoad, setInitialLoad] = useState(true);
+>>>>>>> f3b2c4e (Updated application)
 
   // NAVIGATION STATE
   const [activeTab, setActiveTab] = useState("home");
@@ -175,7 +180,13 @@ function MainDashboard() {
 
     const fetchData = async () => {
       try {
+<<<<<<< HEAD
         setLoadingState("Curating your exclusive collection...");
+=======
+        if (initialLoad) {
+          setLoadingState("Curating your exclusive collection...");
+        }
+>>>>>>> f3b2c4e (Updated application)
 
         const settingsRes = await fetch("https://aroha.onrender.com/settings");
         const settingsData = await settingsRes.json();
@@ -189,7 +200,9 @@ function MainDashboard() {
           setSaleData(settingsData.settings);
         }
 
-        setLoadingState("Polishing the diamonds...");
+        if (initialLoad) {
+          setLoadingState("Polishing the diamonds...");
+        }
 
         const productsRes = await fetch("https://aroha.onrender.com/products");
         const productsData = await productsRes.json();
@@ -239,6 +252,7 @@ function MainDashboard() {
 
         setProducts(mappedProducts);
         setLoadingState(null);
+        setInitialLoad(false);
 
         if (productId) {
           const prod = mappedProducts.find(p => p.id === productId);
@@ -258,6 +272,7 @@ function MainDashboard() {
       } catch (error) {
         console.error("Failed to fetch ", error);
         setLoadingState(null);
+        setInitialLoad(false);
       }
     };
 
@@ -505,7 +520,7 @@ function MainDashboard() {
     placeholderPage: { padding: "40px 20px", textAlign: "center", color: "#666" }
   };
 
-  if (loadingState) return <LuxuryLoader message={loadingState} />;
+  if (initialLoad && loadingState) return <LuxuryLoader message={loadingState} />;
 
   // --- RENDER PRODUCT DETAILS VIEW ---
   if (currentView === "details" && selectedProduct) {
@@ -897,7 +912,13 @@ function MainDashboard() {
       : tab.id
   }
 />
+<<<<<<< HEAD
                 <span style={{...styles.navLabel, display: isActive ? "block" : "none"}}>{tab.label}</span>
+=======
+                <span style={{...styles.navLabel, display: isActive ? "block" : "none"}}>
+                  {tab.label}
+                </span>
+>>>>>>> f3b2c4e (Updated application)
               </div>
             );
           })}

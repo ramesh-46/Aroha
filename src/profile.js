@@ -908,4 +908,8 @@ function Profile() {
   );
 }
 
+<<<<<<< HEAD
 export default Profile;
+=======
+export default Profile;
+>>>>>>> f3b2c4e (Updated application)

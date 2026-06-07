@@ -866,4 +866,8 @@ function Cart() {
   );
 }
 
+<<<<<<< HEAD
 export default Cart;
+=======
+export default Cart;
+>>>>>>> f3b2c4e (Updated application)

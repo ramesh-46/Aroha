@@ -486,4 +486,8 @@ const Wishlist = () => {
   );
 };
 
+<<<<<<< HEAD
 export default Wishlist;
+=======
+export default Wishlist;
+>>>>>>> f3b2c4e (Updated application)

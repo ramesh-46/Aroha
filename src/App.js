@@ -29,6 +29,10 @@ import SupportCenter from "./SupportCenter";
 import MainDashboard from "./maindashboard";
 import MainHeader from "./mainheader";
 import Wishlist from "./Wishlist";
+<<<<<<< HEAD
+=======
+
+>>>>>>> f3b2c4e (Updated application)
 
 function App() {
   return (
@@ -70,7 +74,7 @@ function App() {
 <Route path="/MainHeader" element={<MainHeader />} />
  <Route path="/wishlist" element={<Wishlist />} />
 
-
+ <Route path="/wishlist" element={<Wishlist />} />
 
 
 
