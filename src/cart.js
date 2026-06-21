@@ -247,7 +247,7 @@ function Cart() {
       discountedPrice: i.productId.finalPrice || i.productId.price,
     }));
 
-    const response = await axios.post("http://localhost:5000/payment/create-session", {
+    const response = await axios.post("https://aroha.onrender.com/payment/create-session", {
       userId: user._id,
       cartItems: formattedItems,
       customerDetails: {

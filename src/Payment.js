@@ -238,7 +238,7 @@ const PaymentPage = () => {
       formData.append("ocrData", JSON.stringify(ocrData || {}));
       formData.append("screenshot", file);
 
-      const response = await axios.post("http://localhost:5000/payment/verify-payment", formData, {
+      const response = await axios.post("https://aroha.onrender.com/payment/verify-payment", formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
