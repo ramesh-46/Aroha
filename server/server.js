@@ -16,7 +16,7 @@ const sellerAuthe = require("./routes/sellerAuth");
 const couponRoutes = require("./routes/coupons");
 const settingsRoutes = require("./routes/settings");
 const supportRoutes = require("./routes/support");
-
+const paymentRoutes = require("./routes/payment"); // Import the payment routes
 const app = express();
 
 // --------------------
@@ -78,7 +78,8 @@ app.use("/coupons", couponRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/support", supportRoutes);
 
-
+app.use("/payment", paymentRoutes); // Use the payment routes
+console.log("✅ paymentRoutes imported");
 // --------------------
 // Default route
 // --------------------

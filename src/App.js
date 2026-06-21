@@ -25,7 +25,7 @@ import SellerProtectedRoute from "./SellerProtectedRoute";
 import StoreControlPanel from "./StoreControlPanel";
 import UserManagement from "./UserManagement";
 import SupportCenter from "./SupportCenter";
-
+import PaymentPage from "./Payment";
 import MainDashboard from "./maindashboard";
 import MainHeader from "./mainheader";
 import Wishlist from "./Wishlist";
@@ -41,11 +41,11 @@ function App() {
           <Route path="/About" element={<About/>} />
          <Route path="/ResetPassword" element={<ResetPassword/>} />
  <Route path="/Termsandconditions" element={<Terms/>} />
-
+<Route path="/Payment" element={<PaymentPage/>} />
 
 <Route path="/PromotionPage" element={<SellerProtectedRoute><PromotionPage/></SellerProtectedRoute>} />
 
-
+ 
 
 <Route path="/SellerAuth" element={<SellerAuth/>} />
 <Route path="/product/:productId" element={<Dashboard />} />

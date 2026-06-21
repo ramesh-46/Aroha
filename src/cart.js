@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import Swal from "./sweetalertConfig";
+import Swal from "./sweetalertConfig"; // Ensure this path matches your project structure
 import { FaTrashAlt, FaTruck, FaShoppingBag, FaSearch, FaFilter, FaMinus, FaPlus, FaChevronDown } from "react-icons/fa";
 
 // --- ICONS COMPONENT ---
@@ -221,6 +221,66 @@ function Cart() {
       setAppliedCoupon(null);
     }
   };
+
+ const handleProceedToCheckout = async () => {
+  const itemsToOrder = cart.items.filter(item => selectedItems.includes(item.productId._id));
+  if (!itemsToOrder.length) {
+    return Swal.fire("Error", "Select items to checkout", "error");
+  }
+
+  // If delivery details are missing, show the modal
+  if (!customerDetails.name || !customerDetails.mobile || !customerDetails.address) {
+    setShowOrderModal(true);
+    return;
+  }
+
+  if (checkoutSettings && checkoutSettings.checkoutEnabled === false) {
+    return Swal.fire("Checkout Disabled", "Checkout is temporarily disabled by admin.", "warning");
+  }
+
+  try {
+    const formattedItems = itemsToOrder.map(i => ({
+      productId: i.productId._id,
+      sku: i.productId.sku,
+      quantity: i.quantity,
+      originalPrice: i.productId.price,
+      discountedPrice: i.productId.finalPrice || i.productId.price,
+    }));
+
+    const response = await axios.post("http://localhost:5000/payment/create-session", {
+      userId: user._id,
+      cartItems: formattedItems,
+      customerDetails: {
+        name: customerDetails.name,
+        mobile: customerDetails.mobile,
+        address: customerDetails.address,
+      },
+      couponCode: appliedCoupon ? appliedCoupon.code : "",
+      discountAmount: discountAmount,
+      deliveryCharge: deliveryCharge,
+      totalAmount: finalAmountToPay,
+    });
+
+    if (response.data.success) {
+      navigate("/payment", {
+        state: {
+          orderId: response.data.orderId,
+          upiUrl: response.data.upiUrl,
+          upiId: response.data.upiId,
+          amount: response.data.amount,
+          customerDetails: response.data.customerDetails,
+          orderItems: response.data.orderItems,
+        },
+      });
+    } else {
+      Swal.fire("Error", response.data.error || "Failed to create payment session", "error");
+    }
+  } catch (err) {
+    console.error("Checkout error:", err);
+    const errorMessage = err.response?.data?.error || "Failed to create payment session";
+    Swal.fire("Error", errorMessage, "error");
+  }
+};
 
   const handlePlaceOrder = async () => {
     const itemsToOrder = cart.items.filter(item => selectedItems.includes(item.productId._id));
@@ -678,7 +738,7 @@ function Cart() {
                       <h4 className="item-name">{item.productId.name}</h4>
                       <p className="item-brand">{item.productId.brand}</p>
                       <div className="item-price-box">
-                        <span className="price-current">₹{unitPrice.toLocaleString()}</span>
+                        <span className="price-current">{unitPrice.toLocaleString()}</span>
                         {item.productId.price > unitPrice && (
                           <span className="price-old">₹{item.productId.price.toLocaleString()}</span>
                         )}
@@ -772,7 +832,7 @@ function Cart() {
 
               <button
                 className="checkout-btn"
-                onClick={() => setShowOrderModal(true)}
+                onClick={handleProceedToCheckout}
                 disabled={checkoutSettings?.checkoutEnabled === false}
               >
                 {checkoutSettings?.checkoutEnabled === false ? "Checkout Disabled" : "Proceed to Checkout"}
@@ -810,7 +870,7 @@ function Cart() {
         </div>
       )}
 
-      {/* ORDER MODAL */}
+      {/* ORDER MODAL (Delivery Details) */}
       {showOrderModal && (
         <div className="modal-overlay">
           <div className="modal-content">
@@ -837,7 +897,7 @@ function Cart() {
               rows="3"
             />
             <div className="modal-actions">
-              <button className="btn-confirm" onClick={handlePlaceOrder}>Confirm Order</button>
+              <button className="btn-confirm" onClick={handleProceedToCheckout}>Proceed to Payment</button>
               <button className="btn-cancel" onClick={() => setShowOrderModal(false)}>Cancel</button>
             </div>
           </div>
@@ -865,6 +925,5 @@ function Cart() {
     </div>
   );
 }
-
 
 export default Cart;
