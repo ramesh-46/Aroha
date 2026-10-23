@@ -409,7 +409,7 @@ const handleToggleWishlist = async () => {
   }
 
   // Use the MongoDB product ID, not a display-only ID.
-  const productId = selectedProduct._id;
+  const productId = selectedProduct.id;
 
   if (!productId) {
     alert("This product does not have a valid database ID.");
