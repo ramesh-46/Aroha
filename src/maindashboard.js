@@ -396,9 +396,46 @@ function MainDashboard() {
     }
   };
 
-  const handleToggleWishlist = () => {
-    setIsWishlisted(!isWishlisted);
-  };
+
+const handleToggleWishlist = async () => {
+  if (!selectedProduct) return;
+
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const userId = user?._id || localStorage.getItem("userId");
+
+  if (!userId) {
+    alert("Please log in to save items to your wishlist.");
+    return;
+  }
+
+  // Use the MongoDB product ID, not a display-only ID.
+  const productId = selectedProduct._id;
+
+  if (!productId) {
+    alert("This product does not have a valid database ID.");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `https://aroha.onrender.com/wishlist/${userId}/${productId}`,
+      { method: "POST" }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || "Could not save wishlist item");
+    }
+
+    setIsWishlisted(true);
+    alert("Added to your wishlist!");
+  } catch (error) {
+    console.error("Wishlist error:", error);
+    alert(error.message || "Could not save the item. Please try again.");
+  }
+};
+
 
   // UPDATED NAVIGATION HANDLER
  const handleNavClick = (tabId) => {
