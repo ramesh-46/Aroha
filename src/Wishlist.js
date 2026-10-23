@@ -1,6 +1,16 @@
+
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaHeart, FaHome, FaShoppingCart, FaUser, FaTrashAlt, FaStar, FaSearch, FaChevronDown } from "react-icons/fa";
+import {
+  FaHeart,
+  FaHome,
+  FaShoppingCart,
+  FaUser,
+  FaTrashAlt,
+  FaStar,
+  FaSearch,
+  FaChevronDown
+} from "react-icons/fa";
 import axios from "axios";
 
 const Wishlist = () => {
@@ -8,34 +18,57 @@ const Wishlist = () => {
   const [wishlistItems, setWishlistItems] = useState([]);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [activeTab, setActiveTab] = useState("heart");
-  const user = JSON.parse(localStorage.getItem("user"));
+
+  const [user] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem("user") || "null");
+    } catch (error) {
+      console.error("Could not read saved user:", error);
+      return null;
+    }
+  });
+
+  const userId = user?._id;
 
   // --- Fetch Wishlist Items ---
   useEffect(() => {
     const fetchWishlist = async () => {
-      if (!user) return;
+      if (!userId) {
+        setWishlistItems([]);
+        return;
+      }
+
       try {
-        const res = await axios.get(`https://aroha.onrender.com/wishlist/${user._id}`);
-        setWishlistItems(res.data.items || []);
+        const res = await axios.get(
+          `https://aroha.onrender.com/wishlist/${userId}`
+        );
+
+        setWishlistItems(
+          Array.isArray(res.data.items) ? res.data.items : []
+        );
       } catch (err) {
         console.error("Fetch Wishlist Error:", err);
       }
     };
+
     fetchWishlist();
-  }, [user]);
+  }, [userId]);
 
   // --- Handle Resize ---
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
     };
+
     window.addEventListener("resize", handleResize);
+
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   // --- Navigation Handler ---
   const handleNavClick = (tabId) => {
     setActiveTab(tabId);
+
     if (tabId === "home") {
       navigate("/maindashboard");
     } else if (tabId === "heart") {
@@ -49,56 +82,53 @@ const Wishlist = () => {
 
   // --- Remove from Wishlist ---
   const removeFromWishlist = async (productId) => {
-    if (!user) return;
+    if (!userId || !productId) {
+      alert("Please log in to manage your wishlist.");
+      return;
+    }
+
     try {
-      await axios.delete(`https://aroha.onrender.com/wishlist/remove/${user._id}/${productId}`);
-      setWishlistItems(wishlistItems.filter(item => item.productId._id !== productId));
+      await axios.delete(
+        `https://aroha.onrender.com/wishlist/${userId}/${productId}`
+      );
+
+      setWishlistItems((items) =>
+        items.filter((product) => product._id !== productId)
+      );
     } catch (err) {
       console.error("Remove from Wishlist Error:", err);
+      alert("Could not remove this item. Please try again.");
     }
   };
 
   // --- Add to Cart ---
   const addToCart = async (productId) => {
-    if (!user) return;
+    if (!userId) {
+      alert("Please log in to add items to your cart.");
+      return;
+    }
+
+    if (!productId) {
+      alert("This product does not have a valid ID.");
+      return;
+    }
+
     try {
       await axios.post("https://aroha.onrender.com/cart", {
-        userId: user._id,
+        userId,
         productId,
         quantity: 1
       });
+
       navigate("/cart");
     } catch (err) {
       console.error("Add to Cart Error:", err);
+      alert("Could not add this item to your cart. Please try again.");
     }
   };
 
-  // --- Mock Data (Fallback) ---
-  const mockWishlistItems = [
-    {
-      productId: { _id: "1", name: "Royal Silk Saree", price: 863.30, oldPrice: 890.00, images: ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&q=80"] },
-      rating: 4.8,
-      reviews: 39
-    },
-    {
-      productId: { _id: "2", name: "Premium Cotton Combo", price: 9000, oldPrice: 10000, images: ["https://images.unsplash.com/photo-1512436991641-6745cdb1723f?w=600&q=80"] },
-      rating: 4.5,
-      reviews: 21
-    },
-    {
-      productId: { _id: "3", name: "18K Gold Necklace", price: 25000, oldPrice: 30000, images: ["https://images.unsplash.com/photo-1617038220319-276d3cfab638?w=600&q=80"] },
-      rating: 5.0,
-      reviews: 55
-    },
-    {
-      productId: { _id: "4", name: "Nike Air Limited", price: 6500, oldPrice: 7500, images: ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&q=80"] },
-      rating: 4.7,
-      reviews: 80
-    }
-  ];
-
-  // Use mock data if no user or empty wishlist
-  const displayItems = user ? wishlistItems : mockWishlistItems;
+  // Show only the products actually saved in the user's wishlist.
+  const displayItems = wishlistItems;
 
   return (
     <div className="wishlist-page-container">
@@ -191,7 +221,8 @@ const Wishlist = () => {
           transition: all 0.2s;
         }
 
-        .nav-item-desktop:hover, .nav-item-desktop.active {
+        .nav-item-desktop:hover,
+        .nav-item-desktop.active {
           color: #000;
           background: #f3f4f6;
           font-weight: 600;
@@ -220,6 +251,7 @@ const Wishlist = () => {
           overflow: hidden;
           transition: transform 0.2s, box-shadow 0.2s;
         }
+
         .wishlist-card:hover {
           transform: translateY(-4px);
           box-shadow: 0 4px 12px rgba(0,0,0,0.1);
@@ -318,6 +350,7 @@ const Wishlist = () => {
           cursor: pointer;
           transition: background 0.2s;
         }
+
         .action-btn:hover {
           background: #333;
         }
@@ -329,6 +362,7 @@ const Wishlist = () => {
           background: white;
           border-radius: 12px;
         }
+
         .empty-icon {
           color: #d4af37;
           margin-bottom: 16px;
@@ -347,6 +381,7 @@ const Wishlist = () => {
           padding: 10px 0;
           z-index: 900;
         }
+
         .nav-item {
           display: flex;
           flex-direction: column;
@@ -356,6 +391,7 @@ const Wishlist = () => {
           gap: 4px;
           cursor: pointer;
         }
+
         .nav-item.active {
           color: #000;
           font-weight: 600;
@@ -368,6 +404,7 @@ const Wishlist = () => {
           <div className="header-left">
             <div className="logo">AROHA HUB</div>
           </div>
+
           <div className="header-center">
             <div className="search-bar">
               <FaSearch className="search-icon" size={14} />
@@ -375,6 +412,7 @@ const Wishlist = () => {
               <FaChevronDown className="dropdown-icon" size={12} />
             </div>
           </div>
+
           <div className="header-right">
             {[
               { id: "home", label: "Home" },
@@ -384,7 +422,9 @@ const Wishlist = () => {
             ].map((tab) => (
               <div
                 key={tab.id}
-                className={`nav-item-desktop ${activeTab === tab.id ? 'active' : ''}`}
+                className={`nav-item-desktop ${
+                  activeTab === tab.id ? "active" : ""
+                }`}
                 onClick={() => handleNavClick(tab.id)}
               >
                 {tab.id === "home" && <FaHome size={20} />}
@@ -400,7 +440,10 @@ const Wishlist = () => {
 
       {/* MAIN CONTENT */}
       <div>
-        <h2 className="wishlist-title">My Wishlist ({displayItems.length} items)</h2>
+        <h2 className="wishlist-title">
+          My Wishlist ({displayItems.length} items)
+        </h2>
+
         {displayItems.length === 0 ? (
           <div className="empty-wishlist-state">
             <FaHeart size={64} className="empty-icon" />
@@ -416,47 +459,79 @@ const Wishlist = () => {
           </div>
         ) : (
           <div className="wishlist-grid">
-            {displayItems.map((item) => (
-              <div key={item.productId?._id || item.id} className="wishlist-card">
-                <div className="card-image-container">
-                  <img
-                    src={item.productId?.images?.[0] || item.image}
-                    alt={item.productId?.name || item.name}
-                    className="card-image"
-                  />
-                  <button
-                    className="remove-btn"
-                    onClick={() => removeFromWishlist(item.productId?._id || item.id)}
-                  >
-                    <FaTrashAlt size={12} />
-                  </button>
-                  <div className="rating-badge">
-                    <FaStar color="#FFD700" size={10} />
-                    <span>{item.rating || 4.5}</span>
+            {displayItems.map((product) => {
+              const productId = product._id;
+              const currentPrice = product.finalPrice ?? product.price ?? 0;
+              const originalPrice = product.price ?? 0;
+              const hasDiscount = originalPrice > currentPrice;
+
+              return (
+                <div key={productId} className="wishlist-card">
+                  <div className="card-image-container">
+                    <img
+                      src={
+                        Array.isArray(product.images) &&
+                        product.images.length > 0
+                          ? product.images[0]
+                          : "https://via.placeholder.com/600x600?text=No+Image"
+                      }
+                      alt={product.name || "Wishlist product"}
+                      className="card-image"
+                    />
+
+                    <button
+                      className="remove-btn"
+                      onClick={() => removeFromWishlist(productId)}
+                      aria-label={`Remove ${
+                        product.name || "product"
+                      } from wishlist`}
+                    >
+                      <FaTrashAlt size={12} />
+                    </button>
+
+                    <div className="rating-badge">
+                      <FaStar color="#FFD700" size={10} />
+                      <span>{product.rating || 4.5}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="card-details">
-                  <h3 className="product-name">{item.productId?.name || item.name}</h3>
-                  <div className="price-row">
-                    <span className="current-price">₹{(item.productId?.price || item.price).toLocaleString()}</span>
-                    {item.productId?.oldPrice && (
-                      <span className="old-price">₹{(item.productId?.oldPrice || item.oldPrice).toLocaleString()}</span>
+
+                  <div className="card-details">
+                    <h3 className="product-name">
+                      {product.name || "Unnamed product"}
+                    </h3>
+
+                    <div className="price-row">
+                      <span className="current-price">
+                        ₹{Number(currentPrice).toLocaleString("en-IN")}
+                      </span>
+
+                      {hasDiscount && (
+                        <span className="old-price">
+                          ₹{Number(originalPrice).toLocaleString("en-IN")}
+                        </span>
+                      )}
+                    </div>
+
+                    {hasDiscount && (
+                      <span className="discount-tag">
+                        {Math.round(
+                          ((originalPrice - currentPrice) / originalPrice) *
+                            100
+                        )}
+                        % OFF
+                      </span>
                     )}
+
+                    <button
+                      className="action-btn"
+                      onClick={() => addToCart(productId)}
+                    >
+                      Move To Cart
+                    </button>
                   </div>
-                  {item.productId?.oldPrice && (
-                    <span className="discount-tag">
-                      {Math.round(((item.productId?.oldPrice - (item.productId?.price || item.price)) / (item.productId?.oldPrice || item.oldPrice)) * 100)}% OFF
-                    </span>
-                  )}
-                  <button
-                    className="action-btn"
-                    onClick={() => addToCart(item.productId?._id || item.id)}
-                  >
-                    Move To Cart
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -471,7 +546,9 @@ const Wishlist = () => {
         ].map((tab) => (
           <div
             key={tab.id}
-            className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
+            className={`nav-item ${
+              activeTab === tab.id ? "active" : ""
+            }`}
             onClick={() => handleNavClick(tab.id)}
           >
             {tab.id === "home" && <FaHome size={20} />}
@@ -485,6 +562,5 @@ const Wishlist = () => {
     </div>
   );
 };
-
 
 export default Wishlist;
