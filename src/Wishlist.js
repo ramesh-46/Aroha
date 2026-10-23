@@ -102,7 +102,9 @@ const Wishlist = () => {
   };
 
   // --- Add to Cart ---
-  const addToCart = async (productId) => {
+
+  // --- Move to Product Page ---
+  const addToCart = (productId) => {
     if (!userId) {
       alert("Please log in to add items to your cart.");
       return;
@@ -113,18 +115,8 @@ const Wishlist = () => {
       return;
     }
 
-    try {
-      await axios.post("https://aroha.onrender.com/cart", {
-        userId,
-        productId,
-        quantity: 1
-      });
-
-      navigate("/cart");
-    } catch (err) {
-      console.error("Add to Cart Error:", err);
-      alert("Could not add this item to your cart. Please try again.");
-    }
+    // Open the selected product so the user can choose its options.
+    navigate(`/maindashboard?product=${productId}`);
   };
 
   // Show only the products actually saved in the user's wishlist.
