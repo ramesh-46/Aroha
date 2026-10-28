@@ -245,7 +245,7 @@ const PaymentPage = () => {
     }
     if (isRazorpayLoading || isCheckoutOpen) return;
     setIsRazorpayLoading(true);
-    logRazorpayEvent("CHECKOUT_START_FAILED", orderData.orderId, { details: { message: "Checkout start requested; see ORDER_CREATED log for gateway order." } });
+    logRazorpayEvent("CHECKOUT_START_REQUESTED", orderData.orderId);
     try {
       const { data } = await axios.post("https://aroha.onrender.com/payment/razorpay/create-order", {
         orderId: orderData.orderId
