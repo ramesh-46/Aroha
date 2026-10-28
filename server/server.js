@@ -55,6 +55,7 @@ app.use(cors({
 // --------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.text({ type: "text/plain", limit: "10kb" }));
 
 // --------------------
 // Serve uploaded images statically
