@@ -300,10 +300,25 @@ router.post("/razorpay/verify-payment", async (req, res) => {
       if (order.userId) {
         const cart = await Cart.findOne({ userId: order.userId });
         if (cart && Array.isArray(cart.items) && cart.items.length) {
-          const clearedItemCount = cart.items.length;
-          cart.items = [];
+          const beforeCount = cart.items.length;
+          for (const orderedItem of (order.items || [])) {
+            const orderedProductId = String(orderedItem.productId?._id || orderedItem.productId || "");
+            let remainingQuantity = Number(orderedItem.quantity || 0);
+            for (let index = cart.items.length - 1; index >= 0 && remainingQuantity > 0; index--) {
+              const cartItem = cart.items[index];
+              if (String(cartItem.productId?._id || cartItem.productId || "") !== orderedProductId) continue;
+              const cartQuantity = Number(cartItem.quantity || 0);
+              if (cartQuantity <= remainingQuantity) {
+                remainingQuantity -= cartQuantity;
+                cart.items.splice(index, 1);
+              } else {
+                cartItem.quantity = cartQuantity - remainingQuantity;
+                remainingQuantity = 0;
+              }
+            }
+          }
           await cart.save();
-          console.log("[Cart] CART_CLEARED_AFTER_PAYMENT", { orderId, userId: String(order.userId), clearedItemCount });
+          console.log("[Cart] CART_ITEMS_REMOVED_AFTER_PAYMENT", { orderId, userId: String(order.userId), itemCountBefore: beforeCount, itemCountAfter: cart.items.length });
         } else {
           console.log("[Cart] CART_ALREADY_EMPTY_AFTER_PAYMENT", { orderId });
         }
@@ -337,7 +352,12 @@ router.post("/razorpay/log-event", (req, res) => {
     "CHECKOUT_START_FAILED",
     "CHECKOUT_START_REQUESTED"
   ]);
-  const { event, orderId, gatewayOrderId, paymentId, details } = req.body || {};
+  let eventBody = req.body || {};
+  if (typeof eventBody === "string") {
+    try { eventBody = JSON.parse(eventBody); }
+    catch (_) { return res.status(400).json({ success: false, error: "Invalid event payload." }); }
+  }
+  const { event, orderId, gatewayOrderId, paymentId, details } = eventBody;
   if (!allowedEvents.has(event) || !orderId) {
     return res.status(400).json({ success: false, error: "Invalid Razorpay event." });
   }
