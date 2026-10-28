@@ -40,6 +40,7 @@ const PaymentPage = () => {
   const [ocrData, setOcrData] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isRazorpayLoading, setIsRazorpayLoading] = useState(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [orderData, setOrderData] = useState(null);
   const [file, setFile] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -226,12 +227,25 @@ const PaymentPage = () => {
   };
 
 
+  // Send diagnostic events to Render without blocking checkout.
+  const logRazorpayEvent = (event, orderId, extra = {}) => {
+    axios.post("https://aroha.onrender.com/payment/razorpay/log-event", {
+      event,
+      orderId,
+      gatewayOrderId: extra.gatewayOrderId,
+      paymentId: extra.paymentId,
+      details: extra.details
+    }).catch((err) => console.error("[Razorpay] Could not send diagnostic event:", event, err.response?.status || err.message));
+  };
+
   // Razorpay hosted checkout. The server determines the amount and verifies the payment.
   const handleRazorpayPayment = async () => {
     if (!orderData?.orderId) {
       return Swal.fire("Order missing", "Please return to your cart and try again.", "error");
     }
+    if (isRazorpayLoading || isCheckoutOpen) return;
     setIsRazorpayLoading(true);
+    logRazorpayEvent("CHECKOUT_START_FAILED", orderData.orderId, { details: { message: "Checkout start requested; see ORDER_CREATED log for gateway order." } });
     try {
       const { data } = await axios.post("https://aroha.onrender.com/payment/razorpay/create-order", {
         orderId: orderData.orderId
@@ -252,6 +266,13 @@ const PaymentPage = () => {
           notes: { arohaOrderId: data.arohaOrderId },
           theme: { color: "#059669" },
           handler: async (paymentResponse) => {
+            setIsCheckoutOpen(false);
+            logRazorpayEvent("PAYMENT_HANDLER_CALLED", data.arohaOrderId, { gatewayOrderId: paymentResponse?.razorpay_order_id, paymentId: paymentResponse?.razorpay_payment_id });
+            if (!paymentResponse?.razorpay_order_id || !paymentResponse?.razorpay_payment_id || !paymentResponse?.razorpay_signature) {
+              logRazorpayEvent("CLIENT_VERIFICATION_ERROR", data.arohaOrderId, { details: { message: "Checkout handler returned incomplete payment fields." } });
+              await Swal.fire("Payment not verified", "Razorpay did not return all required payment details. Your order has not been confirmed.", "warning");
+              return;
+            }
             try {
               const verified = await axios.post("https://aroha.onrender.com/payment/razorpay/verify-payment", {
                 orderId: data.arohaOrderId,
@@ -260,21 +281,30 @@ const PaymentPage = () => {
                 razorpay_signature: paymentResponse.razorpay_signature
               });
               if (verified.data.success && verified.data.paid) {
+                logRazorpayEvent("CLIENT_VERIFICATION_SUCCESS", data.arohaOrderId, { gatewayOrderId: paymentResponse.razorpay_order_id, paymentId: paymentResponse.razorpay_payment_id });
                 await Swal.fire("Payment successful", "Razorpay verified your payment. Your order is confirmed.", "success");
                 navigate("/order-success", { state: { orderId: data.arohaOrderId } });
               } else {
+                logRazorpayEvent("CLIENT_VERIFICATION_PENDING", data.arohaOrderId, { gatewayOrderId: paymentResponse.razorpay_order_id, paymentId: paymentResponse.razorpay_payment_id, details: { status: verified.data.paymentStatus, message: verified.data.message } });
                 Swal.fire("Payment pending", verified.data.message || "Payment is not captured yet. Check Render logs.", "info");
               }
             } catch (verifyError) {
+              logRazorpayEvent("CLIENT_VERIFICATION_ERROR", data.arohaOrderId, { gatewayOrderId: paymentResponse.razorpay_order_id, paymentId: paymentResponse.razorpay_payment_id, details: { message: verifyError.response?.data?.error || verifyError.message } });
               console.error("[Razorpay] Verification failed:", verifyError.response?.data || verifyError.message);
               Swal.fire("Verification pending", verifyError.response?.data?.error || "Payment was submitted but the server could not confirm it. Check Render logs before retrying.", "warning");
             }
           },
           modal: {
-            ondismiss: () => console.log("[Razorpay] Checkout closed", { orderId: data.arohaOrderId })
+            ondismiss: () => {
+              setIsCheckoutOpen(false);
+              logRazorpayEvent("CHECKOUT_DISMISSED", data.arohaOrderId, { gatewayOrderId: data.razorpayOrderId });
+              console.log("[Razorpay] Checkout closed", { orderId: data.arohaOrderId, gatewayOrderId: data.razorpayOrderId });
+            }
           }
         });
         checkout.on("payment.failed", (failure) => {
+          setIsCheckoutOpen(false);
+          logRazorpayEvent("PAYMENT_FAILED", data.arohaOrderId, { gatewayOrderId: data.razorpayOrderId, details: { code: failure.error?.code, reason: failure.error?.reason, message: failure.error?.description } });
           console.error("[Razorpay] Payment failed:", {
             orderId: data.arohaOrderId,
             code: failure.error?.code,
@@ -283,6 +313,8 @@ const PaymentPage = () => {
           });
           Swal.fire("Payment failed", failure.error?.description || "Razorpay could not complete the payment.", "error");
         });
+        setIsCheckoutOpen(true);
+        logRazorpayEvent("CHECKOUT_OPENED", data.arohaOrderId, { gatewayOrderId: data.razorpayOrderId });
         checkout.open();
       };
 
@@ -299,6 +331,7 @@ const PaymentPage = () => {
         document.body.appendChild(script);
       }
     } catch (err) {
+      logRazorpayEvent("CHECKOUT_START_FAILED", orderData.orderId, { details: { message: err.response?.data?.error || err.message } });
       console.error("[Razorpay] Checkout start failed:", err.response?.data || err.message);
       Swal.fire("Unable to start payment", err.response?.data?.error || err.message || "Please check Render logs.", "error");
     } finally {
@@ -579,10 +612,10 @@ const PaymentPage = () => {
           <button
             type="button"
             onClick={handleRazorpayPayment}
-            disabled={isRazorpayLoading}
-            style={{ width: "100%", padding: "16px", marginBottom: "12px", background: isRazorpayLoading ? "#9ca3af" : "#111827", color: "#fff", border: "none", borderRadius: "10px", fontSize: "1.05rem", fontWeight: "700", cursor: isRazorpayLoading ? "wait" : "pointer" }}
+            disabled={isRazorpayLoading || isCheckoutOpen}
+            style={{ width: "100%", padding: "16px", marginBottom: "12px", background: (isRazorpayLoading || isCheckoutOpen) ? "#9ca3af" : "#111827", color: "#fff", border: "none", borderRadius: "10px", fontSize: "1.05rem", fontWeight: "700", cursor: (isRazorpayLoading || isCheckoutOpen) ? "wait" : "pointer" }}
           >
-            {isRazorpayLoading ? "Connecting to Razorpay..." : "Pay Securely with Razorpay"}
+            {isRazorpayLoading ? "Connecting to Razorpay..." : isCheckoutOpen ? "Razorpay Checkout Open" : "Pay Securely with Razorpay"}
           </button>
           <p style={{ textAlign: "center", fontSize: "0.8rem", color: "#6b7280", margin: "0 0 18px" }}>
             Razorpay Test Mode payments are simulated.
