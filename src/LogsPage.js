@@ -15,6 +15,8 @@ export default function LogsPage() {
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const [updatedAt, setUpdatedAt] = useState(null);
+  const [live, setLive] = useState(true);
+  const [connection, setConnection] = useState("connecting");
 
   const loadLogs = useCallback(async () => {
     setLoading(true); setError("");
@@ -31,6 +33,30 @@ export default function LogsPage() {
   }, [hours]);
 
   useEffect(() => { loadLogs(); }, [loadLogs]);
+
+useEffect(() => {
+  if (!live) { setConnection("paused"); return undefined; }
+  let source;
+  let retryTimer;
+  let disposed = false;
+  const connect = () => {
+    if (disposed) return;
+    setConnection("connecting");
+    source = new EventSource("https://aroha.onrender.com/admin/logs/stream");
+    source.addEventListener("connected", () => { if (!disposed) setConnection("live"); });
+    source.addEventListener("log", (event) => {
+      if (disposed) return;
+      try {
+        const entry = JSON.parse(event.data);
+        setLogs((previous) => previous.some((item) => item.id === entry.id) ? previous : [...previous, entry].slice(-500));
+        setUpdatedAt(new Date());
+      } catch (_) {}
+    });
+    source.onerror = () => { source.close(); if (!disposed) { setConnection("reconnecting"); retryTimer = setTimeout(connect, 3000); } };
+  };
+  connect();
+  return () => { disposed = true; if (source) source.close(); if (retryTimer) clearTimeout(retryTimer); };
+}, [live]);
 
   const visible = useMemo(() => logs.filter((entry) => {
     const matchesLevel = level === "all" || levelOf(entry) === level;
@@ -58,7 +84,7 @@ export default function LogsPage() {
       <header style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24, flexWrap: "wrap" }}>
         <div style={{ width: 54, height: 54, display: "grid", placeItems: "center", borderRadius: 16, background: "linear-gradient(135deg,#34d399,#22d3ee)", color: "#062018", fontSize: 24 }}><FaTerminal /></div>
         <div style={{ flex: "1 1 240px" }}><div style={{ color: "#5eead4", fontSize: 11, fontWeight: 900, letterSpacing: ".15em" }}>AROHA • OPERATIONS</div><h1 style={{ margin: "4px 0", fontSize: "clamp(27px,4vw,38px)", letterSpacing: "-.04em" }}>Runtime Logs</h1><div style={{ color: "#94a3b8", fontSize: 13 }}>Aroha backend · newest events first</div></div>
-        <button style={btn} onClick={loadLogs} disabled={loading}><FaSyncAlt /> {loading ? "Refreshing…" : "Refresh"}</button>
+        <span style={{display:"inline-flex",alignItems:"center",gap:7,color:connection==="live"?"#6ee7b7":connection==="reconnecting"?"#fcd34d":"#94a3b8",fontSize:12,fontWeight:900}}>{connection==="live"?"● LIVE TAIL":connection==="reconnecting"?"● RECONNECTING":connection==="paused"?"● PAUSED":"● CONNECTING"}</span><button style={btn} onClick={() => setLive((value) => !value)}>{live ? "Pause live" : "Resume live"}</button><button style={btn} onClick={loadLogs} disabled={loading}><FaSyncAlt /> {loading ? "Refreshing…" : "Refresh history"}</button>
       </header>
 
       <section className="panel" style={{ background: "linear-gradient(145deg,#111a2c,#0d1422)", border: "1px solid #29364a", borderRadius: 18, padding: 16, marginBottom: 16, boxShadow: "0 18px 45px #0003" }}>
