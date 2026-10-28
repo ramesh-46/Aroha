@@ -2,87 +2,86 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FaTerminal, FaCopy, FaFilePdf, FaSyncAlt, FaSearch, FaExclamationTriangle } from "react-icons/fa";
 
 const API = "https://aroha.onrender.com/admin/logs";
-const classify = (log) => {
-  const s = (log.level + " " + log.message).toLowerCase();
-  if (/error|failed|exception|rejected|fatal/.test(s)) return "ERROR";
-  if (/warn|timeout|slow/.test(s)) return "WARNING";
-  if (/debug/.test(s)) return "DEBUG";
-  if (/captured|success|connected|verified|created/.test(s)) return "SUCCESS";
-  return "INFO";
-};
-const palette = {
-  ERROR: { fg: "#fca5a5", bg: "rgba(239,68,68,.13)", border: "#7f1d1d" },
-  WARNING: { fg: "#fcd34d", bg: "rgba(245,158,11,.12)", border: "#854d0e" },
-  DEBUG: { fg: "#67e8f9", bg: "rgba(6,182,212,.12)", border: "#155e75" },
-  SUCCESS: { fg: "#6ee7b7", bg: "rgba(16,185,129,.12)", border: "#065f46" },
-  INFO: { fg: "#cbd5e1", bg: "rgba(148,163,184,.08)", border: "#334155" }
-};
+const levelOf = (entry) => entry.level === "error" ? "error" : entry.level === "warn" ? "warning" : entry.level === "info" ? "info" : (/error|failed|exception|rejected/i.test(entry.message || "") ? "error" : /warn/i.test(entry.message || "") ? "warning" : "info");
+const levelColor = { error: "#fca5a5", warning: "#fcd34d", info: "#6ee7b7" };
+const btn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 14px", borderRadius: 10, border: "1px solid #334155", background: "#182337", color: "#f8fafc", fontWeight: 800, cursor: "pointer" };
 
 export default function LogsPage() {
   const [logs, setLogs] = useState([]);
-  const [query, setQuery] = useState("");
-  const [severity, setSeverity] = useState("ALL");
+  const [search, setSearch] = useState("");
+  const [level, setLevel] = useState("all");
+  const [hours, setHours] = useState("6");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [updated, setUpdated] = useState(null);
-  const load = useCallback(async () => {
+  const [note, setNote] = useState("");
+  const [updatedAt, setUpdatedAt] = useState(null);
+
+  const loadLogs = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const r = await fetch(API, { cache: "no-store" });
-      const data = await r.json();
-      if (!r.ok) throw new Error(data.error || "Could not load app logs");
+      const response = await fetch(API + "?hours=" + encodeURIComponent(hours) + "&limit=500", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to load logs.");
       setLogs(Array.isArray(data.logs) ? data.logs : []);
-      setUpdated(new Date());
-    } catch (e) { setError(e.message + ". Check that the Render backend has deployed the latest code."); }
-    finally { setLoading(false); }
-  }, []);
-  useEffect(() => { load(); }, [load]);
-  const filtered = useMemo(() => logs.filter(x => {
-    const type = classify(x);
-    return (severity === "ALL" || severity === type) &&
-      (!query || (String(x.message || "") + " " + String(x.level || "")).toLowerCase().includes(query.toLowerCase()));
-  }), [logs, query, severity]);
-  const copy = async () => {
-    try { await navigator.clipboard.writeText(filtered.map(x => "[" + new Date(x.timestamp).toLocaleString() + "] [" + classify(x) + "] " + x.message).join("\n")); }
-    catch (_) { setError("Clipboard access denied by browser. You can select the log text and copy it manually."); }
-  };
-  const style = {
-    app: { minHeight: "100vh", padding: "clamp(14px,3vw,34px)", background: "#080d18", color: "#e5e7eb", fontFamily: "Inter,system-ui,sans-serif" },
-    panel: { background: "linear-gradient(145deg,#111a2c,#0c1321)", border: "1px solid #263248", borderRadius: 18, overflow: "hidden" },
-    input: { minWidth: 0, padding: "12px 14px", borderRadius: 10, border: "1px solid #334155", background: "#0a1220", color: "#f8fafc" },
-    button: { display: "inline-flex", gap: 8, alignItems: "center", justifyContent: "center", padding: "11px 14px", borderRadius: 10, border: "1px solid #334155", background: "#182337", color: "#f8fafc", fontWeight: 800, cursor: "pointer" }
-  };
-  return <main style={style.app}>
+      setNote(data.note || "");
+      setUpdatedAt(new Date());
+    } catch (e) {
+      setError((e && e.message) || "Unable to load logs. Check that the backend deployment is complete.");
+    } finally { setLoading(false); }
+  }, [hours]);
+
+  useEffect(() => { loadLogs(); }, [loadLogs]);
+
+  const visible = useMemo(() => logs.filter((entry) => {
+    const matchesLevel = level === "all" || levelOf(entry) === level;
+    const haystack = (entry.message || "") + " " + (entry.timestamp || "");
+    return matchesLevel && haystack.toLowerCase().includes(search.toLowerCase());
+  }), [logs, search, level]);
+
+  async function copyLogs() {
+    try {
+      await navigator.clipboard.writeText(visible.map((entry) => "[" + entry.timestamp + "] [" + levelOf(entry).toUpperCase() + "] " + entry.message).join("\n"));
+    } catch (_) { setError("Clipboard was blocked by your browser. You can select the log text and copy it manually."); }
+  }
+
+  const count = (name) => logs.filter((entry) => levelOf(entry) === name).length;
+
+  return <main style={{ minHeight: "100vh", background: "#080d18", color: "#e5e7eb", padding: "clamp(14px,3vw,34px)", fontFamily: "Inter,system-ui,-apple-system,Segoe UI,sans-serif" }}>
     <style>{`
-      *{box-sizing:border-box}.logrow{display:grid;grid-template-columns:175px 90px minmax(0,1fr);gap:12px;padding:13px 16px;border-bottom:1px solid #202c40;align-items:start}
-      .logrow:last-child{border-bottom:0}.logmsg{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}
-      @media(max-width:680px){.logrow{grid-template-columns:1fr;gap:5px}.toolbar>*{flex:1 1 100%!important;width:100%}}
-      @media print{body{background:white!important}.noprint{display:none!important}main{background:white!important;color:#111827!important;padding:0!important}.panel{background:white!important;color:#111827!important;border:1px solid #ddd!important;box-shadow:none!important}.logrow{grid-template-columns:130px 70px minmax(0,1fr);padding:8px;border-color:#ddd}.logmsg{font-size:9px;color:#111827!important}}
+      *{box-sizing:border-box}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+      .logrow{display:grid;grid-template-columns:180px 90px minmax(0,1fr);gap:12px;padding:13px 16px;border-bottom:1px solid #243044;align-items:start}
+      .logmsg{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.65 ui-monospace,SFMono-Regular,Menlo,monospace}
+      @media(max-width:760px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.logrow{grid-template-columns:1fr;gap:5px}.logtime{font-size:11px}}
+      @media print{body{background:white!important}.noprint{display:none!important}main{background:white!important;color:#111827!important;padding:0!important}.panel{background:white!important;color:#111827!important;border:1px solid #ddd!important;box-shadow:none!important}.logrow{grid-template-columns:135px 70px minmax(0,1fr);border-color:#ddd;padding:8px}.logmsg{color:#111827!important;font-size:9px}}
     `}</style>
-    <div style={{maxWidth:1450,margin:"0 auto"}}>
-      <header className="noprint" style={{display:"flex",alignItems:"center",gap:15,marginBottom:24,flexWrap:"wrap"}}>
-        <div style={{width:56,height:56,borderRadius:16,display:"grid",placeItems:"center",background:"linear-gradient(135deg,#34d399,#22d3ee)",color:"#062018",fontSize:24}}><FaTerminal/></div>
-        <div style={{flex:1}}><div style={{fontSize:11,fontWeight:900,letterSpacing:".16em",color:"#5eead4"}}>AROHA • OPERATIONS</div><h1 style={{margin:"4px 0",fontSize:"clamp(26px,4vw,38px)",color:"#f8fafc"}}>Application Logs</h1><div style={{color:"#94a3b8",fontSize:13}}>Recent backend runtime logs · no login screen</div></div>
-        <button style={style.button} onClick={load} disabled={loading}><FaSyncAlt/>{loading?"Refreshing…":"Refresh logs"}</button>
+    <div style={{ maxWidth: 1450, margin: "0 auto" }}>
+      <header style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24, flexWrap: "wrap" }}>
+        <div style={{ width: 54, height: 54, display: "grid", placeItems: "center", borderRadius: 16, background: "linear-gradient(135deg,#34d399,#22d3ee)", color: "#062018", fontSize: 24 }}><FaTerminal /></div>
+        <div style={{ flex: "1 1 240px" }}><div style={{ color: "#5eead4", fontSize: 11, fontWeight: 900, letterSpacing: ".15em" }}>AROHA • OPERATIONS</div><h1 style={{ margin: "4px 0", fontSize: "clamp(27px,4vw,38px)", letterSpacing: "-.04em" }}>Runtime Logs</h1><div style={{ color: "#94a3b8", fontSize: 13 }}>Aroha backend · newest events first</div></div>
+        <button style={btn} onClick={loadLogs} disabled={loading}><FaSyncAlt /> {loading ? "Refreshing…" : "Refresh"}</button>
       </header>
-      <section className="noprint" style={{...style.panel,padding:16,marginBottom:16}}>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(145px,1fr))",gap:10,marginBottom:16}}>
-          {[["TOTAL",logs.length,"#f8fafc"],["ERRORS",logs.filter(x=>classify(x)==="ERROR").length,"#fca5a5"],["WARNINGS",logs.filter(x=>classify(x)==="WARNING").length,"#fcd34d"],["SUCCESS",logs.filter(x=>classify(x)==="SUCCESS").length,"#6ee7b7"]].map(([label,value,color])=><div key={label} style={{padding:14,border:"1px solid #29364a",borderRadius:12,background:"#0a1220"}}><div style={{fontSize:10,color:"#94a3b8",fontWeight:900,letterSpacing:".12em"}}>{label}</div><div style={{fontSize:28,fontWeight:900,color,marginTop:6}}>{value}</div></div>)}
+
+      <section className="panel" style={{ background: "linear-gradient(145deg,#111a2c,#0d1422)", border: "1px solid #29364a", borderRadius: 18, padding: 16, marginBottom: 16, boxShadow: "0 18px 45px #0003" }}>
+        <div className="stats">
+          {[["TOTAL LOGS", logs.length, "#f8fafc"], ["ERRORS", count("error"), "#fca5a5"], ["WARNINGS", count("warning"), "#fcd34d"], ["INFO", count("info"), "#6ee7b7"]].map(([label, value, color]) => <div key={label} style={{ padding: 15, borderRadius: 12, background: "#0a1220", border: "1px solid #29364a" }}><div style={{ color: "#94a3b8", fontSize: 10, fontWeight: 900, letterSpacing: ".12em" }}>{label}</div><div style={{ color, fontSize: 28, fontWeight: 900, marginTop: 6 }}>{value}</div></div>)}
         </div>
-        <div className="toolbar" style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          <div style={{flex:"2 1 240px",position:"relative"}}><FaSearch style={{position:"absolute",left:13,top:15,color:"#64748b"}}/><input aria-label="Search logs" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search order ID, Razorpay, error…" style={{...style.input,width:"100%",paddingLeft:38}}/></div>
-          <select aria-label="Severity filter" value={severity} onChange={e=>setSeverity(e.target.value)} style={{...style.input,flex:"1 1 140px"}}>{["ALL","ERROR","WARNING","SUCCESS","INFO","DEBUG"].map(x=><option key={x}>{x}</option>)}</select>
-          <button style={style.button} onClick={copy}><FaCopy/>Copy filtered logs</button>
-          <button style={{...style.button,background:"#0f766e",borderColor:"#0f766e"}} onClick={()=>window.print()}><FaFilePdf/>Save as PDF</button>
+        <div className="noprint" style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 15 }}>
+          <div style={{ flex: "2 1 230px", position: "relative" }}><FaSearch style={{ position: "absolute", top: 15, left: 13, color: "#64748b" }} /><input aria-label="Search logs" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search errors, order IDs, messages…" style={{ width: "100%", padding: 12, paddingLeft: 38, borderRadius: 10, border: "1px solid #344256", background: "#0b1220", color: "white" }} /></div>
+          <select aria-label="Filter severity" value={level} onChange={(e) => setLevel(e.target.value)} style={{ padding: 12, borderRadius: 10, border: "1px solid #344256", background: "#0b1220", color: "white" }}><option value="all">All levels</option><option value="error">Errors</option><option value="warning">Warnings</option><option value="info">Info</option></select>
+          <select aria-label="Time range" value={hours} onChange={(e) => setHours(e.target.value)} style={{ padding: 12, borderRadius: 10, border: "1px solid #344256", background: "#0b1220", color: "white" }}><option value="1">Last hour</option><option value="6">Last 6 hours</option><option value="24">Last 24 hours</option><option value="72">Last 3 days</option><option value="168">Last 7 days</option></select>
+          <button style={btn} onClick={copyLogs}><FaCopy /> Copy logs</button>
+          <button style={{ ...btn, background: "#0f766e", borderColor: "#0f766e" }} onClick={() => window.print()}><FaFilePdf /> Save PDF</button>
         </div>
-        <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap",color:"#64748b",fontSize:11,marginTop:12}}><span>{filtered.length} shown · maximum 500 recent entries kept in memory</span><span>{updated?"Updated "+updated.toLocaleTimeString():"Waiting for backend"}</span></div>
+        <div style={{ color: "#64748b", fontSize: 11, marginTop: 12 }}>{visible.length} entries shown · {updatedAt ? "Last updated " + updatedAt.toLocaleTimeString() : "Loading"} · refresh to fetch new entries</div>
       </section>
-      {error&&<div role="alert" style={{padding:14,marginBottom:14,borderRadius:12,color:"#fecaca",background:"#451a1a",border:"1px solid #7f1d1d"}}><FaExclamationTriangle/> {error}</div>}
-      <section className="panel" style={style.panel}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,padding:16,borderBottom:"1px solid #263248"}}><strong>Live runtime log buffer</strong><span style={{fontSize:11,fontWeight:900,color:"#34d399"}}>● AROHA BACKEND</span></div>
-        {filtered.length===0?<div style={{padding:36,textAlign:"center",color:"#94a3b8"}}>{loading?"Loading logs…":"No matching logs. Refresh after using the app to generate activity."}</div>:filtered.slice().reverse().map((x,i)=>{const type=classify(x),c=palette[type];return <div className="logrow" key={x.id||x.timestamp+"-"+i}><div style={{fontSize:11,color:"#94a3b8"}}>{new Date(x.timestamp).toLocaleString()}</div><div><span style={{display:"inline-block",padding:"4px 7px",borderRadius:6,fontSize:10,fontWeight:900,color:c.fg,background:c.bg,border:"1px solid "+c.border}}>{type}</span></div><div className="logmsg">{x.message}</div></div>})}
+
+      {error && <div role="alert" style={{ marginBottom: 14, padding: 13, borderRadius: 10, color: "#fecaca", background: "#451a1a", border: "1px solid #7f1d1d" }}><FaExclamationTriangle /> {error}</div>}
+      {note && <p style={{ color: "#94a3b8", fontSize: 12 }}>{note}</p>}
+      <section className="panel" style={{ background: "#111a2c", border: "1px solid #29364a", borderRadius: 16, overflow: "hidden" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: 16, borderBottom: "1px solid #29364a", gap: 10 }}><strong>Log stream <span style={{ color: "#64748b", fontWeight: 500 }}> / {visible.length} entries</span></strong><span style={{ color: "#34d399", fontSize: 11, fontWeight: 900 }}>● BACKEND</span></div>
+        {visible.length === 0 ? <div style={{ padding: 36, textAlign: "center", color: "#94a3b8" }}>{loading ? "Loading logs…" : "No matching logs. Try Refresh or change the time range."}</div> : visible.map((entry, i) => { const severity = levelOf(entry); return <div className="logrow" key={entry.id || (entry.timestamp + "-" + i)}><div className="logtime" style={{ color: "#94a3b8", fontSize: 11 }}>{new Date(entry.timestamp).toLocaleString()}</div><div style={{ color: levelColor[severity], fontSize: 10, fontWeight: 900 }}>{severity.toUpperCase()}</div><div className="logmsg">{entry.message}</div></div>; })}
       </section>
-      <p className="noprint" style={{fontSize:11,color:"#64748b",textAlign:"center",padding:18}}>This page shows sanitized runtime logs collected since the backend last started. Render platform deploy/build logs are not exposed by this page.</p>
+      <footer className="noprint" style={{ textAlign: "center", color: "#475569", fontSize: 11, padding: 22 }}>Logs are held in memory and reset whenever the backend restarts. This page shows sanitized application runtime logs, not Render build/deploy history.</footer>
     </div>
   </main>;
 }
