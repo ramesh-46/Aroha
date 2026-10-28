@@ -21,6 +21,30 @@ const wishlistRoutes = require("./routes/wishlist");
 const app = express();
 
 // --------------------
+// In-memory runtime log viewer (current server process only)
+// --------------------
+const runtimeLogs = [];
+const originalConsole = { log: console.log.bind(console), warn: console.warn.bind(console), error: console.error.bind(console), info: console.info.bind(console) };
+function safeLogText(value) {
+  let text = typeof value === "string" ? value : (() => { try { return JSON.stringify(value); } catch (_) { return String(value); } })();
+  return text
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[redacted-email]")
+    .replace(/\b(?:\+?\d[\d\s()-]{7,}\d)\b/g, "[redacted-phone]")
+    .replace(/(Bearer\s+)[A-Za-z0-9._-]+/gi, "$1[redacted]")
+    .replace(/(RAZORPAY_KEY_SECRET|MONGO_URI|JWT_SECRET)\s*[:=]\s*[^\s,}]+/gi, "$1=[redacted]")
+    .slice(0, 4000);
+}
+function saveRuntimeLog(level, args) {
+  const message = args.map(safeLogText).join(" ");
+  runtimeLogs.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), timestamp: new Date().toISOString(), level, message });
+  if (runtimeLogs.length > 500) runtimeLogs.splice(0, runtimeLogs.length - 500);
+}
+for (const level of ["log", "info", "warn", "error"]) {
+  console[level] = (...args) => { saveRuntimeLog(level, args); originalConsole[level](...args); };
+}
+
+
+// --------------------
 // CORS Setup
 // --------------------
 const allowedOrigins = [
@@ -104,6 +128,17 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: "Server Error", error: err.message });
 });
 
+
+
+// Public, read-only diagnostics. Only sanitized in-memory logs from this process are exposed.
+app.get("/admin/logs", (req, res) => {
+  const hours = Math.min(168, Math.max(1, Number(req.query.hours) || 6));
+  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 200));
+  const cutoff = Date.now() - hours * 60 * 60 * 1000;
+  const logs = runtimeLogs.filter((entry) => new Date(entry.timestamp).getTime() >= cutoff).slice(-limit).reverse();
+  res.set("Cache-Control", "no-store");
+  res.json({ logs, count: logs.length, source: "current-process-memory", note: "Shows sanitized runtime logs since this server process started; does not include historical Render deploy/build logs." });
+});
 
 app.get("/ping", (req, res) => {
   res.send("Server is alive");
