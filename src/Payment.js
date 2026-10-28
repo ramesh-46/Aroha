@@ -18,7 +18,9 @@ import {
   FaReceipt,
   FaMobileAlt,
   FaGooglePay, // Note: react-icons might not have specific brand icons for all, using generic or text
-  FaWallet
+  FaWallet,
+  FaCreditCard,
+  FaLock
 } from "react-icons/fa";
 
 // Simple SVG Icons for UPI Apps to ensure they render without external dependencies issues
@@ -41,6 +43,7 @@ const PaymentPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isRazorpayLoading, setIsRazorpayLoading] = useState(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [isManualReviewSubmitting, setIsManualReviewSubmitting] = useState(false);
   const [orderData, setOrderData] = useState(null);
   const [file, setFile] = useState(null);
   const [isMobile, setIsMobile] = useState(false);
@@ -229,13 +232,22 @@ const PaymentPage = () => {
 
   // Send diagnostic events to Render without blocking checkout.
   const logRazorpayEvent = (event, orderId, extra = {}) => {
-    axios.post("https://aroha.onrender.com/payment/razorpay/log-event", {
+    const payload = JSON.stringify({
       event,
       orderId,
       gatewayOrderId: extra.gatewayOrderId,
       paymentId: extra.paymentId,
       details: extra.details
-    }).catch((err) => console.error("[Razorpay] Could not send diagnostic event:", event, err.response?.status || err.message));
+    });
+    fetch("https://aroha.onrender.com/payment/razorpay/log-event", {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      body: payload,
+      keepalive: true,
+      mode: "cors"
+    }).then((response) => {
+      if (!response.ok) console.error("[Razorpay] Diagnostic event rejected:", event, response.status);
+    }).catch((err) => console.error("[Razorpay] Could not send diagnostic event:", event, err.message));
   };
 
   // Razorpay hosted checkout. The server determines the amount and verifies the payment.
@@ -341,10 +353,10 @@ const PaymentPage = () => {
 
   // Handle Confirm
   const handleConfirmPayment = async () => {
-    if (!transactionId) return Swal.fire("Error", "Please enter Transaction ID", "error");
-    if (!file) return Swal.fire("Error", "Please upload payment screenshot", "error");
-    
-    const finalAmount = ocrData?.amount > 0 ? ocrData.amount : orderData.amount;
+    if (!transactionId.trim()) return Swal.fire("Missing transaction ID", "Enter the UTR or transaction ID from your UPI app.", "warning");
+    if (!file) return Swal.fire("Missing screenshot", "Upload your payment screenshot so the team can review it.", "warning");
+    if (isManualReviewSubmitting) return;
+    setIsManualReviewSubmitting(true);
 
     try {
       const formData = new FormData();
@@ -358,18 +370,18 @@ const PaymentPage = () => {
       });
 
       if (response.data.success) {
-        Swal.fire({
-          title: "Success",
-          text: "Order placed successfully! Verification pending.",
-          icon: "success",
-          confirmButtonText: "OK",
-        }).then(() => {
-          navigate("/order-success", { state: { orderId: orderData.orderId } });
+        await Swal.fire({
+          title: "Submitted for review",
+          text: "Your transaction details were submitted. Payment is NOT confirmed yet; your order will be confirmed only after verification.",
+          icon: "info",
+          confirmButtonText: "OK"
         });
       }
     } catch (err) {
-      console.error("Payment confirmation error:", err);
-      Swal.fire("Error", err.response?.data?.error || "Failed to confirm payment", "error");
+      console.error("Payment confirmation error:", err.response?.data || err.message);
+      Swal.fire("Submission failed", err.response?.data?.error || "Could not submit payment details. Please try again.", "error");
+    } finally {
+      setIsManualReviewSubmitting(false);
     }
   };
 
@@ -393,7 +405,7 @@ const PaymentPage = () => {
         <p style={{ color: "#6b7280" }}>Order #{orderData.orderId.slice(-8).toUpperCase()}</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "30px", alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 350px), 1fr))", gap: "30px", alignItems: "start" }}>
         
         {/* LEFT COLUMN: Info & QR */}
         <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -503,9 +515,31 @@ const PaymentPage = () => {
 
         {/* RIGHT COLUMN: Verification Form */}
         <div style={{ background: "#ffffff", padding: "30px", borderRadius: "16px", boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)", border: "1px solid #f3f4f6" }}>
-          <h3 style={{ marginTop: 0, marginBottom: "24px", fontSize: "1.25rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "10px" }}>
-            <FaCheckCircle style={{ color: "#059669" }} /> Verify Payment
+          <div style={{ background: "linear-gradient(135deg, #101828 0%, #1f2937 100%)", color: "#fff", borderRadius: "14px", padding: "20px", marginBottom: "22px", boxShadow: "0 8px 22px rgba(15,23,42,0.18)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+              <div style={{ width: "46px", height: "46px", borderRadius: "12px", background: "#fff", color: "#0f172a", display: "grid", placeItems: "center", flexShrink: 0 }}>
+                <FaCreditCard size={24} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: "1.2rem", fontWeight: 800, letterSpacing: "0.2px" }}>Razorpay Checkout</div>
+                <div style={{ color: "#d1d5db", fontSize: "0.85rem", marginTop: "3px" }}>Cards · UPI · Netbanking · Wallets</div>
+              </div>
+              <span style={{ marginLeft: "auto", background: "#d1fae5", color: "#065f46", borderRadius: "999px", padding: "5px 9px", fontSize: "0.72rem", fontWeight: 800, whiteSpace: "nowrap" }}>SECURE</span>
+            </div>
+            <p style={{ color: "#e5e7eb", fontSize: "0.88rem", lineHeight: 1.5, margin: "0 0 14px" }}>Pay through Razorpay's secure payment window. On a computer, choose a supported test card or payment option; phone apps may require your mobile device.</p>
+            <button type="button" onClick={handleRazorpayPayment} disabled={isRazorpayLoading || isCheckoutOpen}
+              style={{ width: "100%", display: "flex", justifyContent: "center", alignItems: "center", gap: "10px", padding: "15px 14px", background: (isRazorpayLoading || isCheckoutOpen) ? "#9ca3af" : "#059669", color: "#fff", border: "1px solid rgba(255,255,255,0.22)", borderRadius: "10px", fontSize: "1.02rem", fontWeight: 800, cursor: (isRazorpayLoading || isCheckoutOpen) ? "wait" : "pointer", boxShadow: "0 4px 10px rgba(5,150,105,0.25)" }}>
+              <FaLock />
+              {isRazorpayLoading ? "Connecting securely..." : isCheckoutOpen ? "Razorpay Checkout Open" : `Pay ₹${Number(orderData.amount || 0).toLocaleString("en-IN")} with Razorpay`}
+            </button>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", color: "#d1d5db", fontSize: "0.76rem", marginTop: "11px", textAlign: "center" }}>
+              <FaShieldAlt /> <span>Verified by the server · Test Mode payments are simulated</span>
+            </div>
+          </div>
+          <h3 style={{ marginTop: 0, marginBottom: "8px", fontSize: "1.1rem", fontWeight: 750, display: "flex", alignItems: "center", gap: "10px" }}>
+            <FaCheckCircle style={{ color: "#059669" }} /> Already paid by QR?
           </h3>
+          <p style={{ color: "#6b7280", fontSize: "0.87rem", lineHeight: 1.5, margin: "0 0 20px" }}>Submit your UTR and screenshot for manual review. This does not confirm payment automatically.</p>
 
           <div style={{ marginBottom: "20px" }}>
             <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", fontSize: "0.9rem", color: "#374151" }}>Transaction ID / UTR</label>
@@ -611,17 +645,7 @@ const PaymentPage = () => {
 
           <button
             type="button"
-            onClick={handleRazorpayPayment}
-            disabled={isRazorpayLoading || isCheckoutOpen}
-            style={{ width: "100%", padding: "16px", marginBottom: "12px", background: (isRazorpayLoading || isCheckoutOpen) ? "#9ca3af" : "#111827", color: "#fff", border: "none", borderRadius: "10px", fontSize: "1.05rem", fontWeight: "700", cursor: (isRazorpayLoading || isCheckoutOpen) ? "wait" : "pointer" }}
-          >
-            {isRazorpayLoading ? "Connecting to Razorpay..." : isCheckoutOpen ? "Razorpay Checkout Open" : "Pay Securely with Razorpay"}
-          </button>
-          <p style={{ textAlign: "center", fontSize: "0.8rem", color: "#6b7280", margin: "0 0 18px" }}>
-            Razorpay Test Mode payments are simulated.
-          </p>
-
-          <button
+            disabled={isManualReviewSubmitting}
             onClick={handleConfirmPayment}
             style={{
               width: "100%",
@@ -632,18 +656,19 @@ const PaymentPage = () => {
               borderRadius: "10px",
               fontSize: "1.05rem",
               fontWeight: "700",
-              cursor: "pointer",
+              cursor: isManualReviewSubmitting ? "wait" : "pointer",
+              opacity: isManualReviewSubmitting ? 0.7 : 1,
               transition: "all 0.2s",
               boxShadow: "0 4px 6px -1px rgba(5, 150, 105, 0.3)"
             }}
             onMouseOver={(e) => { e.target.style.background = "#047857"; e.target.style.transform = "translateY(-1px)"; }}
             onMouseOut={(e) => { e.target.style.background = "#059669"; e.target.style.transform = "translateY(0)"; }}
           >
-            Confirm Payment & Place Order
+            {isManualReviewSubmitting ? "Submitting for review..." : "Submit UPI Details for Review"}
           </button>
           
           <p style={{ textAlign: "center", fontSize: "0.8rem", color: "#9ca3af", marginTop: "16px" }}>
-            <FaShieldAlt style={{ verticalAlign: "middle", marginRight: "4px" }} /> Your payment details are encrypted and secure.
+            <FaShieldAlt style={{ verticalAlign: "middle", marginRight: "4px" }} /> Razorpay payments are verified with the gateway. QR submissions remain pending until manually checked.
           </p>
         </div>
       </div>
