@@ -317,7 +317,8 @@ router.post("/razorpay/log-event", (req, res) => {
     "CLIENT_VERIFICATION_SUCCESS",
     "CLIENT_VERIFICATION_PENDING",
     "CLIENT_VERIFICATION_ERROR",
-    "CHECKOUT_START_FAILED"
+    "CHECKOUT_START_FAILED",
+    "CHECKOUT_START_REQUESTED"
   ]);
   const { event, orderId, gatewayOrderId, paymentId, details } = req.body || {};
   if (!allowedEvents.has(event) || !orderId) {
