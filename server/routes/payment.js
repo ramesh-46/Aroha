@@ -307,4 +307,37 @@ router.post("/razorpay/verify-payment", async (req, res) => {
   }
 });
 
+
+router.post("/razorpay/log-event", (req, res) => {
+  const allowedEvents = new Set([
+    "CHECKOUT_OPENED",
+    "CHECKOUT_DISMISSED",
+    "PAYMENT_FAILED",
+    "PAYMENT_HANDLER_CALLED",
+    "CLIENT_VERIFICATION_SUCCESS",
+    "CLIENT_VERIFICATION_PENDING",
+    "CLIENT_VERIFICATION_ERROR",
+    "CHECKOUT_START_FAILED"
+  ]);
+  const { event, orderId, gatewayOrderId, paymentId, details } = req.body || {};
+  if (!allowedEvents.has(event) || !orderId) {
+    return res.status(400).json({ success: false, error: "Invalid Razorpay event." });
+  }
+  const safeDetails = details && typeof details === "object" ? {
+    code: details.code ? String(details.code).slice(0, 100) : undefined,
+    reason: details.reason ? String(details.reason).slice(0, 200) : undefined,
+    status: details.status ? String(details.status).slice(0, 50) : undefined,
+    message: details.message ? String(details.message).slice(0, 200) : undefined
+  } : undefined;
+  console.log("[Razorpay][CLIENT_EVENT]", {
+    event,
+    orderId: String(orderId).slice(0, 80),
+    gatewayOrderId: gatewayOrderId ? String(gatewayOrderId).slice(0, 80) : undefined,
+    paymentId: paymentId ? String(paymentId).slice(0, 80) : undefined,
+    details: safeDetails,
+    at: new Date().toISOString()
+  });
+  return res.json({ success: true });
+});
+
 module.exports = router;
