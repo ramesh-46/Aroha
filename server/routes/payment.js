@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Order = require("../models/Order");
 const Product = require("../models/Product");
+const Cart = require("../models/Cart");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer"); // Import multer
 
@@ -294,6 +295,22 @@ router.post("/razorpay/verify-payment", async (req, res) => {
       order.status = "Payment Verified";
       order.paymentVerifiedAt = new Date();
       await order.save();
+
+      // Clear this user's cart only after Razorpay confirms captured payment.
+      if (order.userId) {
+        const cart = await Cart.findOne({ userId: order.userId });
+        if (cart && Array.isArray(cart.items) && cart.items.length) {
+          const clearedItemCount = cart.items.length;
+          cart.items = [];
+          await cart.save();
+          console.log("[Cart] CART_CLEARED_AFTER_PAYMENT", { orderId, userId: String(order.userId), clearedItemCount });
+        } else {
+          console.log("[Cart] CART_ALREADY_EMPTY_AFTER_PAYMENT", { orderId });
+        }
+      } else {
+        console.warn("[Cart] CART_NOT_CLEARED_USER_ID_MISSING", { orderId });
+      }
+
       console.log("[Razorpay]", requestId, "PAYMENT_CAPTURED", { orderId, gatewayOrderId: payment.order_id, paymentId: payment.id, amountPaise: payment.amount });
       return res.json({ success: true, paid: true, orderId: order.orderId, message: "Payment verified successfully." });
     }
