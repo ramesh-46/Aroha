@@ -131,6 +131,31 @@ app.use((err, req, res, next) => {
 
 
 // Public, read-only diagnostics. Only sanitized in-memory logs from this process are exposed.
+
+// Live tail stream for the public dashboard. Streams sanitized logs from this process.
+app.get("/admin/logs/stream", (req, res) => {
+  res.set({ "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", "Connection": "keep-alive", "X-Accel-Buffering": "no" });
+  res.flushHeaders?.();
+  const send = (event, data) => res.write("event: " + event + "\ndata: " + JSON.stringify(data) + "\n\n");
+  send("connected", { timestamp: new Date().toISOString(), source: "current-process-memory" });
+  let lastId = "";
+  const sendNewLogs = () => {
+    const pending = runtimeLogs.filter((entry) => entry.id > lastId);
+    for (const entry of pending) {
+      send("log", entry);
+      lastId = entry.id;
+    }
+  };
+  // Initial snapshot: newest entries first on screen; stream only sends newly appended entries after this point.
+  for (const entry of runtimeLogs.slice(-100)) send("log", entry);
+  if (runtimeLogs.length) lastId = runtimeLogs[runtimeLogs.length - 1].id;
+  const timer = setInterval(() => {
+    sendNewLogs();
+    res.write(": keep-alive\n\n");
+  }, 1000);
+  req.on("close", () => clearInterval(timer));
+});
+
 app.get("/admin/logs", (req, res) => {
   const hours = Math.min(168, Math.max(1, Number(req.query.hours) || 6));
   const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 200));
