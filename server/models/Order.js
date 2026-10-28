@@ -61,7 +61,9 @@ const orderSchema = new mongoose.Schema({
   },
   upiId: { type: String, default: "" }, // UPI ID used for payment (e.g., 9550354436@superyes)
   upiUrl: { type: String, default: "" }, // UPI QR URL (e.g., upi://pay?pa=9550354436@superyes&am=500&cu=INR)
-  transactionId: { type: String, default: "" }, // UPI transaction ID from user
+  transactionId: { type: String, default: "" }, // UPI transaction ID or gateway payment ID
+  razorpayOrderId: { type: String, default: "" },
+  razorpayPaymentId: { type: String, default: "" },
   ocrData: {
     transactionId: { type: String, default: "" },
     amount: { type: Number, default: 0 },
