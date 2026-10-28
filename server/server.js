@@ -24,15 +24,21 @@ const app = express();
 // CORS Setup
 // --------------------
 const allowedOrigins = [
-  "https://aroha-three.vercel.app", // frontend deployed URL
-  "http://localhost:3000"           // local dev
+  "https://aroha-three.vercel.app",
+  "http://localhost:3000"
 ];
+
+// Allow only Aroha preview deployments from this Vercel project/team.
+// Do not allow arbitrary *.vercel.app origins.
+const isAllowedOrigin = (origin) =>
+  allowedOrigins.includes(origin) ||
+  /^https:\/\/aroha-[a-z0-9-]+-ramesh-46s-projects\.vercel\.app$/i.test(origin);
 
 app.use(cors({
   origin: function(origin, callback){
     // allow requests with no origin (Postman, mobile apps)
     if(!origin) return callback(null, true);
-    if(allowedOrigins.indexOf(origin) === -1){
+    if(!isAllowedOrigin(origin)){
       console.warn("[CORS] Rejected request origin:", origin);
       const msg = `The CORS policy for this site does not allow access from the specified Origin.`;
       return callback(new Error(msg), false);
