@@ -29,11 +29,13 @@ import PaymentPage from "./Payment";
 import MainDashboard from "./maindashboard";
 import MainHeader from "./mainheader";
 import Wishlist from "./Wishlist";
+import LogsPage from "./LogsPage";
 
 function App() {
   return (
     <Router>
       <Routes>
+        <Route path="/logs" element={<LogsPage />} />
         {/* Public pages */}
         <Route path="/" element={<Homepage />} />
   <Route path="/login" element={<UserLogin />} />
