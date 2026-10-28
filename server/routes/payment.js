@@ -213,4 +213,98 @@ router.post("/verify-payment", upload.single("screenshot"), async (req, res) => 
   }
 });
 
+
+router.post("/razorpay/create-order", async (req, res) => {
+  const crypto = require("crypto");
+  const requestId = crypto.randomUUID();
+  try {
+    const { orderId } = req.body || {};
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keyId || !keySecret) {
+      console.error("[Razorpay]", requestId, "API keys are missing");
+      return res.status(503).json({ success: false, error: "Razorpay is not configured on the server." });
+    }
+    if (!orderId) return res.status(400).json({ success: false, error: "orderId is required." });
+    const order = await Order.findOne({ orderId });
+    if (!order) return res.status(404).json({ success: false, error: "Aroha order not found." });
+    if (!Number.isFinite(order.totalAmount) || order.totalAmount <= 0) return res.status(400).json({ success: false, error: "Invalid order amount." });
+    if (order.status === "Payment Verified") return res.status(409).json({ success: false, error: "Order is already paid." });
+
+    const response = await fetch("https://api.razorpay.com/v1/orders", {
+      method: "POST",
+      headers: { Authorization: "Basic " + Buffer.from(keyId + ":" + keySecret).toString("base64"), "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: Math.round(order.totalAmount * 100), currency: "INR", receipt: String(order.orderId).slice(0, 40), notes: { arohaOrderId: order.orderId } })
+    });
+    const gatewayOrder = await response.json();
+    if (!response.ok || !gatewayOrder.id) {
+      console.error("[Razorpay]", requestId, "Order creation failed", response.status, gatewayOrder.error?.code || "gateway_error");
+      return res.status(502).json({ success: false, error: "Razorpay could not create the payment order." });
+    }
+    order.razorpayOrderId = gatewayOrder.id;
+    order.paymentMethod = "Online";
+    await order.save();
+    console.log("[Razorpay]", requestId, "ORDER_CREATED", { orderId: order.orderId, gatewayOrderId: gatewayOrder.id, amountPaise: gatewayOrder.amount });
+    res.json({ success: true, keyId, razorpayOrderId: gatewayOrder.id, amount: gatewayOrder.amount, currency: gatewayOrder.currency, name: order.customerName, mobile: order.customerMobile, arohaOrderId: order.orderId });
+  } catch (err) {
+    console.error("[Razorpay]", requestId, "Create-order error", err.message);
+    res.status(500).json({ success: false, error: "Unable to create Razorpay order." });
+  }
+});
+
+router.post("/razorpay/verify-payment", async (req, res) => {
+  const crypto = require("crypto");
+  const requestId = crypto.randomUUID();
+  try {
+    const { orderId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body || {};
+    const keyId = process.env.RAZORPAY_KEY_ID;
+    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    if (!keyId || !keySecret) {
+      console.error("[Razorpay]", requestId, "API keys are missing during verification");
+      return res.status(503).json({ success: false, error: "Razorpay is not configured on the server." });
+    }
+    if (!orderId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) return res.status(400).json({ success: false, error: "Missing payment verification fields." });
+    const order = await Order.findOne({ orderId });
+    if (!order) return res.status(404).json({ success: false, error: "Aroha order not found." });
+    if (order.razorpayOrderId !== razorpay_order_id) return res.status(400).json({ success: false, error: "Gateway order does not match Aroha order." });
+
+    const expected = crypto.createHmac("sha256", keySecret).update(razorpay_order_id + "|" + razorpay_payment_id).digest("hex");
+    const expectedBuffer = Buffer.from(expected, "hex");
+    const receivedBuffer = Buffer.from(String(razorpay_signature), "hex");
+    if (expectedBuffer.length !== receivedBuffer.length || !crypto.timingSafeEqual(expectedBuffer, receivedBuffer)) {
+      console.warn("[Razorpay]", requestId, "INVALID_SIGNATURE", { orderId });
+      return res.status(400).json({ success: false, error: "Payment signature is invalid." });
+    }
+
+    const response = await fetch("https://api.razorpay.com/v1/payments/" + encodeURIComponent(razorpay_payment_id), {
+      headers: { Authorization: "Basic " + Buffer.from(keyId + ":" + keySecret).toString("base64") }
+    });
+    const payment = await response.json();
+    if (!response.ok || !payment.id) {
+      console.error("[Razorpay]", requestId, "Payment lookup failed", response.status, payment.error?.code || "gateway_error");
+      return res.status(502).json({ success: false, error: "Unable to confirm payment with Razorpay." });
+    }
+    if (payment.order_id !== razorpay_order_id || payment.amount !== Math.round(order.totalAmount * 100) || payment.currency !== "INR") {
+      console.error("[Razorpay]", requestId, "AMOUNT_OR_ORDER_MISMATCH", { orderId, paymentId: payment.id });
+      return res.status(400).json({ success: false, error: "Payment amount or order does not match." });
+    }
+    order.razorpayPaymentId = payment.id;
+    order.transactionId = payment.id;
+    if (payment.status === "captured") {
+      order.status = "Payment Verified";
+      order.paymentVerifiedAt = new Date();
+      await order.save();
+      console.log("[Razorpay]", requestId, "PAYMENT_CAPTURED", { orderId, gatewayOrderId: payment.order_id, paymentId: payment.id, amountPaise: payment.amount });
+      return res.json({ success: true, paid: true, orderId: order.orderId, message: "Payment verified successfully." });
+    }
+    order.status = "Payment Verification Pending";
+    await order.save();
+    console.log("[Razorpay]", requestId, "PAYMENT_NOT_CAPTURED", { orderId, paymentId: payment.id, status: payment.status });
+    return res.status(202).json({ success: true, paid: false, paymentStatus: payment.status, message: "Payment is not captured yet." });
+  } catch (err) {
+    console.error("[Razorpay]", requestId, "Verification error", err.message);
+    res.status(500).json({ success: false, error: "Payment verification failed." });
+  }
+});
+
 module.exports = router;
