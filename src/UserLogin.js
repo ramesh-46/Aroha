@@ -92,6 +92,7 @@ function UserLogin() {
           "user",
           JSON.stringify({ ...res.data.user, photoUrl: user.photoURL })
         );
+        if (res.data.token) localStorage.setItem("authToken", res.data.token);
         showToast("Successfully signed in.");
         setTimeout(() => navigate("/maindashboard"), 1000);
       } else {
