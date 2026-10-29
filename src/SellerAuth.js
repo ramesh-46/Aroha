@@ -117,6 +117,7 @@ function SellerAuth() {
 
       {message && <p style={{ color: "green" }}>{message}</p>}
 
+      {/* Seller signup form disabled; retained for future use.
       {tab === "signup" && (
         <>
           {["name", "mobile", "email", "password", "recoveryCode", "gstNumber", "address", "companyName", "contactNumber"].map((f) => (
@@ -137,6 +138,9 @@ function SellerAuth() {
           </button>
         </>
       )}
+      */}
+
+
 
       {tab === "login" && (
         <>
