@@ -3,7 +3,7 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 export default function RewardsPage() {
-  const [data, setData] = useState({ coins: 0, referralCode: "", history: [] });
+  const [data, setData] = useState({ coins: 0, referralCode: "", history: [], referrals: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -45,6 +45,11 @@ export default function RewardsPage() {
             <button onClick={copyCode} disabled={!data.referralCode} style={{ border: 0, borderRadius: 12, background: "#111827", color: "white", padding: "12px 18px", cursor: "pointer" }}>Copy code</button>
           </div>
         </div>
+        <section style={{ marginTop: 30, border: "1px solid #e2e8f0", borderRadius: 20, padding: 22 }}>
+          <h2 style={{ marginTop: 0 }}>People you referred</h2>
+          <p style={{ color: "#64748b" }}>Friends who joined Aroha using your referral code.</p>
+          {data.referrals?.length ? data.referrals.map((person, index) => <div key={index} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "13px 0", borderBottom: "1px solid #e2e8f0" }}><strong>{person.name}</strong><span style={{ color: "#64748b" }}>{person.joinedAt ? new Date(person.joinedAt).toLocaleDateString("en-IN") : "Joined"}</span></div>) : <p style={{ color: "#64748b" }}>No referrals yet. Share your code to invite your first friend.</p>}
+        </section>
         <h2 style={{ marginTop: 32 }}>Coin activity</h2>
         {data.history.length ? data.history.map((item, index) => <div key={index} style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "14px 0", borderBottom: "1px solid #e2e8f0" }}><span>{item.note || item.type}</span><strong style={{ color: "#7c3aed" }}>+{item.coins} 🪙</strong></div>) : <p style={{ color: "#64748b" }}>Your coin activity will appear here after your first eligible payment.</p>}
       </>}
