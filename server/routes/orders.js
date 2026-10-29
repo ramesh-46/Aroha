@@ -74,6 +74,8 @@ router.get("/checkout-settings", async (req, res) => {
     res.json({
       success: true,
       checkoutEnabled: settings.checkoutEnabled,
+      deliveryMinDays: settings.deliveryMinDays || 3,
+      deliveryMaxDays: settings.deliveryMaxDays || 5,
       saleStatus: getSaleStatus(settings),
       flashSaleDiscountPercent: settings.flashSaleDiscountPercent || 0,
       flashSaleCategory: settings.flashSaleCategory || "",
