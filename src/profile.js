@@ -161,6 +161,26 @@ function Profile() {
     }
   };
 
+  const downloadInvoice = async (order) => {
+    try {
+      const token = localStorage.getItem("authToken");
+      const response = await axios.get(`https://aroha.onrender.com/invoices/${encodeURIComponent(order.orderId || order._id)}/pdf`, {
+        headers: token ? { Authorization: "Bearer " + token } : {},
+        responseType: "blob"
+      });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Aroha-Invoice-${order.orderId || order._id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      alert(error.response?.data?.message || "Invoice could not be downloaded. Please sign in again.");
+    }
+  };
+
   const handleLogout = () => {
     localStorage.clear();
     navigate("/");
@@ -753,6 +773,9 @@ function Profile() {
               </button>
             )}
 
+            <button onClick={() => navigate("/rewards")} className="action-btn edit-btn" style={{ background: "linear-gradient(120deg,#7c3aed,#db2777)" }}>
+              🪙 Rewards & Referrals
+            </button>
             <button onClick={toggleShowOrders} className="action-btn orders-btn">
               {showOrders ? "Hide Orders" : "Show Orders"}
             </button>
@@ -854,6 +877,12 @@ function Profile() {
                           </div>
                         </div>
                       ))}
+                    </div>
+
+                    <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 20px 14px" }}>
+                      <button onClick={() => downloadInvoice(order)} className="action-btn edit-btn" style={{ background: "#1d4ed8" }}>
+                        <FaReceipt style={{ marginRight: 7 }} /> Download PDF Invoice
+                      </button>
                     </div>
 
                     {/* Order Summary */}
