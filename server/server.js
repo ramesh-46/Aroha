@@ -103,8 +103,8 @@ mongoose.connect(process.env.MONGO_URI, {
 // Routes
 // --------------------
 app.use("/auth", authRoutes);
-app.use("/products", productRoutes);
 app.use("/products", imageSearchRoutes);
+app.use("/products", productRoutes);
 app.use("/cart", cartRoutes);
 app.use("/orders", orderRoutes);
 app.use("/seller", sellerAuthe);
