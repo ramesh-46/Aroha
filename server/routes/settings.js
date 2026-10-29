@@ -36,6 +36,12 @@ router.put("/", sellerAuthMiddleware, async (req, res) => {
     const settings = await getStoreSettings();
     const fields = [
       "checkoutEnabled",
+      "rewardsEnabled",
+      "coinsPer100Spent",
+      "referralBonusCoins",
+      "coinRupeeValue",
+      "deliveryMinDays",
+      "deliveryMaxDays",
       "saleBannerMessage",
       "saleImages",
       "saleStartsAt",
