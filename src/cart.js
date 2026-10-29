@@ -826,7 +826,7 @@ function Cart() {
 
               {checkoutSettings && (
                 <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <FaTruck /> {checkoutSettings.message}
+                  <FaTruck /> {checkoutSettings.message}<span style={{ display: "block", marginTop: 6, fontWeight: 700, color: "#7c3aed" }}>Estimated arrival: {checkoutSettings.deliveryMinDays || 3}–{checkoutSettings.deliveryMaxDays || 5} business days after dispatch</span>
                 </div>
               )}
 
