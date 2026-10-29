@@ -374,7 +374,7 @@ router.post("/razorpay/verify-payment", async (req, res) => {
 });
 
 
-router.post("/razorpay/log-event", (req, res) => {
+router.post("/razorpay/log-event", async (req, res) => {
   const allowedEvents = new Set([
     "CHECKOUT_OPENED",
     "CHECKOUT_DISMISSED",
@@ -401,6 +401,18 @@ router.post("/razorpay/log-event", (req, res) => {
     status: details.status ? String(details.status).slice(0, 50) : undefined,
     message: details.message ? String(details.message).slice(0, 200) : undefined
   } : undefined;
+  if (event === "PAYMENT_FAILED") {
+    try {
+      const order = await Order.findOne({ orderId: String(orderId) });
+      if (order && order.status !== "Payment Verified") {
+        order.status = "Payment Failed";
+        order.paymentFailureReason = safeDetails?.reason || safeDetails?.message || safeDetails?.code || "Payment was not completed.";
+        await order.save();
+      }
+    } catch (error) {
+      console.error("[Razorpay] Could not record failed payment", error.message);
+    }
+  }
   console.log("[Razorpay][CLIENT_EVENT]", {
     event,
     orderId: String(orderId).slice(0, 80),
