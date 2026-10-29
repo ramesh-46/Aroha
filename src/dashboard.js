@@ -701,7 +701,7 @@ function Dashboard() {
 
       <MobileBottomNav onNavigate={handleNavigate} currentPath={location.pathname} />
 
-
+      {isImageSearchOpen && <ImageSearchModal onClose={() => setIsImageSearchOpen(false)} onSelectProduct={(product) => { setProducts((current) => current.some((item) => item._id === product._id) ? current : [product, ...current]); setSearch(""); setIsImageSearchOpen(false); navigate(`/product/${product._id}`); }} />}
       {toast && <SuccessToast message={toast.message} onClose={() => setToast(null)} />}
       {errorPopup && <ErrorPopup message={errorPopup} onClose={() => setErrorPopup(null)} />}
     </div>
