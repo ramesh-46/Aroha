@@ -177,6 +177,8 @@ useState(() => {
 
       <div style={inputWrapper}><input placeholder="Referral code (optional)" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} style={inputStyle} /></div>
 
+      <div style={inputWrapper}><input placeholder="Referral code (optional)" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} style={inputStyle} /></div>
+
       <div style={checkboxWrapper}>
         <input
           type="checkbox"
