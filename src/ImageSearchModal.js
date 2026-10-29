@@ -1,5 +1,61 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
+
+let visionModelPromise = null;
+const loadScript = (src, marker) => new Promise((resolve, reject) => {
+  if (window[marker]) return resolve();
+  const existing = document.querySelector(`script[data-aroha-vision="${marker}"]`);
+  if (existing) {
+    existing.addEventListener("load", resolve, { once: true });
+    existing.addEventListener("error", reject, { once: true });
+    return;
+  }
+  const script = document.createElement("script");
+  script.src = src;
+  script.async = true;
+  script.dataset.arohaVision = marker;
+  script.onload = resolve;
+  script.onerror = () => reject(new Error("Could not load the free vision model. Check your internet connection and try again."));
+  document.head.appendChild(script);
+});
+
+const getFreeVisionModel = async () => {
+  if (!visionModelPromise) {
+    visionModelPromise = (async () => {
+      await loadScript("https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js", "tf");
+      await loadScript("https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.1.1/dist/mobilenet.min.js", "mobilenet");
+      await window.tf.ready();
+      return window.mobilenet.load({ version: 2, alpha: 0.5 });
+    })().catch((error) => { visionModelPromise = null; throw error; });
+  }
+  return visionModelPromise;
+};
+
+const loadImageElement = (src) => new Promise((resolve, reject) => {
+  const image = new Image();
+  if (/^https?:/i.test(src)) image.crossOrigin = "anonymous";
+  image.onload = () => resolve(image);
+  image.onerror = () => reject(new Error("Could not load a catalog image."));
+  image.src = src;
+});
+
+const getImageEmbedding = async (model, image) => {
+  const tensor = model.infer(image, true);
+  try {
+    const vector = Array.from(await tensor.data());
+    const magnitude = Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0)) || 1;
+    return vector.map((value) => value / magnitude);
+  } finally {
+    tensor.dispose();
+  }
+};
+
+const cosineSimilarity = (left, right) => {
+  if (!left || !right || left.length !== right.length) return 0;
+  let score = 0;
+  for (let index = 0; index < left.length; index += 1) score += left[index] * right[index];
+  return score;
+};
 import { FaCamera, FaCloudUploadAlt, FaTimes, FaSearch, FaMagic, FaArrowRight, FaRedoAlt, FaBoxOpen, FaCheckCircle } from "react-icons/fa";
 
 const API = "https://aroha.onrender.com";
@@ -49,36 +105,46 @@ export default function ImageSearchModal({ onClose, onSelectProduct }) {
   };
 
   const searchImage = async () => {
-    if (!file) {
-      inputRef.current?.click();
-      return;
-    }
-    setStatus("loading");
-    setError("");
+    if (!file) { inputRef.current?.click(); return; }
+    setStatus("loading"); setError(""); setProgress(0);
     const startedAt = performance.now();
     try {
-      const body = new FormData();
-      body.append("image", file);
-      const response = await axios.post(`${API}/products/image-search`, body, {
-        timeout: 90000
-      });
-      setResults(response.data.products || []);
-      setDescription(response.data.description || "Visual matches from the Aroha catalog");
+      // Open-source MobileNet runs in the visitor browser; the uploaded photo is not sent to a paid AI API.
+      const model = await getFreeVisionModel();
+      setProgress(8);
+      const queryImage = await loadImageElement(preview);
+      const queryEmbedding = await getImageEmbedding(model, queryImage);
+      const catalogResponse = await axios.get(API + "/products", { timeout: 30000 });
+      const catalog = (Array.isArray(catalogResponse.data) ? catalogResponse.data : [])
+        .filter((product) => product && product.isActive !== false && Number(product.stock) > 0 && Array.isArray(product.images) && product.images.length > 0)
+        .slice(0, 60);
+      if (!catalog.length) {
+        setResults([]); setDescription("There are no in-stock catalog products with images to compare yet."); setStatus("done"); return;
+      }
+      const ranked = []; let processed = 0;
+      for (const product of catalog) {
+        const imageValue = product.images[0];
+        if (!imageValue) continue;
+        try {
+          const image = await loadImageElement(getImageUrl(imageValue));
+          const embedding = await getImageEmbedding(model, image);
+          const similarity = cosineSimilarity(queryEmbedding, embedding);
+          ranked.push({ ...product, matchScore: Math.max(0, Math.min(100, Math.round(similarity * 100))) });
+        } catch (imageError) {
+          console.warn("[Aroha free visual search] skipped unreadable catalog image", { productId: String(product._id || ""), reason: String(imageError.message || "image unavailable").slice(0, 100) });
+        }
+        processed += 1;
+        setProgress(8 + Math.round((processed / catalog.length) * 90));
+      }
+      ranked.sort((a, b) => b.matchScore - a.matchScore);
+      setResults(ranked.filter((product) => product.matchScore > 0).slice(0, 12));
+      setDescription("Compared your photo with " + processed + " in-stock catalog images using the free, open-source MobileNet model in your browser.");
       setStatus("done");
-      console.info("[Aroha image search] completed", {
-        resultCount: (response.data.products || []).length,
-        durationMs: Math.round(performance.now() - startedAt)
-      });
+      console.info("[Aroha free visual search] completed", { catalogSize: catalog.length, resultCount: ranked.length, durationMs: Math.round(performance.now() - startedAt), model: "MobileNetV2 browser inference" });
     } catch (err) {
-      const message = err.response?.data?.message || (err.code === "ECONNABORTED"
-        ? "Image search took too long. Please try a smaller image."
-        : "Image search is temporarily unavailable. Please try again.");
-      setError(message);
-      setStatus("error");
-      console.error("[Aroha image search] failed", {
-        status: err.response?.status || "network",
-        durationMs: Math.round(performance.now() - startedAt)
-      });
+      const message = err.response?.data?.message || err.message || "Free visual search is temporarily unavailable. Please try again.";
+      setError(message); setStatus("error");
+      console.error("[Aroha free visual search] failed", { status: err.response?.status || "browser-model", durationMs: Math.round(performance.now() - startedAt), message: String(message).slice(0, 180) });
     }
   };
 
@@ -122,13 +188,13 @@ export default function ImageSearchModal({ onClose, onSelectProduct }) {
           <button className="aroha-visual-search-btn" onClick={searchImage} disabled={status === "loading"}>
             {status === "loading" ? <><span className="aroha-visual-spinner" /> Analyzing image and matching products…</> : <><FaSearch /> Find similar products <FaArrowRight /></>}
           </button>
-          {status === "loading" && <p className="aroha-visual-loading-note">Checking product details and availability in the Aroha catalog.</p>}
+          {status === "loading" && <p className="aroha-visual-loading-note">Loading the free vision model and comparing catalog photos…</p>}
 
           {status === "done" && (
             <div className="aroha-visual-results">
               <div className="aroha-visual-results-heading">
                 <div><p className="aroha-visual-eyebrow">VISUAL MATCHES</p><h3>{results.length ? `${results.length} products found` : "No close matches yet"}</h3></div>
-                <button className="aroha-visual-reset" onClick={() => { setFile(null); setPreview(""); setResults([]); setDescription(""); setStatus("idle"); setError(""); if (inputRef.current) inputRef.current.value = ""; }}><FaRedoAlt /> New search</button>
+                <button className="aroha-visual-reset" onClick={() => { setFile(null); setPreview(""); setResults([]); setDescription(""); setStatus("idle"); setError(""); setProgress(0); if (inputRef.current) inputRef.current.value = ""; }}><FaRedoAlt /> New search</button>
               </div>
               {description && <p className="aroha-visual-description">{description}</p>}
               {results.length ? (
