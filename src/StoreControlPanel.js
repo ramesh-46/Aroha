@@ -4,6 +4,12 @@ import Swal from "./sweetalertConfig";
 
 const initialState = {
   checkoutEnabled: true,
+  rewardsEnabled: true,
+  coinsPer100Spent: 5,
+  referralBonusCoins: 100,
+  coinRupeeValue: 0.1,
+  deliveryMinDays: 3,
+  deliveryMaxDays: 5,
   saleBannerMessage: "",
   saleImages: [],
   saleStartsAt: "",
@@ -34,6 +40,12 @@ function StoreControlPanel() {
       const settings = res.data.settings || initialState;
       setForm({
         checkoutEnabled: settings.checkoutEnabled ?? true,
+        rewardsEnabled: settings.rewardsEnabled ?? true,
+        coinsPer100Spent: settings.coinsPer100Spent ?? 5,
+        referralBonusCoins: settings.referralBonusCoins ?? 100,
+        coinRupeeValue: settings.coinRupeeValue ?? 0.1,
+        deliveryMinDays: settings.deliveryMinDays ?? 3,
+        deliveryMaxDays: settings.deliveryMaxDays ?? 5,
         saleBannerMessage: settings.saleBannerMessage || "",
         saleImages: settings.saleImages || [],
         saleStartsAt: settings.saleStartsAt ? new Date(settings.saleStartsAt).toISOString().slice(0, 16) : "",
@@ -96,6 +108,18 @@ function StoreControlPanel() {
       <form onSubmit={handleSave} style={styles.form}>
         <section style={styles.card}>
           <h3 style={styles.sectionTitle}>Checkout & Delivery</h3>
+          <h3 style={styles.sectionTitle}>Rewards & Referrals</h3>
+          <label style={styles.switchRow}><input type="checkbox" checked={form.rewardsEnabled} onChange={(e) => setForm((p) => ({ ...p, rewardsEnabled: e.target.checked }))} /> Enable reward coins</label>
+          <div style={styles.grid}>
+            <input type="number" min="0" value={form.coinsPer100Spent} onChange={(e) => setForm((p) => ({ ...p, coinsPer100Spent: e.target.value }))} placeholder="Coins per ₹100 spent" style={styles.input} />
+            <input type="number" min="0" value={form.referralBonusCoins} onChange={(e) => setForm((p) => ({ ...p, referralBonusCoins: e.target.value }))} placeholder="Referral bonus coins" style={styles.input} />
+            <input type="number" min="0" step="0.01" value={form.coinRupeeValue} onChange={(e) => setForm((p) => ({ ...p, coinRupeeValue: e.target.value }))} placeholder="Rupee value per coin" style={styles.input} />
+          </div>
+          <h3 style={styles.sectionTitle}>Delivery Estimate</h3>
+          <div style={styles.grid}>
+            <input type="number" min="1" max="30" value={form.deliveryMinDays} onChange={(e) => setForm((p) => ({ ...p, deliveryMinDays: e.target.value }))} placeholder="Minimum delivery days" style={styles.input} />
+            <input type="number" min="1" max="60" value={form.deliveryMaxDays} onChange={(e) => setForm((p) => ({ ...p, deliveryMaxDays: e.target.value }))} placeholder="Maximum delivery days" style={styles.input} />
+          </div>
           <label style={styles.switchRow}>
             <input
               type="checkbox"
