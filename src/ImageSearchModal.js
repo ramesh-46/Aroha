@@ -60,8 +60,7 @@ export default function ImageSearchModal({ onClose, onSelectProduct }) {
       const body = new FormData();
       body.append("image", file);
       const response = await axios.post(`${API}/products/image-search`, body, {
-        timeout: 90000,
-        headers: { "Content-Type": "multipart/form-data" }
+        timeout: 90000
       });
       setResults(response.data.products || []);
       setDescription(response.data.description || "Visual matches from the Aroha catalog");
