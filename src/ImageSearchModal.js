@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
+import { FaCamera, FaCloudUploadAlt, FaTimes, FaSearch, FaMagic, FaArrowRight, FaRedoAlt, FaBoxOpen, FaCheckCircle } from "react-icons/fa";
 
 let visionModelPromise = null;
 const loadScript = (src, marker) => new Promise((resolve, reject) => {
@@ -56,7 +57,6 @@ const cosineSimilarity = (left, right) => {
   for (let index = 0; index < left.length; index += 1) score += left[index] * right[index];
   return score;
 };
-import { FaCamera, FaCloudUploadAlt, FaTimes, FaSearch, FaMagic, FaArrowRight, FaRedoAlt, FaBoxOpen, FaCheckCircle } from "react-icons/fa";
 
 const API = "https://aroha.onrender.com";
 
@@ -76,6 +76,7 @@ export default function ImageSearchModal({ onClose, onSelectProduct }) {
   const [description, setDescription] = useState("");
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState(0);
   const inputRef = useRef(null);
 
   useEffect(() => {
