@@ -117,7 +117,7 @@ export default function ImageSearchModal({ onClose, onSelectProduct }) {
       const catalogResponse = await axios.get(API + "/products", { timeout: 30000 });
       const catalog = (Array.isArray(catalogResponse.data) ? catalogResponse.data : [])
         .filter((product) => product && product.isActive !== false && Number(product.stock) > 0 && Array.isArray(product.images) && product.images.length > 0)
-        .slice(0, 60);
+        .slice(0, 40);
       if (!catalog.length) {
         setResults([]); setDescription("There are no in-stock catalog products with images to compare yet."); setStatus("done"); return;
       }
@@ -188,7 +188,7 @@ export default function ImageSearchModal({ onClose, onSelectProduct }) {
           <button className="aroha-visual-search-btn" onClick={searchImage} disabled={status === "loading"}>
             {status === "loading" ? <><span className="aroha-visual-spinner" /> Analyzing image and matching products…</> : <><FaSearch /> Find similar products <FaArrowRight /></>}
           </button>
-          {status === "loading" && <p className="aroha-visual-loading-note">Loading the free vision model and comparing catalog photos…</p>}
+          {status === "loading" && <p className="aroha-visual-loading-note">Loading the free vision model and comparing catalog photos… {progress}%</p>}
 
           {status === "done" && (
             <div className="aroha-visual-results">
