@@ -534,6 +534,7 @@ function Dashboard() {
         onSearchChange={setSearch}
         onMenuToggle={() => setIsMenuOpen(!isMenuOpen)}
         isMenuOpen={isMenuOpen}
+        onImageSearch={() => setIsImageSearchOpen(true)}
       />
 
 
