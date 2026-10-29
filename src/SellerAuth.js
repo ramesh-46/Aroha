@@ -105,9 +105,11 @@ function SellerAuth() {
         <button onClick={() => setTab("login")} style={tabButton(tab === "login")}>
           Login
         </button>
+        {/* Seller self-registration disabled: single store admin account only.
         <button onClick={() => setTab("signup")} style={tabButton(tab === "signup")}>
           Signup
         </button>
+        */}
         {/* <button onClick={() => setTab("reset")} style={tabButton(tab === "reset")}>
           Reset Password
         </button> */}
