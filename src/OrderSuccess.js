@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { FaCheckCircle, FaBoxOpen, FaTruck } from "react-icons/fa";
@@ -7,6 +7,11 @@ function OrderSuccess() {
   const location = useLocation();
   const navigate = useNavigate();
   const orderDetails = location.state?.order;
+
+  useEffect(() => {
+    const timer = setTimeout(() => navigate("/maindashboard", { replace: true }), 5000);
+    return () => clearTimeout(timer);
+  }, [navigate]);
 
   return (
     <div style={styles.container}>
@@ -26,7 +31,7 @@ function OrderSuccess() {
         </motion.div>
         
         <h1 style={styles.title}>Order Placed Successfully!</h1>
-        <p style={styles.subtitle}>Thank you for shopping with us. Your order is confirmed.</p>
+        <p style={styles.subtitle}>Thank you for shopping with us. Your order is confirmed. Returning to Aroha in a few seconds…</p>
         
         {orderDetails && (
           <div style={styles.orderDetailsBox}>
