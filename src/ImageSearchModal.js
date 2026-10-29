@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
-import { FaCamera, FaCloudUploadAlt, FaTimes, FaSearch, FaSparkles, FaArrowRight, FaRedoAlt, FaBoxOpen, FaCheckCircle } from "react-icons/fa";
+import { FaCamera, FaCloudUploadAlt, FaTimes, FaSearch, FaMagic, FaArrowRight, FaRedoAlt, FaBoxOpen, FaCheckCircle } from "react-icons/fa";
 
 const API = "https://aroha.onrender.com";
 
@@ -88,7 +88,7 @@ export default function ImageSearchModal({ onClose, onSelectProduct }) {
       <section className="aroha-visual-modal" role="dialog" aria-modal="true" aria-labelledby="aroha-visual-title">
         <header className="aroha-visual-header">
           <div className="aroha-visual-heading">
-            <span className="aroha-visual-mark"><FaSparkles /></span>
+            <span className="aroha-visual-mark"><FaMagic /></span>
             <div>
               <p className="aroha-visual-eyebrow">AROHA SMART SHOPPING</p>
               <h2 id="aroha-visual-title">Search with an image</h2>
