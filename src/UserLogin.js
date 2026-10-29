@@ -57,6 +57,7 @@ function UserLogin() {
 
       if (res?.data?.success) {
         localStorage.setItem("user", JSON.stringify(res.data.user));
+        if (res.data.token) localStorage.setItem("authToken", res.data.token);
         showToast("Welcome back. Your experience awaits.");
         setTimeout(() => navigate("/maindashboard"), 1000);
       } else {
