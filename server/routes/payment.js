@@ -3,6 +3,8 @@ const router = express.Router();
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 const Cart = require("../models/Cart");
+const User = require("../models/User");
+const StoreSettings = require("../models/StoreSettings");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer"); // Import multer
 
@@ -295,6 +297,38 @@ router.post("/razorpay/verify-payment", async (req, res) => {
       order.status = "Payment Verified";
       order.paymentVerifiedAt = new Date();
       await order.save();
+
+      // Credit coins only after Razorpay confirms a captured payment.
+      const rewardClaim = await Order.findOneAndUpdate(
+        { _id: order._id, rewardsCreditedAt: null },
+        { $set: { rewardsCreditedAt: new Date() } },
+        { new: true }
+      );
+      if (rewardClaim && order.userId) {
+        const settings = await StoreSettings.findOne();
+        if (settings?.rewardsEnabled !== false) {
+          const coins = Math.max(0, Math.floor((Number(order.totalAmount) / 100) * Number(settings?.coinsPer100Spent ?? 5)));
+          const customer = await User.findById(order.userId);
+          if (customer && coins > 0) {
+            customer.rewardCoins = (customer.rewardCoins || 0) + coins;
+            customer.rewardHistory.push({ type: "purchase", coins, orderId: order.orderId, note: "Coins for a captured payment." });
+            await customer.save();
+          }
+          if (customer?.referredBy && Number(settings?.referralBonusCoins) > 0) {
+            const referrer = await User.findById(customer.referredBy);
+            if (referrer) {
+              const bonus = Number(settings.referralBonusCoins);
+              referrer.rewardCoins = (referrer.rewardCoins || 0) + bonus;
+              referrer.rewardHistory.push({ type: "referral", coins: bonus, orderId: order.orderId, note: "Referral bonus after first captured order." });
+              await referrer.save();
+              customer.referredBy = null;
+              await customer.save();
+            }
+          }
+          order.rewardsCoinsAwarded = coins;
+          await order.save();
+        }
+      }
 
       // Clear this user's cart only after Razorpay confirms captured payment.
       if (order.userId) {
