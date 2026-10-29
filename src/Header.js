@@ -1,8 +1,8 @@
 import React from "react";
-import { FaSearch, FaShoppingCart, FaHeart, FaUser, FaBars, FaTimes, FaQuestionCircle, FaSignOutAlt } from "react-icons/fa";
+import { FaSearch, FaShoppingCart, FaHeart, FaUser, FaBars, FaTimes, FaQuestionCircle, FaSignOutAlt, FaCamera } from "react-icons/fa";
 import { useNavigate, useLocation } from "react-router-dom";
 
-const Header = ({ isLoggedIn, onLogout, searchValue, onSearchChange, onMenuToggle, isMenuOpen }) => {
+const Header = ({ isLoggedIn, onLogout, searchValue, onSearchChange, onMenuToggle, isMenuOpen, onImageSearch }) => {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -42,6 +42,8 @@ const Header = ({ isLoggedIn, onLogout, searchValue, onSearchChange, onMenuToggl
             />
           </div>
         )}
+
+        {isDashboard && <button className="aroha-image-search-trigger" onClick={onImageSearch} aria-label="Search products with an image" title="Search with an image"><FaCamera /><span> Visual search</span></button>}
 
         {/* Desktop Navigation Icons - hidden on mobile */}
         <div style={styles.desktopNav}>

@@ -9,6 +9,7 @@ import {
   FaTruck, FaUndo, FaLock, FaClock, FaBolt, FaCalendarAlt, FaFire
 } from "react-icons/fa";
 import Header, { MobileBottomNav } from "./Header";
+import ImageSearchModal from "./ImageSearchModal";
 
 
 // Error Popup Component
@@ -65,6 +66,7 @@ function Dashboard() {
   const [errorPopup, setErrorPopup] = useState(null);
   const [loading, setLoading] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isImageSearchOpen, setIsImageSearchOpen] = useState(false);
 
   // Sale Banner States
   const [saleSettings, setSaleSettings] = useState(null);
@@ -357,6 +359,7 @@ function Dashboard() {
           onSearchChange={setSearch}
           onMenuToggle={() => setIsMenuOpen(!isMenuOpen)}
           isMenuOpen={isMenuOpen}
+          onImageSearch={() => setIsImageSearchOpen(true)}
         />
 
 
@@ -513,6 +516,7 @@ function Dashboard() {
         <MobileBottomNav onNavigate={handleNavigate} currentPath={location.pathname} />
 
 
+        {isImageSearchOpen && <ImageSearchModal onClose={() => setIsImageSearchOpen(false)} onSelectProduct={(product) => { setProducts((current) => current.some((item) => item._id === product._id) ? current : [product, ...current]); setSearch(""); setIsImageSearchOpen(false); navigate(`/product/${product._id}`); }} />}
         {toast && <SuccessToast message={toast.message} onClose={() => setToast(null)} />}
         {errorPopup && <ErrorPopup message={errorPopup} onClose={() => setErrorPopup(null)} />}
       </div>
@@ -530,6 +534,7 @@ function Dashboard() {
         onSearchChange={setSearch}
         onMenuToggle={() => setIsMenuOpen(!isMenuOpen)}
         isMenuOpen={isMenuOpen}
+        onImageSearch={() => setIsImageSearchOpen(true)}
       />
 
 
@@ -696,7 +701,7 @@ function Dashboard() {
 
       <MobileBottomNav onNavigate={handleNavigate} currentPath={location.pathname} />
 
-
+      {isImageSearchOpen && <ImageSearchModal onClose={() => setIsImageSearchOpen(false)} onSelectProduct={(product) => { setProducts((current) => current.some((item) => item._id === product._id) ? current : [product, ...current]); setSearch(""); setIsImageSearchOpen(false); navigate(`/product/${product._id}`); }} />}
       {toast && <SuccessToast message={toast.message} onClose={() => setToast(null)} />}
       {errorPopup && <ErrorPopup message={errorPopup} onClose={() => setErrorPopup(null)} />}
     </div>
