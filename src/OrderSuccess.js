@@ -49,7 +49,7 @@ function OrderSuccess() {
           <button style={styles.primaryBtn} onClick={() => navigate("/orders")}>
             <FaBoxOpen /> View Orders
           </button>
-          <button style={styles.secondaryBtn} onClick={() => navigate("/dashboard")}>
+          <button style={styles.secondaryBtn} onClick={() => navigate("/maindashboard")}>
             Continue Shopping
           </button>
         </div>
