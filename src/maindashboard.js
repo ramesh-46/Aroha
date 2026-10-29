@@ -566,6 +566,7 @@ const handleToggleWishlist = async () => {
     return (
       <div style={styles.container}>
         {isImageSearchOpen && <ImageSearchModal onClose={() => setIsImageSearchOpen(false)} onSelectProduct={handleVisualProductSelect} />}
+        {isMobile && <div style={{ position: "fixed", right: 14, bottom: 78, zIndex: 1300, display: "flex", flexDirection: "column", gap: 10 }}><button type="button" onClick={() => setIsImageSearchOpen(true)} aria-label="Visual search" style={{ border: 0, borderRadius: 24, padding: "12px 15px", background: "#111827", color: "white", boxShadow: "0 8px 24px #0003", fontWeight: 800 }}>📷 Search image</button><button type="button" onClick={() => navigate("/rewards")} style={{ border: 0, borderRadius: 24, padding: "12px 15px", background: "linear-gradient(120deg,#fef3c7,#fbcfe8)", color: "#7c2d12", boxShadow: "0 8px 24px #0003", fontWeight: 800 }}>🪙 Rewards</button></div>}
         {!isMobile && <MainHeader selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onFilterClick={() => setShowFilterModal(true)} onNavClick={handleNavClick} onImageSearch={() => setIsImageSearchOpen(true)} />}
 
         <div style={styles.detailContainer}>
@@ -774,6 +775,7 @@ const handleToggleWishlist = async () => {
      return (
        <div style={styles.container}>
         {isImageSearchOpen && <ImageSearchModal onClose={() => setIsImageSearchOpen(false)} onSelectProduct={handleVisualProductSelect} />}
+        {isMobile && <div style={{ position: "fixed", right: 14, bottom: 78, zIndex: 1300, display: "flex", flexDirection: "column", gap: 10 }}><button type="button" onClick={() => setIsImageSearchOpen(true)} aria-label="Visual search" style={{ border: 0, borderRadius: 24, padding: "12px 15px", background: "#111827", color: "white", boxShadow: "0 8px 24px #0003", fontWeight: 800 }}>📷 Search image</button><button type="button" onClick={() => navigate("/rewards")} style={{ border: 0, borderRadius: 24, padding: "12px 15px", background: "linear-gradient(120deg,#fef3c7,#fbcfe8)", color: "#7c2d12", boxShadow: "0 8px 24px #0003", fontWeight: 800 }}>🪙 Rewards</button></div>}
          {!isMobile && <MainHeader selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onFilterClick={() => setShowFilterModal(true)} onNavClick={handleNavClick} onImageSearch={() => setIsImageSearchOpen(true)} />}
          <div style={styles.placeholderPage}>
            <h1>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1>
@@ -813,6 +815,7 @@ const handleToggleWishlist = async () => {
   return (
     <div style={styles.container}>
         {isImageSearchOpen && <ImageSearchModal onClose={() => setIsImageSearchOpen(false)} onSelectProduct={handleVisualProductSelect} />}
+        {isMobile && <div style={{ position: "fixed", right: 14, bottom: 78, zIndex: 1300, display: "flex", flexDirection: "column", gap: 10 }}><button type="button" onClick={() => setIsImageSearchOpen(true)} aria-label="Visual search" style={{ border: 0, borderRadius: 24, padding: "12px 15px", background: "#111827", color: "white", boxShadow: "0 8px 24px #0003", fontWeight: 800 }}>📷 Search image</button><button type="button" onClick={() => navigate("/rewards")} style={{ border: 0, borderRadius: 24, padding: "12px 15px", background: "linear-gradient(120deg,#fef3c7,#fbcfe8)", color: "#7c2d12", boxShadow: "0 8px 24px #0003", fontWeight: 800 }}>🪙 Rewards</button></div>}
       {!isMobile && <MainHeader selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onFilterClick={() => setShowFilterModal(true)} onNavClick={handleNavClick} onImageSearch={() => setIsImageSearchOpen(true)} />}
 
       {isMobile && (
