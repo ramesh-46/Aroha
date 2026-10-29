@@ -26,6 +26,7 @@ function Signup() {
     address: "",
     details: "",
   });
+  const [referralCode, setReferralCode] = useState("");
   const [agree, setAgree] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
@@ -56,7 +57,7 @@ useState(() => {
 
     setLoading(true);
     try {
-      const res = await axios.post("https://aroha.onrender.com/auth/signup", form);
+      const res = await axios.post("https://aroha.onrender.com/auth/signup", { ...form, referralCode: referralCode.trim().toUpperCase() });
       if (res.data.success) {
         alert("Signup successful! Please login.");
         navigate("/login");
@@ -173,6 +174,8 @@ useState(() => {
           {renderError("details")}
         </div>
       </div>
+
+      <div style={inputWrapper}><input placeholder="Referral code (optional)" value={referralCode} onChange={(e) => setReferralCode(e.target.value)} style={inputStyle} /></div>
 
       <div style={checkboxWrapper}>
         <input
