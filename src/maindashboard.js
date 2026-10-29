@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import MainHeader from "./mainheader";
+import ImageSearchModal from "./ImageSearchModal";
 import { useNavigate } from "react-router-dom";
 
 // --- ICONS ---
@@ -157,6 +158,7 @@ function MainDashboard() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [selectedSubCategory, setSelectedSubCategory] = useState("All");
   const [showFilterModal, setShowFilterModal] = useState(false);
+  const [isImageSearchOpen, setIsImageSearchOpen] = useState(false);
 
   const [filters, setFilters] = useState({
     sort: "latest",
@@ -317,6 +319,12 @@ function MainDashboard() {
     const newUrl = `${window.location.pathname}?product=${product.id}`;
     window.history.pushState({ path: newUrl }, '', newUrl);
     window.scrollTo(0, 0);
+  };
+
+  const handleVisualProductSelect = (product) => {
+    const matchingProduct = products.find((item) => item.id === product._id);
+    if (matchingProduct) handleProductClick(matchingProduct);
+    setIsImageSearchOpen(false);
   };
 
   const goBackToList = () => {
@@ -557,7 +565,8 @@ const handleToggleWishlist = async () => {
 
     return (
       <div style={styles.container}>
-        {!isMobile && <MainHeader selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onFilterClick={() => setShowFilterModal(true)} onNavClick={handleNavClick} />}
+        {isImageSearchOpen && <ImageSearchModal onClose={() => setIsImageSearchOpen(false)} onSelectProduct={handleVisualProductSelect} />}
+        {!isMobile && <MainHeader selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onFilterClick={() => setShowFilterModal(true)} onNavClick={handleNavClick} onImageSearch={() => setIsImageSearchOpen(true)} />}
 
         <div style={styles.detailContainer}>
           <div style={styles.detailGrid}>
@@ -764,7 +773,8 @@ const handleToggleWishlist = async () => {
   if (activeTab !== "home") {
      return (
        <div style={styles.container}>
-         {!isMobile && <MainHeader selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onFilterClick={() => setShowFilterModal(true)} onNavClick={handleNavClick} />}
+        {isImageSearchOpen && <ImageSearchModal onClose={() => setIsImageSearchOpen(false)} onSelectProduct={handleVisualProductSelect} />}
+         {!isMobile && <MainHeader selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onFilterClick={() => setShowFilterModal(true)} onNavClick={handleNavClick} onImageSearch={() => setIsImageSearchOpen(true)} />}
          <div style={styles.placeholderPage}>
            <h1>{activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}</h1>
            <p>This page is under construction.</p>
@@ -802,7 +812,8 @@ const handleToggleWishlist = async () => {
   // --- RENDER HOME LIST VIEW ---
   return (
     <div style={styles.container}>
-      {!isMobile && <MainHeader selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onFilterClick={() => setShowFilterModal(true)} onNavClick={handleNavClick} />}
+        {isImageSearchOpen && <ImageSearchModal onClose={() => setIsImageSearchOpen(false)} onSelectProduct={handleVisualProductSelect} />}
+      {!isMobile && <MainHeader selectedCategory={selectedCategory} setSelectedCategory={setSelectedCategory} onFilterClick={() => setShowFilterModal(true)} onNavClick={handleNavClick} onImageSearch={() => setIsImageSearchOpen(true)} />}
 
       {isMobile && (
         <div style={styles.mobileTopSection}>
@@ -829,6 +840,7 @@ const handleToggleWishlist = async () => {
             <div style={styles.filterBtnMobile} onClick={() => setShowFilterModal(true)}>
               <IconSVG name="filter" />
             </div>
+            <button type="button" aria-label="Search with an image" title="Search with an image" onClick={() => setIsImageSearchOpen(true)} style={{ ...styles.filterBtnMobile, border: "1px solid #ddd", background: "#111", color: "#fff" }}><span style={{ fontSize: "19px" }}>📷</span></button>
           </div>
           <div style={styles.categoryScroll}>
             {dynamicCategories.map(cat => (
