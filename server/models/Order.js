@@ -74,6 +74,7 @@ const orderSchema = new mongoose.Schema({
   screenshot: { type: String, default: "" }, // URL or path to uploaded payment screenshot
   rewardsCreditedAt: { type: Date, default: null },
   rewardsCoinsAwarded: { type: Number, default: 0 },
+  paymentFailureReason: { type: String, default: "" },
   paymentVerifiedAt: { type: Date, default: null }, // Timestamp when admin verifies payment
   paymentVerifiedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null } // Admin who verified
 });
