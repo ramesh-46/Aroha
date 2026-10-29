@@ -9,7 +9,6 @@ const fs = require("fs");
 // Route imports
 const authRoutes = require("./routes/auth");
 const productRoutes = require("./routes/products");
-const imageSearchRoutes = require("./routes/imageSearch");
 const cartRoutes = require("./routes/cart");
 const orderRoutes = require("./routes/orders");
 const sellerAuthe = require("./routes/sellerAuth");
@@ -103,7 +102,6 @@ mongoose.connect(process.env.MONGO_URI, {
 // Routes
 // --------------------
 app.use("/auth", authRoutes);
-app.use("/products", imageSearchRoutes);
 app.use("/products", productRoutes);
 app.use("/cart", cartRoutes);
 app.use("/orders", orderRoutes);
