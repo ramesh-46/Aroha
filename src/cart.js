@@ -259,7 +259,7 @@ function Cart() {
       },
       customerLocation,
       couponCode: appliedCoupon ? appliedCoupon.code : "",
-      redeemCoins: Number(redeemCoins) || 0,
+      redeemCoins: safeRedeemCoins,
     });
 
     if (response.data.success) {
@@ -362,7 +362,7 @@ function Cart() {
 
   const deliveryCharge = Math.round(checkoutSettings?.deliveryCharge || 0);
   const rewardCoinValue = Number(checkoutSettings?.coinRupeeValue) || 0;
-  const safeRedeemCoins = Math.min(Math.max(0, Math.floor(Number(redeemCoins) || 0)), rewardBalance, rewardCoinValue > 0 ? Math.floor(Math.max(0, totalAmount - discountAmount + deliveryCharge) / rewardCoinValue) : 0);
+  const safeRedeemCoins = Math.min(Math.max(0, Math.floor(Number(redeemCoins) || 0)), rewardBalance, rewardCoinValue > 0 ? Math.floor(Math.max(0, totalAmount - discountAmount + deliveryCharge - 0.01) / rewardCoinValue) : 0);
   const rewardDiscount = Math.round(safeRedeemCoins * rewardCoinValue * 100) / 100;
   const finalAmountToPay = Math.max(0, Math.round((totalAmount - discountAmount + deliveryCharge - rewardDiscount) * 100) / 100);
 
@@ -803,6 +803,7 @@ function Cart() {
                 <span>Delivery Charge</span>
                 <span>₹{deliveryCharge.toLocaleString()}</span>
               </div>
+              {rewardDiscount > 0 && <div className="summary-row"><span>Reward coins ({safeRedeemCoins})</span><span>−₹{rewardDiscount.toFixed(2)}</span></div>}
 
               <div className="summary-total">
                 <span>Total Payable</span>
