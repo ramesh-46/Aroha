@@ -112,7 +112,7 @@ router.post("/create-session", async (req, res) => {
       status: "Payment Verification Pending", paymentMethod: "UPI QR", upiId, upiUrl
     });
     await newOrder.save();
-    const checkoutUser = await User.findById(userId).select("email").lean();
+    const checkoutUser = await User.findById(userId).select("email").lean().catch(() => null);
     console.log("[CHECKOUT] SESSION_CREATED", { requestId, orderId, userId: String(userId), userEmail: maskEmail(checkoutUser?.email), itemCount: orderItems.length, totalQuantity, subtotalAmount, discountAmount, deliveryCharge, finalAmount, couponCode: normalizedCouponCode || null });
     return res.json({ success: true, orderId, upiUrl, upiId, amount: finalAmount, customerDetails, orderItems, pricing: { subtotalAmount, discountAmount, deliveryCharge, rewardDiscount, rewardCoinsRedeemed: reservedCoins, totalAmount: finalAmount } });
   } catch (error) {
@@ -292,6 +292,7 @@ router.post("/razorpay/verify-payment", async (req, res) => {
         { new: true }
       );
       if (rewardClaim && order.userId) {
+        if (order.couponCode) await Coupon.updateOne({ code: order.couponCode }, { $inc: { usedCount: 1 } });
         const settings = await StoreSettings.findOne();
         if (settings?.rewardsEnabled !== false) {
           const coins = Math.max(0, Math.floor((Number(order.totalAmount) / 100) * Number(settings?.coinsPer100Spent ?? 5)));
