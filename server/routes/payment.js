@@ -8,6 +8,7 @@ const StoreSettings = require("../models/StoreSettings");
 const Coupon = require("../models/Coupon");
 const { roundCurrency, getEffectiveUnitPrice } = require("../utils/pricing");
 const { v4: uuidv4 } = require("uuid");
+const maskEmail = (value) => { const parts = String(value || "").split("@"); return parts.length === 2 ? parts[0].slice(0, 1) + "***@" + parts[1] : ""; };
 const multer = require("multer"); // Import multer
 
 // Configure Multer for memory storage (to handle file uploads)
@@ -111,7 +112,8 @@ router.post("/create-session", async (req, res) => {
       status: "Payment Verification Pending", paymentMethod: "UPI QR", upiId, upiUrl
     });
     await newOrder.save();
-    console.log("[CHECKOUT] SESSION_CREATED", { requestId, orderId, userId: String(userId), itemCount: orderItems.length, totalQuantity, subtotalAmount, discountAmount, deliveryCharge, finalAmount, couponCode: normalizedCouponCode || null });
+    const checkoutUser = await User.findById(userId).select("email").lean();
+    console.log("[CHECKOUT] SESSION_CREATED", { requestId, orderId, userId: String(userId), userEmail: maskEmail(checkoutUser?.email), itemCount: orderItems.length, totalQuantity, subtotalAmount, discountAmount, deliveryCharge, finalAmount, couponCode: normalizedCouponCode || null });
     return res.json({ success: true, orderId, upiUrl, upiId, amount: finalAmount, customerDetails, orderItems, pricing: { subtotalAmount, discountAmount, deliveryCharge, rewardDiscount, rewardCoinsRedeemed: reservedCoins, totalAmount: finalAmount } });
   } catch (error) {
     if (reservedCoins > 0 && reservedUserId) {
@@ -362,7 +364,7 @@ router.post("/razorpay/verify-payment", async (req, res) => {
         console.warn("[Cart] CART_NOT_CLEARED_USER_ID_MISSING", { orderId });
       }
 
-      console.log("[Razorpay]", requestId, "PAYMENT_CAPTURED", { orderId, gatewayOrderId: payment.order_id, paymentId: payment.id, amountPaise: payment.amount });
+      console.log("[Razorpay]", requestId, "PAYMENT_CAPTURED", { orderId, userEmail: maskEmail(customer?.email), gatewayOrderId: payment.order_id, paymentId: payment.id, amountPaise: payment.amount });
       return res.json({ success: true, paid: true, orderId: order.orderId, message: "Payment verified successfully." });
     }
     order.status = "Payment Verification Pending";
@@ -429,8 +431,11 @@ router.post("/razorpay/log-event", async (req, res) => {
       console.error("[Razorpay] Could not record failed payment", error.message);
     }
   }
+  const eventOrder = await Order.findOne({ orderId: String(orderId) }).select("userId").lean().catch(() => null);
+  const eventUser = eventOrder?.userId ? await User.findById(eventOrder.userId).select("email").lean().catch(() => null) : null;
   console.log("[Razorpay][CLIENT_EVENT]", {
     event,
+    userEmail: maskEmail(eventUser?.email),
     orderId: String(orderId).slice(0, 80),
     gatewayOrderId: gatewayOrderId ? String(gatewayOrderId).slice(0, 80) : undefined,
     paymentId: paymentId ? String(paymentId).slice(0, 80) : undefined,
