@@ -7,6 +7,7 @@ const initialState = {
   rewardsEnabled: true,
   coinsPer100Spent: 5,
   referralBonusCoins: 100,
+  referredUserBonusCoins: 100,
   coinRupeeValue: 0.1,
   deliveryMinDays: 3,
   deliveryMaxDays: 5,
@@ -43,6 +44,7 @@ function StoreControlPanel() {
         rewardsEnabled: settings.rewardsEnabled ?? true,
         coinsPer100Spent: settings.coinsPer100Spent ?? 5,
         referralBonusCoins: settings.referralBonusCoins ?? 100,
+        referredUserBonusCoins: settings.referredUserBonusCoins ?? 100,
         coinRupeeValue: settings.coinRupeeValue ?? 0.1,
         deliveryMinDays: settings.deliveryMinDays ?? 3,
         deliveryMaxDays: settings.deliveryMaxDays ?? 5,
@@ -113,6 +115,7 @@ function StoreControlPanel() {
           <div style={styles.grid}>
             <input type="number" min="0" value={form.coinsPer100Spent} onChange={(e) => setForm((p) => ({ ...p, coinsPer100Spent: e.target.value }))} placeholder="Coins per ₹100 spent" style={styles.input} />
             <input type="number" min="0" value={form.referralBonusCoins} onChange={(e) => setForm((p) => ({ ...p, referralBonusCoins: e.target.value }))} placeholder="Referral bonus coins" style={styles.input} />
+            <input type="number" min="0" value={form.referredUserBonusCoins} onChange={(e) => setForm((p) => ({ ...p, referredUserBonusCoins: e.target.value }))} placeholder="Referred customer bonus coins" style={styles.input} />
             <input type="number" min="0" step="0.01" value={form.coinRupeeValue} onChange={(e) => setForm((p) => ({ ...p, coinRupeeValue: e.target.value }))} placeholder="Rupee value per coin" style={styles.input} />
           </div>
           <h3 style={styles.sectionTitle}>Delivery Estimate</h3>
