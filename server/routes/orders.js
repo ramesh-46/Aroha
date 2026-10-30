@@ -290,6 +290,47 @@ router.put("/status/:orderId", async (req, res) => {
     order.statusHistory.push({ status, updatedAt: new Date() });
     const updatedOrder = await order.save();
 
+    // Manual/admin payment verification uses the same one-time rewards rule as Razorpay capture.
+    if (status === "Payment Verified" && order.userId) {
+      const rewardClaim = await Order.findOneAndUpdate(
+        { _id: order._id, rewardsCreditedAt: null },
+        { $set: { rewardsCreditedAt: new Date(), paymentVerifiedAt: new Date() } },
+        { new: true }
+      );
+      if (rewardClaim) {
+        const settings = await StoreSettings.findOne();
+        if (settings?.rewardsEnabled !== false) {
+          const customer = await User.findById(order.userId);
+          const purchaseCoins = Math.max(0, Math.floor((Number(order.totalAmount) / 100) * Number(settings?.coinsPer100Spent ?? 5)));
+          if (purchaseCoins > 0) await User.updateOne(
+            { _id: customer._id },
+            { $inc: { rewardCoins: purchaseCoins }, $push: { rewardHistory: { type: "purchase", coins: purchaseCoins, orderId: order.orderId, note: "Coins for an admin-verified payment." } } }
+          );
+          if (customer?.referredBy && !customer.referralRewardCreditedAt) {
+            const referralClaim = await User.findOneAndUpdate(
+              { _id: customer._id, referralRewardCreditedAt: null, referredBy: { $ne: null } },
+              { $set: { referralRewardCreditedAt: new Date() } },
+              { new: true }
+            );
+            if (referralClaim) {
+              const referrerCoins = Math.max(0, Number(settings.referralBonusCoins) || 0);
+              const referredCoins = Math.max(0, Number(settings.referredUserBonusCoins) || 0);
+              if (referrerCoins > 0) await User.updateOne(
+                { _id: referralClaim.referredBy },
+                { $inc: { rewardCoins: referrerCoins }, $push: { rewardHistory: { type: "referral", coins: referrerCoins, orderId: order.orderId, note: "Referral reward after your friend's first verified payment." } } }
+              );
+              if (referredCoins > 0) await User.updateOne(
+                { _id: referralClaim._id },
+                { $inc: { rewardCoins: referredCoins }, $push: { rewardHistory: { type: "welcome_referral", coins: referredCoins, orderId: order.orderId, note: "Welcome reward for joining through a referral." } } }
+              );
+            }
+          }
+          await Order.updateOne({ _id: order._id }, { $set: { rewardsCoinsAwarded: purchaseCoins } });
+          console.log("[REWARDS] ADMIN_VERIFIED_ORDER_CREDITED", { orderId: order.orderId, userId: String(order.userId), purchaseCoins });
+        }
+      }
+    }
+
     const populatedOrder = await Order.findById(updatedOrder._id)
       .populate("items.productId")
       .populate("userId", "name mobile email");
