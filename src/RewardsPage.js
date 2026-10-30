@@ -17,6 +17,16 @@ export default function RewardsPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const referralLink = `${window.location.origin}/signup?ref=${encodeURIComponent(data.referralCode)}`;
+
+  const shareReferral = async () => {
+    if (!data.referralCode) return;
+    try {
+      if (navigator.share) await navigator.share({ title: "Join Aroha", text: "Join Aroha using my invite link and earn rewards!", url: referralLink });
+      else { await navigator.clipboard.writeText(referralLink); alert("Referral link copied!"); }
+    } catch (error) { if (error?.name !== "AbortError") alert("Share this link: " + referralLink); }
+  };
+
   const copyCode = async () => {
     try { await navigator.clipboard.writeText(data.referralCode); alert("Referral code copied!"); }
     catch (_) { alert("Copy this code: " + data.referralCode); }
@@ -43,6 +53,7 @@ export default function RewardsPage() {
           <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
             <code style={{ flex: 1, minWidth: 160, padding: 14, borderRadius: 12, background: "#f1f5f9", fontSize: 18, fontWeight: 800 }}>{data.referralCode || "Code not available"}</code>
             <button onClick={copyCode} disabled={!data.referralCode} style={{ border: 0, borderRadius: 12, background: "#111827", color: "white", padding: "12px 18px", cursor: "pointer" }}>Copy code</button>
+            <button onClick={shareReferral} disabled={!data.referralCode} style={{ border: "1px solid #111", borderRadius: 12, background: "#fff", color: "#111", padding: "12px 18px", cursor: "pointer" }}>Share invite link</button>
           </div>
         </div>
         <section style={{ marginTop: 30, border: "1px solid #e2e8f0", borderRadius: 20, padding: 22 }}>
