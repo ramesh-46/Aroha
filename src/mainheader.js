@@ -153,8 +153,6 @@ function MainHeader({ selectedCategory, setSelectedCategory, onFilterClick, onNa
           <input type="text" placeholder="Search luxury items..." style={styles.searchInput} />
           <div style={styles.filterBtn} onClick={onFilterClick}><FilterIcon /></div>
         </div>
-
-        <button type="button" onClick={onImageSearch} aria-label="Search with an image" title="Search with an image" style={{ display: "flex", alignItems: "center", gap: "7px", padding: "9px 13px", border: "1px solid #e5e5e5", borderRadius: "24px", background: "#111", color: "#fff", fontSize: "12px", fontWeight: "700", cursor: "pointer", whiteSpace: "nowrap" }}><span aria-hidden="true">📷</span> Visual search</button>
         <div style={styles.nav}>
           {navItems.map((item) => (
             <button
