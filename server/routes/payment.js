@@ -310,19 +310,36 @@ router.post("/razorpay/verify-payment", async (req, res) => {
           const coins = Math.max(0, Math.floor((Number(order.totalAmount) / 100) * Number(settings?.coinsPer100Spent ?? 5)));
           const customer = await User.findById(order.userId);
           if (customer && coins > 0) {
-            customer.rewardCoins = (customer.rewardCoins || 0) + coins;
-            customer.rewardHistory.push({ type: "purchase", coins, orderId: order.orderId, note: "Coins for a captured payment." });
-            await customer.save();
+            await User.updateOne(
+              { _id: customer._id },
+              { $inc: { rewardCoins: coins }, $push: { rewardHistory: { type: "purchase", coins, orderId: order.orderId, note: "Coins for a captured payment." } } }
+            );
           }
-          if (customer?.referredBy && Number(settings?.referralBonusCoins) > 0) {
-            const referrer = await User.findById(customer.referredBy);
-            if (referrer) {
-              const bonus = Number(settings.referralBonusCoins);
-              referrer.rewardCoins = (referrer.rewardCoins || 0) + bonus;
-              referrer.rewardHistory.push({ type: "referral", coins: bonus, orderId: order.orderId, note: "Referral bonus after first captured order." });
-              await referrer.save();
-              customer.referredBy = null;
-              await customer.save();
+
+          // A referral is rewarded once, after the referred customer's first captured payment.
+          // Keep referredBy intact so the referral remains visible in both accounts.
+          if (customer?.referredBy && !customer.referralRewardCreditedAt) {
+            const referralClaim = await User.findOneAndUpdate(
+              { _id: customer._id, referralRewardCreditedAt: null, referredBy: { $ne: null } },
+              { $set: { referralRewardCreditedAt: new Date() } },
+              { new: true }
+            );
+            if (referralClaim) {
+              const referrerCoins = Math.max(0, Number(settings.referralBonusCoins) || 0);
+              const referredCoins = Math.max(0, Number(settings.referredUserBonusCoins) || 0);
+              if (referrerCoins > 0) {
+                await User.updateOne(
+                  { _id: referralClaim.referredBy },
+                  { $inc: { rewardCoins: referrerCoins }, $push: { rewardHistory: { type: "referral", coins: referrerCoins, orderId: order.orderId, note: "Referral reward: your friend completed their first paid order." } } }
+                );
+              }
+              if (referredCoins > 0) {
+                await User.updateOne(
+                  { _id: referralClaim._id },
+                  { $inc: { rewardCoins: referredCoins }, $push: { rewardHistory: { type: "welcome_referral", coins: referredCoins, orderId: order.orderId, note: "Welcome reward for joining through a referral." } } }
+                );
+              }
+              console.log("[REWARDS] REFERRAL_BONUSES_CREDITED", { orderId: order.orderId, referrerUserId: String(referralClaim.referredBy), referredUserId: String(referralClaim._id), referrerCoins, referredCoins });
             }
           }
           order.rewardsCoinsAwarded = coins;
