@@ -6,6 +6,7 @@ const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 
 const saltRounds = 10; // bcrypt salt rounds
+const maskEmail = (value) => { const parts = String(value || "").split("@"); return parts.length === 2 ? parts[0].slice(0, 1) + "***@" + parts[1] : ""; };
 const JWT_SECRET = process.env.JWT_SECRET || "secretkey"; // use env variable in production
 
 // 🚀 [INFO] User router initialized
@@ -13,12 +14,12 @@ console.log("[INFO] 🚀 User router module loaded");
 
 // Signup
 router.post("/signup", async (req, res) => {
-  console.log("[INFO] 🚀 Signup request started", { mobile: req.body.mobile, email: req.body.email });
+  console.log("[INFO] 🚀 Signup request started", { mobile: req.body.mobile, userEmail: maskEmail(req.body.email) });
   
   const { name, mobile, email, password, recoveryCode, gender, address, details, referralCode } = req.body;
 
   try {
-    console.log("[DEBUG] 🔍 Checking for existing user with mobile/email", { mobile, email });
+    console.log("[DEBUG] 🔍 Checking for existing user with mobile/email", { mobile, userEmail: maskEmail(email) });
     let user = await User.findOne({ $or: [{ mobile }, { email }] });
 
     if (user) {
@@ -54,7 +55,7 @@ router.post("/signup", async (req, res) => {
 
     console.log("[INFO] 🚀 Saving new user to database", { userId: user._id });
     await user.save();
-    console.log("[SUCCESS] ✅ User saved successfully", { userId: user._id, mobile: user.mobile });
+    console.log("[SUCCESS] ✅ User saved successfully", { userId: user._id, userEmail: maskEmail(user.email), mobile: user.mobile });
 
     console.log("[INFO] ✅ Signup request completed successfully", { userId: user._id });
     res.json({ success: true, user });
@@ -102,12 +103,12 @@ router.post("/login", async (req, res) => {
 
 // Google Login
 router.post("/google-login", async (req, res) => {
-  console.log("[INFO] 🚀 Google Login request started", { email: req.body.email });
+  console.log("[INFO] 🚀 Google Login request started", { userEmail: maskEmail(req.body.email) });
   
   const { email, name, photoUrl } = req.body;
 
   try {
-    console.log("[DEBUG] 🔍 Finding user by email for Google login", { email });
+    console.log("[DEBUG] 🔍 Finding user by email for Google login", { userEmail: maskEmail(email) });
     let user = await User.findOne({ email });
 
     if (user) {
@@ -136,7 +137,7 @@ router.post("/google-login", async (req, res) => {
       });
     }
 
-    console.log("[INFO] ✅ Google Login completed - New user detected", { email, isNewUser: true });
+    console.log("[INFO] ✅ Google Login completed - New user detected", { userEmail: maskEmail(email), isNewUser: true });
     return res.json({
       success: true,
       isNewUser: true,
