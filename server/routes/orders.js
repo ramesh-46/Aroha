@@ -79,6 +79,8 @@ router.get("/checkout-settings", async (req, res) => {
       saleStatus: getSaleStatus(settings),
       flashSaleDiscountPercent: settings.flashSaleDiscountPercent || 0,
       flashSaleCategory: settings.flashSaleCategory || "",
+      rewardsEnabled: settings.rewardsEnabled !== false,
+      coinRupeeValue: Number(settings.coinRupeeValue) || 0,
       freeDeliveryEnabled: settings.freeDeliveryEnabled,
       deliveryRadiusKm: settings.deliveryRadiusKm,
       sellerLocation: settings.sellerLocation,
