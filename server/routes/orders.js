@@ -302,7 +302,7 @@ router.put("/status/:orderId", async (req, res) => {
         if (settings?.rewardsEnabled !== false) {
           const customer = await User.findById(order.userId);
           const purchaseCoins = Math.max(0, Math.floor((Number(order.totalAmount) / 100) * Number(settings?.coinsPer100Spent ?? 5)));
-          if (purchaseCoins > 0) await User.updateOne(
+          if (customer && purchaseCoins > 0) await User.updateOne(
             { _id: customer._id },
             { $inc: { rewardCoins: purchaseCoins }, $push: { rewardHistory: { type: "purchase", coins: purchaseCoins, orderId: order.orderId, note: "Coins for an admin-verified payment." } } }
           );
