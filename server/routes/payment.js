@@ -405,11 +405,25 @@ router.post("/razorpay/log-event", async (req, res) => {
   } : undefined;
   if (event === "PAYMENT_FAILED") {
     try {
-      const order = await Order.findOne({ orderId: String(orderId) });
-      if (order && order.status !== "Payment Verified") {
-        order.status = "Payment Failed";
-        order.paymentFailureReason = safeDetails?.reason || safeDetails?.message || safeDetails?.code || "Payment was not completed.";
-        await order.save();
+      const failureReason = safeDetails?.reason || safeDetails?.message || safeDetails?.code || "Payment was not completed.";
+      const failedOrder = await Order.findOneAndUpdate(
+        { orderId: String(orderId), status: { $ne: "Payment Verified" } },
+        { $set: { status: "Payment Failed", paymentFailureReason: failureReason } },
+        { new: true }
+      );
+      if (failedOrder?.rewardCoinsRedeemed > 0 && !failedOrder.rewardsRefundedAt) {
+        const refundClaim = await Order.findOneAndUpdate(
+          { _id: failedOrder._id, rewardsRefundedAt: null, rewardCoinsRedeemed: { $gt: 0 } },
+          { $set: { rewardsRefundedAt: new Date() } },
+          { new: true }
+        );
+        if (refundClaim) {
+          await User.updateOne(
+            { _id: refundClaim.userId },
+            { $inc: { rewardCoins: refundClaim.rewardCoinsRedeemed }, $push: { rewardHistory: { type: "refund", coins: refundClaim.rewardCoinsRedeemed, orderId: refundClaim.orderId, note: "Reward coins returned because payment failed." } } }
+          );
+          console.log("[REWARDS] CHECKOUT_COINS_REFUNDED", { orderId: refundClaim.orderId, userId: String(refundClaim.userId), coins: refundClaim.rewardCoinsRedeemed });
+        }
       }
     } catch (error) {
       console.error("[Razorpay] Could not record failed payment", error.message);
