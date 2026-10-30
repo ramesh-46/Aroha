@@ -9,8 +9,8 @@ const JWT_SECRET = process.env.JWT_SECRET || "sellersecret";
 
 // ====== SELLER SIGNUP ======
 router.post("/seller-signup", async (req, res) => {
-  return res.status(403).json({ success: false, message: "Seller registration is disabled. Aroha has one authorised store admin." });
-  // Future seller onboarding implementation retained below for later use.
+  return res.status(403).json({ success: false, message: "Seller registration is disabled. Use the existing seller login." });
+  // Future seller signup implementation retained below for later use.
   const {
     name,
     mobile,
