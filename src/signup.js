@@ -32,15 +32,17 @@ function Signup() {
   const [errors, setErrors] = useState({});
   const location = useLocation();
 
-useState(() => {
+useEffect(() => {
+  const referralFromLink = new URLSearchParams(location.search).get("ref");
+  if (referralFromLink) setReferralCode(referralFromLink.trim().toUpperCase());
   if (location.state) {
     setForm((prev) => ({
       ...prev,
-      email: location.state.email || "",
-      name: location.state.name || ""
+      email: location.state.email || prev.email,
+      name: location.state.name || prev.name
     }));
   }
-}, []);
+}, [location.search, location.state]);
 
   const validate = () => {
     const newErrors = {};
