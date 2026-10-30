@@ -776,6 +776,7 @@ function Profile() {
             <button onClick={() => navigate("/rewards")} className="action-btn edit-btn" style={{ background: "linear-gradient(120deg,#7c3aed,#db2777)" }}>
               🪙 Rewards & Referrals
             </button>
+            <button onClick={() => navigate("/maindashboard?visualSearch=1")} className="action-btn edit-btn">📷 Visual Search</button>
             <button onClick={toggleShowOrders} className="action-btn orders-btn">
               {showOrders ? "Hide Orders" : "Show Orders"}
             </button>
