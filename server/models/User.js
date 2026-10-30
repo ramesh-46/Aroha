@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema({
   details: { type: String },
   referralCode: { type: String, unique: true, sparse: true, index: true },
   referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+  referralRewardCreditedAt: { type: Date, default: null },
   rewardCoins: { type: Number, default: 0, min: 0 },
   rewardHistory: { type: [rewardEntrySchema], default: [] },
   createdAt: { type: Date, default: Date.now }
