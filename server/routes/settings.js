@@ -39,6 +39,7 @@ router.put("/", sellerAuthMiddleware, async (req, res) => {
       "rewardsEnabled",
       "coinsPer100Spent",
       "referralBonusCoins",
+      "referredUserBonusCoins",
       "coinRupeeValue",
       "deliveryMinDays",
       "deliveryMaxDays",
