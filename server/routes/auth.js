@@ -23,7 +23,7 @@ router.post("/signup", async (req, res) => {
     let user = await User.findOne({ $or: [{ mobile }, { email }] });
 
     if (user) {
-      console.log("[WARN] ⚠️ Signup failed - User already exists", { mobile, email });
+      console.log("[WARN] ⚠️ Signup failed - User already exists", { mobile, userEmail: maskEmail(email) });
       return res.status(400).json({ message: "User already exists with this mobile or email" });
     }
     console.log("[DEBUG] 🔍 No existing user found, proceeding with signup");
@@ -53,7 +53,7 @@ router.post("/signup", async (req, res) => {
       user.referredBy = referrer._id;
     }
 
-    console.log("[INFO] 🚀 Saving new user to database", { userId: user._id });
+    console.log("[INFO] 🚀 Saving new user to database", { userId: user._id, userEmail: maskEmail(user.email) });
     await user.save();
     console.log("[SUCCESS] ✅ User saved successfully", { userId: user._id, userEmail: maskEmail(user.email), mobile: user.mobile });
 
@@ -89,7 +89,7 @@ router.post("/login", async (req, res) => {
     }
     console.log("[DEBUG] ✅ Password match confirmed");
 
-    console.log("[DEBUG] 🔍 Generating JWT token for user", { userId: user._id, expiresIn: "1d" });
+    console.log("[DEBUG] 🔍 Generating JWT token for user", { userId: user._id, userEmail: maskEmail(user.email), expiresIn: "1d" });
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "1d" });
     console.log("[DEBUG] ✅ JWT token generated successfully");
 
@@ -159,7 +159,7 @@ router.post("/reset-password", async (req, res) => {
   const { mobile, email, recoveryCode, newPassword } = req.body;
 
   if (!mobile || !email || !recoveryCode) {
-    console.log("[WARN] ⚠️ Reset Password failed - Missing required fields", { mobile, email, recoveryCode: !!recoveryCode });
+    console.log("[WARN] ⚠️ Reset Password failed - Missing required fields", { mobile, userEmail: maskEmail(email), recoveryCodeProvided: !!recoveryCode });
     return res.status(400).json({ success: false, message: "All fields are required!" });
   }
   console.log("[DEBUG] 🔍 All required fields present, proceeding with verification");
@@ -169,7 +169,7 @@ router.post("/reset-password", async (req, res) => {
     const user = await User.findOne({ mobile, email, recoveryCode });
     
     if (!user) {
-      console.log("[WARN] ⚠️ Reset Password failed - User verification failed", { mobile, email });
+      console.log("[WARN] ⚠️ Reset Password failed - User verification failed", { mobile, userEmail: maskEmail(email) });
       return res.status(400).json({ 
         success: false, 
         message: "Mobile, Email or Recovery Code is incorrect!" 
