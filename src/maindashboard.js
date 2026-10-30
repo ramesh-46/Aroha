@@ -175,6 +175,7 @@ function MainDashboard() {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const productId = urlParams.get('product');
+    if (urlParams.get("visualSearch") === "1") setIsImageSearchOpen(true);
 
     const fetchData = async () => {
       try {
@@ -843,7 +844,7 @@ const handleToggleWishlist = async () => {
             <div style={styles.filterBtnMobile} onClick={() => setShowFilterModal(true)}>
               <IconSVG name="filter" />
             </div>
-            <button type="button" aria-label="Search with an image" title="Search with an image" onClick={() => setIsImageSearchOpen(true)} style={{ ...styles.filterBtnMobile, border: "1px solid #ddd", background: "#111", color: "#fff" }}><span style={{ fontSize: "19px" }}>📷</span></button>
+            
           </div>
           <div style={styles.categoryScroll}>
             {dynamicCategories.map(cat => (
