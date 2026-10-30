@@ -90,7 +90,7 @@ router.post("/create-session", async (req, res) => {
       if (settings.rewardsEnabled === false || Number(settings.coinRupeeValue) <= 0) return res.status(400).json({ success: false, error: "Reward coin redemption is currently unavailable." });
       const maxCoinsForOrder = Math.floor(Math.max(0, subtotalAmount - discountAmount + deliveryCharge - 0.01) / Number(settings.coinRupeeValue));
       if (requestedCoins > maxCoinsForOrder) return res.status(400).json({ success: false, error: "You cannot redeem more coins than this order allows." });
-      const reservedUser = await User.findOneAndUpdate({ _id: userId, rewardCoins: { $gte: requestedCoins } }, { $inc: { rewardCoins: -requestedCoins }, $push: { rewardHistory: { type: "redeem_pending", coins: -requestedCoins, note: "Coins reserved for checkout." } } }, { new: true });
+      const reservedUser = await User.findOneAndUpdate({ _id: userId, rewardCoins: { $gte: requestedCoins } }, { $inc: { rewardCoins: -requestedCoins }, $push: { rewardHistory: { type: "redeem", coins: -requestedCoins, note: "Reward coins applied to checkout." } } }, { new: true });
       if (!reservedUser) return res.status(400).json({ success: false, error: "Insufficient reward coin balance. Refresh your rewards balance." });
       reservedCoins = requestedCoins;
       reservedUserId = userId;
@@ -220,6 +220,7 @@ router.post("/razorpay/create-order", async (req, res) => {
     if (!order) return res.status(404).json({ success: false, error: "Aroha order not found." });
     if (!Number.isFinite(order.totalAmount) || order.totalAmount <= 0) return res.status(400).json({ success: false, error: "Invalid order amount." });
     if (order.status === "Payment Verified") return res.status(409).json({ success: false, error: "Order is already paid." });
+    if (order.rewardsRefundedAt) return res.status(409).json({ success: false, error: "Reward coins for this checkout were returned. Please create a new checkout." });
 
     const response = await fetch("https://api.razorpay.com/v1/orders", {
       method: "POST",
@@ -407,9 +408,9 @@ router.post("/razorpay/log-event", async (req, res) => {
     status: details.status ? String(details.status).slice(0, 50) : undefined,
     message: details.message ? String(details.message).slice(0, 200) : undefined
   } : undefined;
-  if (event === "PAYMENT_FAILED") {
+  if (event === "PAYMENT_FAILED" || event === "CHECKOUT_DISMISSED") {
     try {
-      const failureReason = safeDetails?.reason || safeDetails?.message || safeDetails?.code || "Payment was not completed.";
+      const failureReason = safeDetails?.reason || safeDetails?.message || safeDetails?.code || (event === "CHECKOUT_DISMISSED" ? "Checkout was closed before payment." : "Payment was not completed.");
       const failedOrder = await Order.findOneAndUpdate(
         { orderId: String(orderId), status: { $ne: "Payment Verified" } },
         { $set: { status: "Payment Failed", paymentFailureReason: failureReason } },
