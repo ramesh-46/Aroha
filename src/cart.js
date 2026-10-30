@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom";
 import Swal from "./sweetalertConfig"; // Ensure this path matches your project structure
 import { FaTrashAlt, FaTruck, FaShoppingBag, FaSearch, FaFilter, FaMinus, FaPlus, FaChevronDown } from "react-icons/fa";
 
+const roundMoney = (value) => Math.round((Number(value) || 0) * 100) / 100;
+
 // --- ICONS COMPONENT ---
 const IconSVG = ({ name }) => {
   const paths = {
@@ -138,8 +140,8 @@ function Cart() {
       salePercent > 0 &&
       (!saleCategory || product.category === saleCategory);
 
-    if (!eligibleForFlashSale) return Math.round(basePrice);
-    return Math.round(basePrice - (basePrice * salePercent) / 100);
+    if (!eligibleForFlashSale) return roundMoney(basePrice);
+    return roundMoney(basePrice - (basePrice * salePercent) / 100);
   };
 
   // --- HANDLERS ---
@@ -340,27 +342,27 @@ function Cart() {
   let discountAmount = 0;
   if (appliedCoupon) {
     if (appliedCoupon.computedDiscountAmount !== undefined) {
-      discountAmount = Math.round(appliedCoupon.computedDiscountAmount);
+      discountAmount = roundMoney(appliedCoupon.computedDiscountAmount);
     } else {
       let eligibleAmount = totalAmount;
       if (appliedCoupon.category && appliedCoupon.category.trim() !== "") {
         eligibleAmount = cart.items
           .filter(item => selectedItems.includes(item.productId._id) && item.productId.category === appliedCoupon.category)
-          .reduce((sum, item) => sum + Math.round((item.productId.finalPrice || item.productId.price) * item.quantity), 0);
+          .reduce((sum, item) => sum + roundMoney((item.productId.finalPrice || item.productId.price) * item.quantity), 0);
       }
 
       if (totalAmount >= appliedCoupon.minOrderValue && eligibleAmount > 0) {
         if (appliedCoupon.isPercentage) {
-          discountAmount = Math.round((eligibleAmount * appliedCoupon.discountValue) / 100);
+          discountAmount = roundMoney((eligibleAmount * appliedCoupon.discountValue) / 100);
         } else {
-          discountAmount = Math.round(appliedCoupon.discountValue);
+          discountAmount = roundMoney(appliedCoupon.discountValue);
           if (discountAmount > eligibleAmount) discountAmount = eligibleAmount;
         }
       }
     }
   }
 
-  const deliveryCharge = Math.round(checkoutSettings?.deliveryCharge || 0);
+  const deliveryCharge = roundMoney(checkoutSettings?.deliveryCharge || 0);
   const rewardCoinValue = Number(checkoutSettings?.coinRupeeValue) || 0;
   const safeRedeemCoins = Math.min(Math.max(0, Math.floor(Number(redeemCoins) || 0)), rewardBalance, rewardCoinValue > 0 ? Math.floor(Math.max(0, totalAmount - discountAmount + deliveryCharge - 0.01) / rewardCoinValue) : 0);
   const rewardDiscount = Math.round(safeRedeemCoins * rewardCoinValue * 100) / 100;
