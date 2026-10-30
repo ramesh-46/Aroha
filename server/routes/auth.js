@@ -154,7 +154,7 @@ router.post("/google-login", async (req, res) => {
 
 // Reset Password
 router.post("/reset-password", async (req, res) => {
-  console.log("[INFO] 🚀 Reset Password request started", { mobile: req.body.mobile, email: req.body.email });
+  console.log("[INFO] 🚀 Reset Password request started", { mobile: req.body.mobile, userEmail: maskEmail(req.body.email) });
   
   const { mobile, email, recoveryCode, newPassword } = req.body;
 
