@@ -243,8 +243,6 @@ function Cart() {
       productId: i.productId._id,
       sku: i.productId.sku,
       quantity: i.quantity,
-      originalPrice: i.productId.price,
-      discountedPrice: i.productId.finalPrice || i.productId.price,
     }));
 
     const response = await axios.post("https://aroha.onrender.com/payment/create-session", {
@@ -255,10 +253,8 @@ function Cart() {
         mobile: customerDetails.mobile,
         address: customerDetails.address,
       },
+      customerLocation,
       couponCode: appliedCoupon ? appliedCoupon.code : "",
-      discountAmount: discountAmount,
-      deliveryCharge: deliveryCharge,
-      totalAmount: finalAmountToPay,
     });
 
     if (response.data.success) {
