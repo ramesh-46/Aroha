@@ -18,7 +18,9 @@ const upload = multer({ storage: storage });
 router.post("/create-session", async (req, res) => {
   const requestId = require("crypto").randomUUID();
   try {
-    const { userId, cartItems, customerDetails, couponCode = "", customerLocation = null } = req.body || {};
+    const { userId, cartItems, customerDetails, couponCode = "", customerLocation = null, redeemCoins = 0 } = req.body || {};
+  let reservedCoins = 0;
+  let reservedUserId = null;
     if (!userId || !Array.isArray(cartItems) || !cartItems.length || !customerDetails?.name || !customerDetails?.mobile || !customerDetails?.address) {
       return res.status(400).json({ success: false, error: "User, items and complete delivery details are required." });
     }
@@ -80,7 +82,20 @@ router.post("/create-session", async (req, res) => {
       const distance = 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
       if (distance <= Number(settings.deliveryRadiusKm || 0)) deliveryCharge = 0;
     }
-    const finalAmount = roundCurrency(Math.max(0, subtotalAmount - discountAmount + deliveryCharge));
+    let rewardDiscount = 0;
+    const requestedCoins = Number(redeemCoins) || 0;
+    if (!Number.isInteger(requestedCoins) || requestedCoins < 0) return res.status(400).json({ success: false, error: "Invalid reward coin amount." });
+    if (requestedCoins > 0) {
+      if (settings.rewardsEnabled === false || Number(settings.coinRupeeValue) <= 0) return res.status(400).json({ success: false, error: "Reward coin redemption is currently unavailable." });
+      const maxCoinsForOrder = Math.floor(Math.max(0, subtotalAmount - discountAmount + deliveryCharge) / Number(settings.coinRupeeValue));
+      if (requestedCoins > maxCoinsForOrder) return res.status(400).json({ success: false, error: "You cannot redeem more coins than this order allows." });
+      const reservedUser = await User.findOneAndUpdate({ _id: userId, rewardCoins: { $gte: requestedCoins } }, { $inc: { rewardCoins: -requestedCoins }, $push: { rewardHistory: { type: "redeem_pending", coins: -requestedCoins, note: "Coins reserved for checkout." } } }, { new: true });
+      if (!reservedUser) return res.status(400).json({ success: false, error: "Insufficient reward coin balance. Refresh your rewards balance." });
+      reservedCoins = requestedCoins;
+      reservedUserId = userId;
+      rewardDiscount = roundCurrency(requestedCoins * Number(settings.coinRupeeValue));
+    }
+    const finalAmount = roundCurrency(Math.max(0, subtotalAmount - discountAmount + deliveryCharge - rewardDiscount));
     if (finalAmount <= 0) return res.status(400).json({ success: false, error: "Order total must be greater than zero." });
     const upiId = process.env.UPI_ID;
     if (!upiId) return res.status(503).json({ success: false, error: "UPI payment is not configured." });
@@ -92,12 +107,16 @@ router.post("/create-session", async (req, res) => {
       customerMobile: customerDetails.mobile, deliveryAddress: customerDetails.address,
       customerLocation: customerLocation || {}, discountAmount, couponCode: normalizedCouponCode,
       couponDetails: couponRecord, subtotalAmount, deliveryCharge, totalAmount: finalAmount,
+      rewardCoinsRedeemed: reservedCoins, rewardDiscountAmount: rewardDiscount,
       status: "Payment Verification Pending", paymentMethod: "UPI QR", upiId, upiUrl
     });
     await newOrder.save();
     console.log("[CHECKOUT] SESSION_CREATED", { requestId, orderId, userId: String(userId), itemCount: orderItems.length, totalQuantity, subtotalAmount, discountAmount, deliveryCharge, finalAmount, couponCode: normalizedCouponCode || null });
-    return res.json({ success: true, orderId, upiUrl, upiId, amount: finalAmount, customerDetails, orderItems, pricing: { subtotalAmount, discountAmount, deliveryCharge, totalAmount: finalAmount } });
+    return res.json({ success: true, orderId, upiUrl, upiId, amount: finalAmount, customerDetails, orderItems, pricing: { subtotalAmount, discountAmount, deliveryCharge, rewardDiscount, rewardCoinsRedeemed: reservedCoins, totalAmount: finalAmount } });
   } catch (error) {
+    if (reservedCoins > 0 && reservedUserId) {
+      await User.updateOne({ _id: reservedUserId }, { $inc: { rewardCoins: reservedCoins }, $push: { rewardHistory: { type: "refund", coins: reservedCoins, note: "Checkout session could not be created; reserved coins were returned." } } }).catch(() => {});
+    }
     console.error("[CHECKOUT] SESSION_CREATE_FAILED", { requestId, error: error.message });
     return res.status(500).json({ success: false, error: "Could not prepare checkout. Please refresh your cart and try again." });
   }
