@@ -39,6 +39,8 @@ function Cart() {
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponError, setCouponError] = useState("");
+  const [rewardBalance, setRewardBalance] = useState(0);
+  const [redeemCoins, setRedeemCoins] = useState(0);
   const [checkoutSettings, setCheckoutSettings] = useState(null);
   const [customerLocation, setCustomerLocation] = useState(null);
   const [activeTab, setActiveTab] = useState("cart");
@@ -61,6 +63,8 @@ function Cart() {
     fetchCart();
     fetchOrders();
     fetchCheckoutSettings();
+    const token = localStorage.getItem("authToken");
+    if (token) axios.get("https://aroha.onrender.com/rewards/me", { headers: { Authorization: "Bearer " + token } }).then((res) => setRewardBalance(Number(res.data.coins) || 0)).catch((error) => console.warn("[Rewards] Balance unavailable", error.response?.status));
 
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -255,6 +259,7 @@ function Cart() {
       },
       customerLocation,
       couponCode: appliedCoupon ? appliedCoupon.code : "",
+      redeemCoins: Number(redeemCoins) || 0,
     });
 
     if (response.data.success) {
@@ -356,7 +361,10 @@ function Cart() {
   }
 
   const deliveryCharge = Math.round(checkoutSettings?.deliveryCharge || 0);
-  const finalAmountToPay = Math.max(0, Math.round(totalAmount - discountAmount + deliveryCharge));
+  const rewardCoinValue = Number(checkoutSettings?.coinRupeeValue) || 0;
+  const safeRedeemCoins = Math.min(Math.max(0, Math.floor(Number(redeemCoins) || 0)), rewardBalance, rewardCoinValue > 0 ? Math.floor(Math.max(0, totalAmount - discountAmount + deliveryCharge) / rewardCoinValue) : 0);
+  const rewardDiscount = Math.round(safeRedeemCoins * rewardCoinValue * 100) / 100;
+  const finalAmountToPay = Math.max(0, Math.round((totalAmount - discountAmount + deliveryCharge - rewardDiscount) * 100) / 100);
 
   if (!user) return <div className="cart-login-prompt">Please log in to view your cart.</div>;
 
@@ -819,6 +827,12 @@ function Cart() {
 
               {couponError && <p className="coupon-error">{couponError}</p>}
               {appliedCoupon && discountAmount > 0 && <p className="coupon-success">✓ Coupon applied successfully</p>}
+
+              <div style={{ margin: "12px 0", padding: 14, border: "1px solid #e5e7eb", borderRadius: 10, background: "#fff" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 8 }}><strong>Use reward coins</strong><span>{rewardBalance.toLocaleString("en-IN")} available</span></div>
+                <input type="number" min="0" max={Math.min(rewardBalance, rewardCoinValue > 0 ? Math.floor(Math.max(0, totalAmount - discountAmount + deliveryCharge) / rewardCoinValue) : 0)} step="1" value={redeemCoins} onChange={(e) => setRedeemCoins(Math.max(0, Math.floor(Number(e.target.value) || 0)))} disabled={!rewardBalance || !rewardCoinValue} placeholder="Enter coins to redeem" className="coupon-input" style={{ width: "100%" }} />
+                {safeRedeemCoins > 0 && <p className="coupon-success">✓ {safeRedeemCoins} coins applied (−₹{rewardDiscount.toFixed(2)})</p>}
+              </div>
 
               {checkoutSettings && (
                 <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
