@@ -3,6 +3,7 @@ const router = express.Router();
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
 
 const saltRounds = 10; // bcrypt salt rounds
 const JWT_SECRET = process.env.JWT_SECRET || "secretkey"; // use env variable in production
@@ -14,7 +15,7 @@ console.log("[INFO] 🚀 User router module loaded");
 router.post("/signup", async (req, res) => {
   console.log("[INFO] 🚀 Signup request started", { mobile: req.body.mobile, email: req.body.email });
   
-  const { name, mobile, email, password, recoveryCode, gender, address, details } = req.body;
+  const { name, mobile, email, password, recoveryCode, gender, address, details, referralCode } = req.body;
 
   try {
     console.log("[DEBUG] 🔍 Checking for existing user with mobile/email", { mobile, email });
@@ -39,8 +40,17 @@ router.post("/signup", async (req, res) => {
       gender,
       address,
       details,
+      referralCode: "AROHA-" + crypto.randomBytes(4).toString("hex").toUpperCase(),
     });
     console.log("[DEBUG] 🔍 Created new User instance");
+
+    if (referralCode) {
+      const referrer = await User.findOne({ referralCode: String(referralCode).trim().toUpperCase() });
+      if (!referrer || String(referrer.mobile) === String(mobile)) {
+        return res.status(400).json({ success: false, message: "Referral code is invalid." });
+      }
+      user.referredBy = referrer._id;
+    }
 
     console.log("[INFO] 🚀 Saving new user to database", { userId: user._id });
     await user.save();

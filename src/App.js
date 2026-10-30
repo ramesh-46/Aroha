@@ -30,6 +30,7 @@ import MainDashboard from "./maindashboard";
 import MainHeader from "./mainheader";
 import Wishlist from "./Wishlist";
 import LogsPage from "./LogsPage";
+import RewardsPage from "./RewardsPage";
 
 function App() {
   return (
@@ -67,6 +68,7 @@ function App() {
         <Route path="/Orders" element={<Orders />} />
         <Route path="/order-success" element={<OrderSuccess />} />
         <Route path="/coupons" element={<UserCoupons />} />
+        <Route path="/rewards" element={<RewardsPage />} />
 
 <Route path="/MainDashboard" element={<MainDashboard />} />
 <Route path="/MainHeader" element={<MainHeader />} />
