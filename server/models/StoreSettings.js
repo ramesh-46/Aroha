@@ -5,6 +5,7 @@ const storeSettingsSchema = new mongoose.Schema({
   rewardsEnabled: { type: Boolean, default: true },
   coinsPer100Spent: { type: Number, default: 5, min: 0, max: 1000 },
   referralBonusCoins: { type: Number, default: 100, min: 0, max: 10000 },
+  referredUserBonusCoins: { type: Number, default: 100, min: 0, max: 10000 },
   coinRupeeValue: { type: Number, default: 0.1, min: 0, max: 100 },
   deliveryMinDays: { type: Number, default: 3, min: 1, max: 30 },
   deliveryMaxDays: { type: Number, default: 5, min: 1, max: 60 },
