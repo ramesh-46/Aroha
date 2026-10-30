@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { signInWithPopup } from "firebase/auth";
-import { auth, provider } from "./firebase";
+import { auth, provider, firebaseConfigReady } from "./firebase";
 
 function UserLogin() {
   const [mobile, setMobile] = useState("");
@@ -74,18 +74,29 @@ function UserLogin() {
 
   // GOOGLE LOGIN
   const handleGoogleLogin = async () => {
+    if (!firebaseConfigReady) {
+      showToast("Google sign-in is not configured. Please check the Firebase environment variables in Vercel.");
+      return;
+    }
+
     setLoading(true);
     setLoadingText(luxuryTexts[Math.floor(Math.random() * 3)]);
 
     try {
+      provider.setCustomParameters({ prompt: "select_account" });
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+
+      if (!user.email) {
+        throw new Error("Google did not return an email address. Please try another Google account.");
+      }
 
       const res = await axios.post(
         "https://aroha.onrender.com/auth/google-login",
         {
           name: user.displayName,
           email: user.email,
+          photoUrl: user.photoURL,
         }
       );
 
@@ -107,8 +118,28 @@ function UserLogin() {
           },
         });
       }
-    } catch {
-      showToast("Google authentication was unsuccessful.");
+    } catch (error) {
+      console.error("Google sign-in failed:", error);
+
+      const code = error?.code || "";
+      const message =
+        code === "auth/unauthorized-domain"
+          ? "This website domain is not authorised in Firebase. Add aroha-three.vercel.app under Firebase Authentication → Settings → Authorised domains."
+          : code === "auth/invalid-api-key"
+          ? "Firebase API key is invalid. Check REACT_APP_FIREBASE_API_KEY in Vercel."
+          : code === "auth/operation-not-allowed"
+          ? "Google sign-in is disabled. Enable the Google provider in Firebase Authentication."
+          : code === "auth/popup-blocked"
+          ? "Your browser blocked the Google sign-in popup. Allow popups and try again."
+          : code === "auth/popup-closed-by-user"
+          ? "Google sign-in was cancelled. Please try again."
+          : code === "auth/network-request-failed"
+          ? "Network error while connecting to Google. Check your internet and try again."
+          : error?.response?.data?.message ||
+            error?.message ||
+            "Google sign-in failed. Please try again.";
+
+      showToast(message);
       setLoading(false);
     }
   };
