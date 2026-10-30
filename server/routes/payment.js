@@ -87,7 +87,7 @@ router.post("/create-session", async (req, res) => {
     if (!Number.isInteger(requestedCoins) || requestedCoins < 0) return res.status(400).json({ success: false, error: "Invalid reward coin amount." });
     if (requestedCoins > 0) {
       if (settings.rewardsEnabled === false || Number(settings.coinRupeeValue) <= 0) return res.status(400).json({ success: false, error: "Reward coin redemption is currently unavailable." });
-      const maxCoinsForOrder = Math.floor(Math.max(0, subtotalAmount - discountAmount + deliveryCharge) / Number(settings.coinRupeeValue));
+      const maxCoinsForOrder = Math.floor(Math.max(0, subtotalAmount - discountAmount + deliveryCharge - 0.01) / Number(settings.coinRupeeValue));
       if (requestedCoins > maxCoinsForOrder) return res.status(400).json({ success: false, error: "You cannot redeem more coins than this order allows." });
       const reservedUser = await User.findOneAndUpdate({ _id: userId, rewardCoins: { $gte: requestedCoins } }, { $inc: { rewardCoins: -requestedCoins }, $push: { rewardHistory: { type: "redeem_pending", coins: -requestedCoins, note: "Coins reserved for checkout." } } }, { new: true });
       if (!reservedUser) return res.status(400).json({ success: false, error: "Insufficient reward coin balance. Refresh your rewards balance." });
