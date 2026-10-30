@@ -5,6 +5,8 @@ const Product = require("../models/Product");
 const Cart = require("../models/Cart");
 const User = require("../models/User");
 const StoreSettings = require("../models/StoreSettings");
+const Coupon = require("../models/Coupon");
+const { roundCurrency, getEffectiveUnitPrice } = require("../utils/pricing");
 const { v4: uuidv4 } = require("uuid");
 const multer = require("multer"); // Import multer
 
@@ -14,126 +16,90 @@ const upload = multer({ storage: storage });
 
 // --- Create a Payment Session and Generate UPI QR Details ---
 router.post("/create-session", async (req, res) => {
+  const requestId = require("crypto").randomUUID();
   try {
-    const {
-      userId,
-      cartItems,
-      customerDetails,
-      couponCode = "",
-      discountAmount = 0,
-      deliveryCharge = 0,
-      totalAmount
-    } = req.body;
-
-    // 1. Validate required fields
-    if (!userId || !cartItems || !customerDetails) {
-      return res.status(400).json({
-        success: false,
-        error: "Missing required fields: userId, cartItems, or customerDetails"
-      });
+    const { userId, cartItems, customerDetails, couponCode = "", customerLocation = null } = req.body || {};
+    if (!userId || !Array.isArray(cartItems) || !cartItems.length || !customerDetails?.name || !customerDetails?.mobile || !customerDetails?.address) {
+      return res.status(400).json({ success: false, error: "User, items and complete delivery details are required." });
     }
+    const settings = await StoreSettings.findOne() || await StoreSettings.create({});
+    if (settings.checkoutEnabled === false) return res.status(403).json({ success: false, error: "Checkout is temporarily disabled." });
 
-    // 2. Validate customerDetails
-    if (!customerDetails.name || !customerDetails.mobile || !customerDetails.address) {
-      return res.status(400).json({
-        success: false,
-        error: "Missing customer details: name, mobile, or address"
-      });
-    }
-
-    // 3. Recalculate total amount from cartItems
-    let calculatedTotal = 0;
+    const productIds = cartItems.map((item) => item.productId);
+    const products = await Product.find({ _id: { $in: productIds }, isActive: true });
+    const productMap = new Map(products.map((product) => [String(product._id), product]));
     const orderItems = [];
+    let subtotalAmount = 0;
+    let totalQuantity = 0;
 
     for (const item of cartItems) {
-      const product = await Product.findById(item.productId);
-      if (!product || !product.isActive) {
-        return res.status(400).json({
-          success: false,
-          error: `Product ${product?.name || item.productId} is unavailable`
-        });
-      }
-
-      const unitPrice = item.discountedPrice || item.originalPrice || product.finalPrice || product.price;
-      calculatedTotal += unitPrice * item.quantity;
-
+      const product = productMap.get(String(item.productId));
+      const quantity = Number(item.quantity);
+      if (!product) return res.status(400).json({ success: false, error: "One or more products are unavailable." });
+      if (!Number.isInteger(quantity) || quantity < 1) return res.status(400).json({ success: false, error: "Invalid product quantity." });
+      if (quantity > Number(product.stock || 0)) return res.status(400).json({ success: false, error: "Only " + product.stock + " units of " + product.name + " are available." });
+      const pricing = getEffectiveUnitPrice(product, settings);
+      const unitPrice = roundCurrency(pricing.effectivePrice);
+      const lineTotal = roundCurrency(unitPrice * quantity);
+      subtotalAmount = roundCurrency(subtotalAmount + lineTotal);
+      totalQuantity += quantity;
       orderItems.push({
-        productId: item.productId,
-        sku: item.sku || product.sku || "",
-        quantity: item.quantity,
-        originalPrice: item.originalPrice || product.price,
-        discountedPrice: unitPrice,
-        lineTotal: unitPrice * item.quantity
+        productId: product._id, sku: product.sku || "", quantity,
+        originalPrice: roundCurrency(product.price || 0), discountedPrice: unitPrice, lineTotal,
+        productSnapshot: { _id: product._id, name: product.name, brand: product.brand, category: product.category, sku: product.sku, images: product.images, price: product.price, finalPrice: product.finalPrice }
       });
     }
 
-    // 4. Apply discounts and delivery charges
-    const finalAmount = Math.round(
-      calculatedTotal - (discountAmount || 0) + (deliveryCharge || 0)
-    );
-
-    // 5. Validate frontend total matches backend calculation
-    if (finalAmount !== totalAmount) {
-      return res.status(400).json({
-        success: false,
-        error: `Amount mismatch: Frontend (${totalAmount}) vs Backend (${finalAmount})`
-      });
+    let discountAmount = 0;
+    let couponRecord = null;
+    const normalizedCouponCode = String(couponCode || "").trim().toUpperCase();
+    if (normalizedCouponCode) {
+      couponRecord = await Coupon.findOne({ code: normalizedCouponCode, isActive: true });
+      const now = Date.now();
+      if (!couponRecord || couponRecord.usedCount >= couponRecord.usageLimit ||
+        (couponRecord.startsAt && now < new Date(couponRecord.startsAt).getTime()) ||
+        (couponRecord.endsAt && now > new Date(couponRecord.endsAt).getTime())) {
+        return res.status(400).json({ success: false, error: "Coupon is invalid, inactive or expired." });
+      }
+      if (subtotalAmount < Number(couponRecord.minOrderValue || 0)) return res.status(400).json({ success: false, error: "Minimum order value of ₹" + couponRecord.minOrderValue + " is required." });
+      if (totalQuantity < Number(couponRecord.minMembers || 1)) return res.status(400).json({ success: false, error: "This coupon requires at least " + couponRecord.minMembers + " item(s)." });
+      const eligibleAmount = roundCurrency(orderItems.filter((item) => !couponRecord.category || productMap.get(String(item.productId)).category === couponRecord.category).reduce((sum, item) => sum + item.lineTotal, 0));
+      if (eligibleAmount <= 0) return res.status(400).json({ success: false, error: "Coupon does not apply to these products." });
+      discountAmount = couponRecord.isPercentage ? roundCurrency(eligibleAmount * Number(couponRecord.discountValue) / 100) : roundCurrency(couponRecord.discountValue);
+      if (Number(couponRecord.maxDiscountAmount) > 0) discountAmount = Math.min(discountAmount, Number(couponRecord.maxDiscountAmount));
+      discountAmount = Math.min(discountAmount, eligibleAmount);
     }
 
-    // 6. Generate a unique order ID
-    const orderId = `ORDER_${uuidv4().toUpperCase().slice(0, 8)}`;
-
-    // 7. Get UPI ID from .env
+    const toRadians = (value) => value * Math.PI / 180;
+    let deliveryCharge = roundCurrency(settings.normalDeliveryCharge || 0);
+    const seller = settings.sellerLocation;
+    if (settings.freeDeliveryEnabled && customerLocation && Number.isFinite(Number(customerLocation.lat)) && Number.isFinite(Number(customerLocation.lng)) && Number.isFinite(Number(seller?.lat)) && Number.isFinite(Number(seller?.lng))) {
+      const lat1 = toRadians(Number(seller.lat)), lat2 = toRadians(Number(customerLocation.lat));
+      const dLat = lat2 - lat1, dLng = toRadians(Number(customerLocation.lng) - Number(seller.lng));
+      const h = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
+      const distance = 6371 * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+      if (distance <= Number(settings.deliveryRadiusKm || 0)) deliveryCharge = 0;
+    }
+    const finalAmount = roundCurrency(Math.max(0, subtotalAmount - discountAmount + deliveryCharge));
+    if (finalAmount <= 0) return res.status(400).json({ success: false, error: "Order total must be greater than zero." });
     const upiId = process.env.UPI_ID;
-    if (!upiId) {
-      return res.status(500).json({
-        success: false,
-        error: "UPI_ID not configured in .env"
-      });
-    }
+    if (!upiId) return res.status(503).json({ success: false, error: "UPI payment is not configured." });
 
-    // 8. Generate UPI QR URL
-    const upiUrl = `upi://pay?pa=${upiId}&pn=AROHA HUB&am=${finalAmount}&cu=INR`;
-
-    // 9. Create a temporary order
+    const orderId = "ORDER_" + require("crypto").randomUUID().toUpperCase().slice(0, 8);
+    const upiUrl = "upi://pay?pa=" + encodeURIComponent(upiId) + "&pn=AROHA%20HUB&am=" + finalAmount + "&cu=INR";
     const newOrder = new Order({
-      orderId,
-      userId,
-      items: orderItems,
-      customerName: customerDetails.name,
-      customerMobile: customerDetails.mobile,
-      deliveryAddress: customerDetails.address,
-      customerLocation: customerDetails.location || null,
-      discountAmount: discountAmount || 0,
-      couponCode: couponCode || "",
-      subtotalAmount: calculatedTotal,
-      deliveryCharge: deliveryCharge || 0,
-      totalAmount: finalAmount,
-      status: "Payment Verification Pending",
-      paymentMethod: "UPI QR",
-      upiId,
-      upiUrl
+      orderId, userId, items: orderItems, customerName: customerDetails.name,
+      customerMobile: customerDetails.mobile, deliveryAddress: customerDetails.address,
+      customerLocation: customerLocation || {}, discountAmount, couponCode: normalizedCouponCode,
+      couponDetails: couponRecord, subtotalAmount, deliveryCharge, totalAmount: finalAmount,
+      status: "Payment Verification Pending", paymentMethod: "UPI QR", upiId, upiUrl
     });
     await newOrder.save();
-
-    // 10. Return payment session details
-    res.json({
-      success: true,
-      orderId,
-      upiUrl,
-      upiId,
-      amount: finalAmount,
-      customerDetails,
-      orderItems: orderItems
-    });
-
-  } catch (err) {
-    console.error("Payment session error:", err);
-    res.status(500).json({
-      success: false,
-      error: "Failed to create payment session",
-      details: err.message
-    });
+    console.log("[CHECKOUT] SESSION_CREATED", { requestId, orderId, userId: String(userId), itemCount: orderItems.length, totalQuantity, subtotalAmount, discountAmount, deliveryCharge, finalAmount, couponCode: normalizedCouponCode || null });
+    return res.json({ success: true, orderId, upiUrl, upiId, amount: finalAmount, customerDetails, orderItems, pricing: { subtotalAmount, discountAmount, deliveryCharge, totalAmount: finalAmount } });
+  } catch (error) {
+    console.error("[CHECKOUT] SESSION_CREATE_FAILED", { requestId, error: error.message });
+    return res.status(500).json({ success: false, error: "Could not prepare checkout. Please refresh your cart and try again." });
   }
 });
 
