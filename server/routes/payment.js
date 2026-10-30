@@ -364,7 +364,8 @@ router.post("/razorpay/verify-payment", async (req, res) => {
         console.warn("[Cart] CART_NOT_CLEARED_USER_ID_MISSING", { orderId });
       }
 
-      console.log("[Razorpay]", requestId, "PAYMENT_CAPTURED", { orderId, userEmail: maskEmail(customer?.email), gatewayOrderId: payment.order_id, paymentId: payment.id, amountPaise: payment.amount });
+      const paymentLogUser = await User.findById(order.userId).select("email").lean();
+      console.log("[Razorpay]", requestId, "PAYMENT_CAPTURED", { orderId, userEmail: maskEmail(paymentLogUser?.email), gatewayOrderId: payment.order_id, paymentId: payment.id, amountPaise: payment.amount });
       return res.json({ success: true, paid: true, orderId: order.orderId, message: "Payment verified successfully." });
     }
     order.status = "Payment Verification Pending";
