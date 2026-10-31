@@ -368,7 +368,13 @@ function MainDashboard() {
 
     setIsAddingToCart(true);
 
-    const userId = localStorage.getItem("userId") || "69d0b96f4788990c35ebc5fe";
+    const storedUser = JSON.parse(localStorage.getItem("user") || "null");
+    const userId = storedUser?._id || localStorage.getItem("userId");
+    if (!userId) {
+      alert("Please log in before adding items to your cart.");
+      setIsAddingToCart(false);
+      return;
+    }
 
     const successMessages = [
       "Secured in your vault.",
@@ -391,15 +397,16 @@ function MainDashboard() {
         })
       });
 
-      if (response.ok) {
-        setCartSuccessMsg(randomMsg);
-        setTimeout(() => setCartSuccessMsg(""), 3000);
-      } else {
-        alert("Failed to add to cart.");
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data || !Array.isArray(data.items)) {
+        throw new Error(data.message || "The server did not confirm that the cart was saved.");
       }
+      console.info("[Cart] ITEM_SAVED", { userId, productId: selectedProduct.id, quantity, itemCount: data.items.length });
+      setCartSuccessMsg(randomMsg);
+      setTimeout(() => setCartSuccessMsg(""), 3000);
     } catch (error) {
-      console.error("Cart Error:", error);
-      alert("Error connecting to server.");
+      console.error("[Cart] ADD_FAILED", { message: error.message, productId: selectedProduct.id });
+      alert(error.message || "Error connecting to server.");
     } finally {
       setIsAddingToCart(false);
     }
