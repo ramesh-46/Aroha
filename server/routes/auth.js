@@ -7,6 +7,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const { writeAudit } = require("../middleware/activityLogger");
+const authMiddleware = require("../middleware/authMiddleware");
 
 const saltRounds = 10; // bcrypt salt rounds
 const maskEmail = (value) => { const parts = String(value || "").split("@"); return parts.length === 2 ? parts[0].slice(0, 1) + "***@" + parts[1] : ""; };
@@ -466,3 +467,63 @@ module.exports = router;
 // });
 
 // module.exports = router;
+
+ 
+// Customer address book: up to ten saved delivery addresses, always scoped to the verified account.
+router.get("/addresses", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("addresses address name mobile").lean();
+    if (!user) return res.status(404).json({ success: false, message: "Account not found." });
+    let addresses = Array.isArray(user.addresses) ? user.addresses : [];
+    if (!addresses.length && user.address) addresses = [{ _id: "legacy", label: "Saved address", name: user.name || "", mobile: user.mobile || "", line1: user.address, city: "", state: "", pincode: "", isDefault: true }];
+    res.set("Cache-Control", "no-store");
+    res.json({ success: true, addresses, limit: 10 });
+  } catch (error) { res.status(500).json({ success: false, message: "Unable to load saved addresses." }); }
+});
+
+router.post("/addresses", authMiddleware, async (req, res) => {
+  try {
+    const { label = "Home", name, mobile, line1, line2 = "", landmark = "", city, state, pincode, isDefault = false } = req.body || {};
+    const fields = [name, mobile, line1, city, state, pincode];
+    if (fields.some(value => !String(value || "").trim())) return res.status(400).json({ success: false, message: "Name, mobile, address, city, state and PIN code are required." });
+    if (!/^[0-9+() -]{7,20}$/.test(String(mobile).trim())) return res.status(400).json({ success: false, message: "Enter a valid mobile number." });
+    if (!/^[A-Za-z0-9 -]{4,12}$/.test(String(pincode).trim())) return res.status(400).json({ success: false, message: "Enter a valid PIN code." });
+    const user = await User.findById(req.user.id).select("addresses name mobile");
+    if (!user) return res.status(404).json({ success: false, message: "Account not found." });
+    if (user.addresses.length >= 10) return res.status(409).json({ success: false, message: "You can save a maximum of 10 addresses." });
+    const address = { label: String(label).trim().slice(0,30) || "Home", name: String(name).trim(), mobile: String(mobile).trim(), line1: String(line1).trim(), line2: String(line2).trim(), landmark: String(landmark).trim(), city: String(city).trim(), state: String(state).trim(), pincode: String(pincode).trim(), isDefault: Boolean(isDefault) || user.addresses.length === 0 };
+    if (address.isDefault) user.addresses.forEach(item => { item.isDefault = false; });
+    user.addresses.push(address);
+    await user.save();
+    res.status(201).json({ success: true, addresses: user.addresses });
+  } catch (error) { res.status(500).json({ success: false, message: "Unable to save address." }); }
+});
+
+router.put("/addresses/:addressId", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("addresses");
+    if (!user) return res.status(404).json({ success: false, message: "Account not found." });
+    const address = user.addresses.id(req.params.addressId);
+    if (!address) return res.status(404).json({ success: false, message: "Address not found." });
+    const allowed = ["label","name","mobile","line1","line2","landmark","city","state","pincode"];
+    for (const key of allowed) if (req.body[key] !== undefined) address[key] = String(req.body[key]).trim();
+    if (["name","mobile","line1","city","state","pincode"].some(key => !String(address[key] || "").trim())) return res.status(400).json({ success: false, message: "Complete all required address fields." });
+    if (req.body.isDefault === true) user.addresses.forEach(item => { item.isDefault = String(item._id) === String(address._id); });
+    await user.save();
+    res.json({ success: true, addresses: user.addresses });
+  } catch (error) { res.status(500).json({ success: false, message: "Unable to update address." }); }
+});
+
+router.delete("/addresses/:addressId", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("addresses");
+    if (!user) return res.status(404).json({ success: false, message: "Account not found." });
+    const address = user.addresses.id(req.params.addressId);
+    if (!address) return res.status(404).json({ success: false, message: "Address not found." });
+    const wasDefault = address.isDefault;
+    address.deleteOne();
+    if (wasDefault && user.addresses.length) user.addresses[0].isDefault = true;
+    await user.save();
+    res.json({ success: true, addresses: user.addresses });
+  } catch (error) { res.status(500).json({ success: false, message: "Unable to delete address." }); }
+});
