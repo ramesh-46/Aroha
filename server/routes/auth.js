@@ -301,10 +301,12 @@ router.put("/users/:id", sellerAuthMiddleware, async (req, res) => {
     if (updates.referralCode !== undefined) updates.referralCode = String(updates.referralCode).trim().toUpperCase();
     if (updates.rewardCoins !== undefined) {
       const coins = Number(updates.rewardCoins);
-      if (!Number.isFinite(coins) || coins < 0) return res.status(400).json({ success: false, message: "Reward coins must be zero or greater." });
+      if (!Number.isInteger(coins) || coins < 0) return res.status(400).json({ success: false, message: "Reward coins must be a whole number zero or greater." });
       updates.rewardCoins = coins;
     }
     if (updates.referredBy === "") updates.referredBy = null;
+    if (updates.referredBy && !/^[a-f\\d]{24}$/i.test(String(updates.referredBy))) return res.status(400).json({ success: false, message: "Referred-by must be a valid user ID or left blank." });
+    if (updates.referredBy && String(updates.referredBy) === String(req.params.id)) return res.status(400).json({ success: false, message: "A user cannot refer themselves." });
     if (req.body?.newRecoveryCode !== undefined && String(req.body.newRecoveryCode).trim()) updates.recoveryCode = String(req.body.newRecoveryCode).trim();
     delete updates.newRecoveryCode;
     if (req.body?.password) {
