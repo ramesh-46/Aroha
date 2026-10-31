@@ -7,6 +7,7 @@ const Product = require("../models/Product");
 const User = require("../models/User");
 const StoreSettings = require("../models/StoreSettings");
 const { roundCurrency, getSaleStatus, getEffectiveUnitPrice } = require("../utils/pricing");
+const sellerAuthMiddleware = require("../middleware/sellerAuthMiddleware");
 
 const getStoreSettings = async () => {
   let settings = await StoreSettings.findOne();
@@ -228,6 +229,7 @@ router.post("/", async (req, res) => {
     await session.commitTransaction();
 
     const populatedOrder = await Order.findById(savedOrder._id).populate("items.productId");
+    console.info("[ADMIN_ORDERS] STATUS_CHANGE_SAVED", { orderId: order.orderId || String(order._id), status });
     res.json(populatedOrder);
   } catch (err) {
     await session.abortTransaction();
@@ -251,7 +253,7 @@ router.get("/user/:userId", async (req, res) => {
   }
 });
 
-router.get("/all", async (req, res) => {
+router.get("/all", sellerAuthMiddleware, async (req, res) => {
   try {
     const orders = await Order.find()
       .populate("items.productId")
@@ -277,17 +279,21 @@ router.get("/:userId", async (req, res) => {
   }
 });
 
-router.put("/status/:orderId", async (req, res) => {
+router.put("/status/:orderId", sellerAuthMiddleware, async (req, res) => {
   const { orderId } = req.params;
   const { status } = req.body;
-  if (!status) return res.status(400).json({ message: "Status required" });
+  const allowedStatuses = ["Pending", "Under Consideration", "Under Confirmation", "Processing", "Packing", "Shipped", "Out for Delivery", "Delivered", "Cancelled", "Payment Verification Pending", "Payment Verified", "Payment Failed"];
+  if (!allowedStatuses.includes(status)) return res.status(400).json({ success: false, message: "Choose a supported order status.", allowedStatuses });
 
   try {
     const order = await Order.findById(orderId);
     if (!order) return res.status(404).json({ message: "Order not found" });
 
+    const previousStatus = order.status;
     order.status = status;
+    if (!Array.isArray(order.statusHistory)) order.statusHistory = [];
     order.statusHistory.push({ status, updatedAt: new Date() });
+    console.info("[ADMIN_ORDERS] STATUS_CHANGE_REQUEST", { orderId: order.orderId || String(order._id), previousStatus, nextStatus: status, adminId: req.seller?.id || req.seller?._id || null });
     const updatedOrder = await order.save();
 
     // Manual/admin payment verification uses the same one-time rewards rule as Razorpay capture.
@@ -336,8 +342,8 @@ router.put("/status/:orderId", async (req, res) => {
       .populate("userId", "name mobile email");
     res.json(populatedOrder);
   } catch (err) {
-    console.log(err);
-    res.status(500).json({ message: "Failed to update status" });
+    console.error("[ADMIN_ORDERS] STATUS_CHANGE_FAILED", { orderId, message: err.message });
+    res.status(500).json({ success: false, message: "Failed to update status", error: err.message });
   }
 });
 
