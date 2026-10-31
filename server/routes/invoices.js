@@ -89,7 +89,7 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
 
     y += 12;
     const rows = [
-      ["Items subtotal (before discounts)", Number(order.subtotalAmount || (order.items || []).reduce((sum, item) => sum + Number(item.originalPrice || 0) * Number(item.quantity || 0), 0))],
+      ["Items subtotal (before discounts)", Number((order.items || []).reduce((sum, item) => sum + Number(item.originalPrice || 0) * Number(item.quantity || 0), 0) || order.subtotalAmount || 0)],
       ["Coupon / promotional discount", -Number(order.discountAmount || 0)],
       ["Reward coins redeemed", Number(order.rewardCoinsRedeemed || 0) + " coins"],
       ["Reward redemption discount", -Number(order.rewardDiscountAmount || 0)],
