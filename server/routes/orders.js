@@ -8,6 +8,7 @@ const User = require("../models/User");
 const StoreSettings = require("../models/StoreSettings");
 const { roundCurrency, getSaleStatus, getEffectiveUnitPrice } = require("../utils/pricing");
 const sellerAuthMiddleware = require("../middleware/sellerAuthMiddleware");
+const { writeAudit } = require("../middleware/activityLogger");
 
 const getStoreSettings = async () => {
   let settings = await StoreSettings.findOne();
@@ -229,7 +230,9 @@ router.post("/", async (req, res) => {
     await session.commitTransaction();
 
     const populatedOrder = await Order.findById(savedOrder._id).populate("items.productId");
-    console.info("[ADMIN_ORDERS] STATUS_CHANGE_SAVED", { orderId: order.orderId || String(order._id), status });
+    const customer = await User.findById(savedOrder.userId).select("name");
+    await writeAudit({ userId: savedOrder.userId, username: customer?.name || customerName || "Customer", role: "user", event: "order.created", message: "Order placed", metadata: { orderId: savedOrder.orderId || String(savedOrder._id), itemCount: savedOrder.items.length } });
+    console.info("[ORDERS] ORDER_CREATED", { orderId: savedOrder.orderId || String(savedOrder._id), userId: String(savedOrder.userId) });
     res.json(populatedOrder);
   } catch (err) {
     await session.abortTransaction();
@@ -342,6 +345,7 @@ router.put("/status/:orderId", sellerAuthMiddleware, async (req, res) => {
     const populatedOrder = await Order.findById(updatedOrder._id)
       .populate("items.productId")
       .populate("userId", "name mobile email");
+    await writeAudit({ userId: order.userId, username: order.customerName || "Customer", role: "user", event: "order.status_updated", message: "Order status updated by admin", metadata: { orderId: order.orderId, status } });
     res.json(populatedOrder);
   } catch (err) {
     console.error("[ADMIN_ORDERS] STATUS_CHANGE_FAILED", { orderId, message: err.message });
