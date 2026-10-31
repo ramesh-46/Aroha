@@ -256,13 +256,15 @@ router.get("/users", sellerAuthMiddleware, async (req, res) => {
   console.log("[INFO] 🚀 Get Users request started", { query: req.query.q });
   
   try {
-    const { q } = req.query;
+    const q = String(req.query.q || "").trim().slice(0, 80);
+    const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, "\\    const { q } = req.query;
+    const query = {};");
     const query = {};
 
     if (q) {
       console.log("[DEBUG] 🔍 Search query provided, building $or conditions", { q });
       query.$or = [
-        { name: { $regex: q, $options: "i" } },
+        { name: { $regex: escapedQ, $options: "i" } },
         { mobile: { $regex: q, $options: "i" } },
         { email: { $regex: q, $options: "i" } }
       ];
@@ -278,11 +280,13 @@ router.get("/users", sellerAuthMiddleware, async (req, res) => {
     }
 
     console.log("[DEBUG] 🔍 Executing User.find with query", { query: JSON.stringify(query) });
-    const users = await User.find(query).select("-password -recoveryCode").sort({ createdAt: -1 }).lean();
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const [users, total] = await Promise.all([User.find(query).select("-password -recoveryCode").sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(), User.countDocuments(query)]);
     console.log("[SUCCESS] ✅ Users fetched successfully", { count: users.length });
 
     console.log("[INFO] ✅ Get Users request completed successfully", { count: users.length });
-    res.json({ success: true, users });
+    res.json({ success: true, users, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
     console.log("[ERROR] ❌ Get Users request failed", { error: err.message, stack: err.stack });
     res.status(500).json({ success: false, message: err.message });
