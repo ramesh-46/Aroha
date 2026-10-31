@@ -8,7 +8,23 @@ export default function CustomerSupport(){
  const navigate=useNavigate();const [tickets,setTickets]=useState([]),[active,setActive]=useState(null),[message,setMessage]=useState(""),[loading,setLoading]=useState(true),[sending,setSending]=useState(false),[error,setError]=useState("");
  const headers={Authorization:"Bearer "+localStorage.getItem("authToken")};
  const load=useCallback(async()=>{setLoading(true);setError("");try{const r=await axios.get(API+"/support",{headers,timeout:20000});setTickets(r.data.queries||[]);if(active){const fresh=(r.data.queries||[]).find(t=>t._id===active._id);if(fresh)setActive(fresh);}}catch(e){setError(e.response?.data?.message||"Unable to load your support tickets.");}finally{setLoading(false);}},[active?._id]);
- useEffect(()=>{load();},[]);
+ useEffect(()=>{
+  let stopped=false, inFlight=false;
+  const refresh=async()=>{
+   if(stopped||inFlight)return;
+   inFlight=true;
+   try{
+    const r=await axios.get(API+"/support",{headers,timeout:12000});
+    if(stopped)return;
+    setTickets(r.data.queries||[]);
+    if(active){const fresh=(r.data.queries||[]).find(t=>t._id===active._id);if(fresh)setActive(fresh);}
+   }catch(e){if(!stopped)setError(e.response?.data?.message||"Live refresh temporarily unavailable.");}
+   finally{inFlight=false;}
+  };
+  load();
+  const timer=setInterval(refresh,3000);
+  return()=>{stopped=true;clearInterval(timer);};
+ },[active?._id]);
  const send=async()=>{if(!active||!message.trim()||sending)return;setSending(true);try{const r=await axios.post(API+"/support/"+active._id+"/reply",{message:message.trim()},{headers});setTickets(old=>old.map(t=>t._id===active._id?r.data.query:t));setActive(r.data.query);setMessage("");}catch(e){Swal.fire("Message not sent",e.response?.data?.message||"Please try again.","error");}finally{setSending(false);}};
  return <main style={{minHeight:"100vh",background:"#f7f7f6",padding:"clamp(14px,3vw,28px)",fontFamily:"Inter,system-ui,sans-serif",color:"#171717"}}><header style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap",marginBottom:18}}><div><button onClick={()=>navigate("/profile")} style={{padding:"9px 12px",border:"1px solid #ddd",borderRadius:9,background:"#fff"}}><FaArrowLeft/> Back to profile</button><h1 style={{margin:"12px 0 4px"}}>Order support</h1><p style={{margin:0,color:"#737373"}}>Chat with the Aroha team about your orders.</p></div><button onClick={load} style={{padding:10,border:"1px solid #ddd",borderRadius:9,background:"#fff"}}><FaSyncAlt/> Refresh</button></header>
  {error&&<p role="alert" style={{color:"#b91c1c"}}>{error}</p>}
