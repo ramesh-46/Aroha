@@ -409,7 +409,8 @@ router.post("/razorpay/log-event", auth, async (req, res) => {
   }
   const { event, orderId, gatewayOrderId, paymentId, details } = eventBody;
   if (!allowedEvents.has(event) || !orderId) {
-    return res.status(400).json({ success: false, error: "Invalid Razorpay event." });
+    console.warn("[Razorpay][CLIENT_EVENT_INVALID]", { userId: String(req.user.id), event: String(event || "missing").slice(0, 80), hasOrderId: Boolean(orderId), hasGatewayOrderId: Boolean(gatewayOrderId), hasPaymentId: Boolean(paymentId), at: new Date().toISOString() });
+    return res.status(400).json({ success: false, error: "Invalid Razorpay event. A valid order ID is required." });
   }
   const safeDetails = details && typeof details === "object" ? {
     code: details.code ? String(details.code).slice(0, 100) : undefined,
