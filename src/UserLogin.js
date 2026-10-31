@@ -61,7 +61,7 @@ function UserLogin() {
         if (res.data.token) localStorage.setItem("authToken", res.data.token);
         setShowWelcomeBurst(true);
         showToast("Welcome back. Your experience awaits.");
-        setTimeout(() => navigate("/maindashboard"), 2200);
+        setTimeout(() => navigate("/maindashboard"), 2800);
       } else {
         showToast("Access denied. Please verify your details.");
         setLoading(false);
@@ -116,7 +116,7 @@ function UserLogin() {
   return (
     <div style={page}>
       {toast && <div style={toastStyle}>{toast}</div>}
-      {showWelcomeBurst && <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle,#ffffffee,#f5d0fecc,#bfdbfeaa)", animation: "arohaWelcomeFlash 2.2s ease both", pointerEvents: "none" }}><div style={{ fontSize: "clamp(60px,14vw,110px)", animation: "arohaWelcomePop .7s cubic-bezier(.2,1.6,.4,1) both" }}>🎉✨🎊</div><h2 style={{ color: "#581c87", fontSize: "clamp(28px,6vw,48px)", textAlign: "center", textShadow: "0 5px 25px #fff" }}>Welcome to Aroha!</h2><p style={{ color: "#6b21a8", fontWeight: 700 }}>Your shopping experience starts now</p><style>{"@keyframes arohaWelcomeFlash{0%{opacity:0;transform:scale(.8)}20%{opacity:1;transform:scale(1.03)}100%{opacity:0;transform:scale(1.08)}}@keyframes arohaWelcomePop{0%{transform:scale(0) rotate(-35deg)}70%{transform:scale(1.2) rotate(8deg)}100%{transform:scale(1) rotate(0)}}"}</style></div> }
+      {showWelcomeBurst && <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle,#ffffffee,#f5d0fecc,#bfdbfeaa)", animation: "arohaWelcomeFlash 2.8s ease both", pointerEvents: "none" }}><div style={{ fontSize: "clamp(60px,14vw,110px)", animation: "arohaWelcomePop .7s cubic-bezier(.2,1.6,.4,1) both" }}>🎉✨🎊</div><h2 style={{ color: "#581c87", fontSize: "clamp(28px,6vw,48px)", textAlign: "center", textShadow: "0 5px 25px #fff" }}>Welcome to Aroha!</h2><p style={{ color: "#6b21a8", fontWeight: 700 }}>Your shopping experience starts now</p><style>{"@keyframes arohaWelcomeFlash{0%{opacity:0;transform:scale(.8)}20%{opacity:1;transform:scale(1.03)}100%{opacity:1;transform:scale(1)}}@keyframes arohaWelcomePop{0%{transform:scale(0) rotate(-35deg)}70%{transform:scale(1.2) rotate(8deg)}100%{transform:scale(1) rotate(0)}}"}</style></div> }
 
       <div style={container}>
         {/* LEFT */}
