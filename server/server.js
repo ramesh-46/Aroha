@@ -39,6 +39,7 @@ app.use((req, res, next) => {
     for (const [key, bucket] of requestBuckets) if (bucket.resetAt <= now) requestBuckets.delete(key);
     lastBucketSweep = now;
   }
+  if (requestBuckets.size > 10000) requestBuckets.clear();
   const ip = String(req.ip || req.socket?.remoteAddress || "unknown").slice(0, 80);
   const sensitive = /^\/auth\/(login|signup|google-login|reset-password)|^\/payment\/create-session/.test(req.path);
   const limit = sensitive ? 20 : 300;
