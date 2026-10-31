@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "./sweetalertConfig";
+import { useNavigate } from "react-router-dom";
 
 const initialState = {
   checkoutEnabled: true,
@@ -24,6 +25,7 @@ const initialState = {
 };
 
 function StoreControlPanel() {
+  const navigate = useNavigate();
   const sellerToken = localStorage.getItem("sellerToken");
   const adminHeaders = sellerToken
     ? { Authorization: `Bearer ${sellerToken}` }
@@ -106,7 +108,7 @@ function StoreControlPanel() {
 
   return (
     <div style={styles.page}>
-      <h2 style={styles.heading}>Store Controls</h2>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10}}><h2 style={styles.heading}>Store Controls</h2><button type="button" onClick={()=>navigate("/AdminDashboard")}>← Back to dashboard</button></div>
       <form onSubmit={handleSave} style={styles.form}>
         <section style={styles.card}>
           <h3 style={styles.sectionTitle}>Checkout & Delivery</h3>
