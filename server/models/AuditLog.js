@@ -12,5 +12,4 @@ const auditLogSchema = new mongoose.Schema({
 },{versionKey:false});
 auditLogSchema.index({createdAt:-1,level:1});
 auditLogSchema.index({userId:1,createdAt:-1});
-auditLogSchema.index({createdAt:1},{expireAfterSeconds:7776000});
 module.exports=mongoose.model("AuditLog",auditLogSchema);
