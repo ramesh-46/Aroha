@@ -16,6 +16,7 @@ function AdminDashboard() {
     { title: "Order Management", description: "Track customer orders, statuses, coupon data, and inventory impact.", path: "/seller-orders", icon: <FaShoppingCart size={28} />, color: "#f59e0b" },
     { title: "Coupon Management", description: "Generate, review, and delete coupons. This is admin-only.", path: "/PromotionPage", icon: <FaPercent size={28} />, color: "#ec4899" },
     { title: "Store Controls", description: "Manage homepage sale, checkout emergency stop, and free-delivery radius.", path: "/store-controls", icon: <FaStore size={28} />, color: "#10b981" },
+    { title: "Referral & Rewards", description: "Manage referral bonuses, purchase coins, redemption value, and reward settings.", path: "/referral-rewards", icon: <FaGift size={28} />, color: "#d97706" },
     { title: "Users", description: "View all users, inspect details, and open full order history.", path: "/user-management", icon: <FaUsers size={28} />, color: "#6366f1" },
     { title: "Customer Queries", description: "Reply to help requests in a chat-style support panel.", path: "/support-center", icon: <FaHeadset size={28} />, color: "#ef4444" },
     { title: "Seller Profile", description: "Review your seller details.", path: "/SellerProfile", icon: <FaUserCircle size={28} />, color: "#14b8a6" }
