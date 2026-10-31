@@ -14,7 +14,7 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
 
     if (!order) return res.status(404).json({ success: false, message: "Order not found for this account." });
 
-    const paid = order.status === "Payment Verified" || order.status === "Delivered";
+    const paid = order.status === "Payment Verified";
     const failed = order.status === "Payment Failed";
     const doc = new PDFDocument({ size: "A4", margin: 48, bufferPages: true });
     res.setHeader("Content-Type", "application/pdf");
