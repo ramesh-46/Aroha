@@ -20,7 +20,39 @@ const paymentRoutes = require("./routes/payment"); // Import the payment routes
 const wishlistRoutes = require("./routes/wishlist");
 const rewardsRoutes = require("./routes/rewards");
 const invoiceRoutes = require("./routes/invoices");
+const AuditLog = require("./models/AuditLog");
+const sellerAuthMiddleware = require("./middleware/sellerAuthMiddleware");
 const app = express();
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
+
+// Small bounded per-IP limiter; critical write/login routes have tighter budgets.
+const requestBuckets = new Map();
+let lastBucketSweep = Date.now();
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)");
+  const now = Date.now();
+  if (now - lastBucketSweep > 60000) {
+    for (const [key, bucket] of requestBuckets) if (bucket.resetAt <= now) requestBuckets.delete(key);
+    lastBucketSweep = now;
+  }
+  if (requestBuckets.size > 10000) requestBuckets.clear();
+  const ip = String(req.ip || req.socket?.remoteAddress || "unknown").slice(0, 80);
+  const sensitive = /^\/auth\/(login|signup|google-login|reset-password)|^\/payment\/create-session/.test(req.path);
+  const limit = sensitive ? 20 : 300;
+  const key = (sensitive ? "s:" : "g:") + ip;
+  let bucket = requestBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) { bucket = { count: 0, resetAt: now + 60000 }; requestBuckets.set(key, bucket); }
+  bucket.count += 1;
+  if (bucket.count > limit) {
+    res.setHeader("Retry-After", String(Math.max(1, Math.ceil((bucket.resetAt - now) / 1000))));
+    return res.status(429).json({ success: false, message: "Too many requests. Please wait and try again." });
+  }
+  next();
+});
 
 // --------------------
 // In-memory runtime log viewer (current server process only)
@@ -134,39 +166,44 @@ app.use((err, req, res, next) => {
 
 
 
-// Public, read-only diagnostics. Only sanitized in-memory logs from this process are exposed.
-
-// Live tail stream for the public dashboard. Streams sanitized logs from this process.
-app.get("/admin/logs/stream", (req, res) => {
-  res.set({ "Content-Type": "text/event-stream", "Cache-Control": "no-cache, no-transform", "Connection": "keep-alive", "X-Accel-Buffering": "no" });
-  res.flushHeaders?.();
-  const send = (event, data) => res.write("event: " + event + "\ndata: " + JSON.stringify(data) + "\n\n");
-  send("connected", { timestamp: new Date().toISOString(), source: "current-process-memory" });
-  let lastId = "";
-  const sendNewLogs = () => {
-    const pending = runtimeLogs.filter((entry) => entry.id > lastId);
-    for (const entry of pending) {
-      send("log", entry);
-      lastId = entry.id;
-    }
-  };
-  // Initial snapshot: newest entries first on screen; stream only sends newly appended entries after this point.
-  for (const entry of runtimeLogs.slice(-100)) send("log", entry);
-  if (runtimeLogs.length) lastId = runtimeLogs[runtimeLogs.length - 1].id;
-  const timer = setInterval(() => {
-    sendNewLogs();
-    res.write(": keep-alive\n\n");
-  }, 1000);
-  req.on("close", () => clearInterval(timer));
+// Admin-only runtime and persistent audit logs. Customer data is never exposed publicly.
+app.get("/admin/logs/stream", sellerAuthMiddleware, (req, res) => {
+  res.status(410).json({ success: false, message: "Live EventSource was retired; use the authenticated paginated audit endpoint." });
 });
 
-app.get("/admin/logs", (req, res) => {
-  const hours = Math.min(168, Math.max(1, Number(req.query.hours) || 6));
-  const limit = Math.min(500, Math.max(1, Number(req.query.limit) || 200));
-  const cutoff = Date.now() - hours * 60 * 60 * 1000;
-  const logs = runtimeLogs.filter((entry) => new Date(entry.timestamp).getTime() >= cutoff).slice(-limit).reverse();
-  res.set("Cache-Control", "no-store");
-  res.json({ logs, count: logs.length, source: "current-process-memory", note: "Shows sanitized runtime logs since this server process started; does not include historical Render deploy/build logs." });
+app.get("/admin/logs", sellerAuthMiddleware, async (req, res) => {
+  try {
+    const hours = Math.min(2160, Math.max(1, Number(req.query.hours) || 24));
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const cutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
+    const filter = { createdAt: { $gte: cutoff } };
+    if (["info", "warning", "error", "security"].includes(req.query.level)) filter.level = req.query.level;
+    if (req.query.userId && mongoose.Types.ObjectId.isValid(req.query.userId)) filter.userId = req.query.userId;
+    const [audit, total] = await Promise.all([
+      AuditLog.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).select("-metadata.authorization -metadata.token"),
+      AuditLog.countDocuments(filter)
+    ]);
+    const memory = runtimeLogs.slice(-Math.min(100, limit)).map((entry) => ({ ...entry, username: "System", userId: null, role: "system", event: "runtime.console" }));
+    res.set("Cache-Control", "no-store");
+    res.json({ logs: [...audit.map((entry) => ({ id: String(entry._id), timestamp: entry.createdAt, level: entry.level, message: entry.message, username: entry.username, userId: entry.userId ? String(entry.userId) : "", role: entry.role, event: entry.event, path: entry.path, statusCode: entry.statusCode })), ...memory].sort((a,b) => new Date(b.timestamp)-new Date(a.timestamp)), count: total + memory.length, page, limit, pages: Math.ceil(total / limit), source: "mongodb-audit-plus-current-process", note: "Persistent audit events are stored in MongoDB; runtime console events are process-local and limited." });
+  } catch (error) {
+    console.error("[ADMIN_AUDIT_READ_FAILED]", { message: error.message });
+    res.status(500).json({ success: false, message: "Unable to load audit logs." });
+  }
+});
+
+app.get("/admin/audit/users/:userId", sellerAuthMiddleware, async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.userId)) return res.status(400).json({ success: false, message: "Invalid user ID." });
+  try {
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
+    const logs = await AuditLog.find({ userId: req.params.userId }).sort({ createdAt: -1 }).limit(limit);
+    res.set("Cache-Control", "no-store");
+    res.json({ success: true, logs });
+  } catch (error) {
+    console.error("[ADMIN_USER_AUDIT_FAILED]", { message: error.message });
+    res.status(500).json({ success: false, message: "Unable to load user audit history." });
+  }
 });
 
 app.get("/ping", (req, res) => {
