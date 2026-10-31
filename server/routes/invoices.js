@@ -1,16 +1,21 @@
 const express = require("express");
 const PDFDocument = require("pdfkit");
 const Order = require("../models/Order");
+const mongoose = require("mongoose");
 const auth = require("../middleware/authMiddleware");
 const router = express.Router();
 
 // Generate an itemized Aroha invoice/transaction statement for the signed-in customer.
 router.get("/:orderId/pdf", auth, async (req, res) => {
   try {
-    const order = await Order.findOne({
-      $or: [{ orderId: req.params.orderId }, { _id: req.params.orderId }],
-      userId: req.user.id
-    }).populate("items.productId", "name brand category sku price finalPrice images");
+    const requestedOrderId = String(req.params.orderId || "").trim();
+    // Custom order numbers (ORDER_...) are not Mongo ObjectIds. Including an
+    // invalid _id in $or makes Mongoose cast the entire query and fail.
+    const orderLookup = mongoose.Types.ObjectId.isValid(requestedOrderId)
+      ? { userId: req.user.id, $or: [{ orderId: requestedOrderId }, { _id: requestedOrderId }] }
+      : { userId: req.user.id, orderId: requestedOrderId };
+    const order = await Order.findOne(orderLookup)
+      .populate("items.productId", "name brand category sku price finalPrice images");
 
     if (!order) return res.status(404).json({ success: false, message: "Order not found for this account." });
 
@@ -111,8 +116,8 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
     const paymentRows = [
       ["Payment method", order.paymentMethod || "Not recorded"],
       ["Payment status", order.status || "Pending"],
-      ["Transaction ID", order.transactionId || order.razorpayPaymentId || "Not available"],
-      ["Gateway order ID", order.razorpayOrderId || "Not available"]
+      ["Transaction ID", order.transactionId || order.razorpayPaymentId || (paid ? "Payment reference not recorded — contact support" : "Assigned after successful payment")],
+      ["Gateway order ID", order.razorpayOrderId || (order.paymentMethod === "Online" ? "Gateway order not created" : "Not applicable")]
     ];
     if (failed && order.paymentFailureReason) paymentRows.push(["Failure reason", order.paymentFailureReason]);
     paymentRows.forEach(([label, value]) => {
@@ -125,7 +130,7 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
     doc.fillColor(muted).font("Helvetica").fontSize(8).text(
       paid ? "This document confirms that the payment was verified as captured." :
       failed ? "This is a payment attempt record only. No payment was received for this order." :
-      "This is an order statement. Payment is not yet confirmed as captured.",
+      "ORDER STATEMENT ONLY — payment has not yet been confirmed as captured.",
       48, y, { width: 499, align: "center" }
     );
     y += 18;
