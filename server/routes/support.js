@@ -11,7 +11,7 @@ const validId = (id) => mongoose.Types.ObjectId.isValid(String(id || ""));
 const cleanMessage = (value) => typeof value === "string" ? value.trim().slice(0, 3000) : "";
 
 router.get("/", async (req, res, next) => {
-  if (req.headers.authorization?.startsWith("Bearer ")) return auth(req, res, () => {
+  if (req.query.admin !== "1") return auth(req, res, () => {
     SupportQuery.find({ userId: req.user.id }).sort({ updatedAt: -1 }).limit(50)
       .populate("orderId", "orderId status createdAt")
       .then(queries => res.json({ success: true, queries }))
