@@ -265,7 +265,7 @@ function AddProduct() {
           onClick={() => navigate("/AdminDashboard")}
           style={styles.sellerOrdersButton}
         >
-          <FaBoxOpen /> Go to Seller Orders
+          <FaBoxOpen /> Back to Dashboard
         </button>
       </div>
       <form onSubmit={handleSubmit} style={styles.form}>
