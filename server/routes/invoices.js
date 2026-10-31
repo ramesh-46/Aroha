@@ -93,8 +93,11 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
     }
 
     y += 12;
+    const originalSubtotal = (order.items || []).reduce((sum, item) => sum + Number(item.originalPrice || (item.productSnapshot && item.productSnapshot.price) || 0) * Number(item.quantity || 0), 0);
+    const productDiscount = (order.items || []).reduce((sum, item) => sum + Math.max(0, Number(item.originalPrice || (item.productSnapshot && item.productSnapshot.price) || 0) - Number(item.discountedPrice || (item.productSnapshot && item.productSnapshot.finalPrice) || item.originalPrice || 0)) * Number(item.quantity || 0), 0);
     const rows = [
-      ["Items subtotal (before discounts)", Number((order.items || []).reduce((sum, item) => sum + Number(item.originalPrice || 0) * Number(item.quantity || 0), 0) || order.subtotalAmount || 0)],
+      ["Original product price subtotal", originalSubtotal],
+      ["Product / sale discounts", -productDiscount],
       ["Coupon / promotional discount", -Number(order.discountAmount || 0)],
       ["Reward coins redeemed", Number(order.rewardCoinsRedeemed || 0) + " coins"],
       ["Reward redemption discount", -Number(order.rewardDiscountAmount || 0)],
@@ -141,7 +144,8 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
     y += 16;
     doc.fillColor("#111111").font("Helvetica-Bold").fontSize(9).text("AUTHORIZED SIGNATURE", 48, y);
     doc.moveTo(48, y + 35).lineTo(205, y + 35).lineWidth(0.8).strokeColor("#737373").stroke();
-    doc.fillColor(muted).font("Helvetica").fontSize(8).text("For JigiriKart / Aroha", 48, y + 40);
+    doc.fillColor("#111111").font("Times-Italic").fontSize(14).text("Aroha", 48, y + 37);
+    doc.fillColor(muted).font("Helvetica").fontSize(8).text("Digitally issued by Aroha Order Desk", 48, y + 55);
     doc.save(); doc.circle(472, y + 22, 27).lineWidth(1.5).strokeColor("#111111").stroke();
     doc.circle(472, y + 22, 22).lineWidth(0.7).strokeColor("#737373").stroke();
     doc.fillColor("#111111").font("Helvetica-Bold").fontSize(7).text("JIGIRIKART", 447, y + 12, { width: 50, align: "center" });
