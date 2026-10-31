@@ -262,7 +262,7 @@ function AddProduct() {
         <h2 style={{ fontSize: '2rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '12px' }}><FaPlus /> Add New Product</h2>
         <button
           type="button"
-          onClick={() => navigate("/seller-orders")}
+          onClick={() => navigate("/AdminDashboard")}
           style={styles.sellerOrdersButton}
         >
           <FaBoxOpen /> Go to Seller Orders
