@@ -241,7 +241,7 @@ const PaymentPage = () => {
     });
     fetch("https://aroha.onrender.com/payment/razorpay/log-event", {
       method: "POST",
-      headers: { "Content-Type": "text/plain;charset=UTF-8" },
+      headers: { "Content-Type": "text/plain;charset=UTF-8", Authorization: "Bearer " + localStorage.getItem("authToken") },
       body: payload,
       keepalive: true,
       mode: "cors"
@@ -261,7 +261,7 @@ const PaymentPage = () => {
     try {
       const { data } = await axios.post("https://aroha.onrender.com/payment/razorpay/create-order", {
         orderId: orderData.orderId
-      });
+      }, { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
       if (!data.success || !data.razorpayOrderId || !data.keyId) {
         throw new Error(data.error || "Could not start Razorpay checkout.");
       }
@@ -291,7 +291,7 @@ const PaymentPage = () => {
                 razorpay_order_id: paymentResponse.razorpay_order_id,
                 razorpay_payment_id: paymentResponse.razorpay_payment_id,
                 razorpay_signature: paymentResponse.razorpay_signature
-              });
+              }, { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
               if (verified.data.success && verified.data.paid) {
                 logRazorpayEvent("CLIENT_VERIFICATION_SUCCESS", data.arohaOrderId, { gatewayOrderId: paymentResponse.razorpay_order_id, paymentId: paymentResponse.razorpay_payment_id });
                 await Swal.fire("Payment successful", "Razorpay verified your payment. Your order is confirmed.", "success");
@@ -366,7 +366,7 @@ const PaymentPage = () => {
       formData.append("screenshot", file);
 
       const response = await axios.post("https://aroha.onrender.com/payment/verify-payment", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+        headers: { "Content-Type": "multipart/form-data", Authorization: "Bearer " + localStorage.getItem("authToken") },
       });
 
       if (response.data.success) {
