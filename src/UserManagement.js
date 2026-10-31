@@ -20,7 +20,7 @@ export default function UserManagement() {
   const fetchUsers = async (query = search) => {
     setLoading(true);
     try {
-      const res = await axios.get(API + "/auth/users" + (query ? "?q=" + encodeURIComponent(query) : ""));
+      const res = await axios.get(API + "/auth/users" + (query ? "?q=" + encodeURIComponent(query) : ""), { headers });
       setUsers(res.data.users || []);
     } catch (err) {
       console.error("[ADMIN_USERS] FETCH_FAILED", err.response?.data || err.message);
@@ -32,7 +32,7 @@ export default function UserManagement() {
 
   const openUser = async (user) => {
     try {
-      const res = await axios.get(API + "/auth/users/" + user._id + "/orders");
+      const res = await axios.get(API + "/auth/users/" + user._id + "/orders", { headers });
       const current = res.data.user || user;
       setSelectedUser(current);
       setUserOrders(res.data.orders || []);
@@ -78,12 +78,13 @@ export default function UserManagement() {
     </label>
   );
 
-  return <main style={styles.page}>
+  return <main className="aum-page" style={styles.page}>
+    <style>{`.aum-layout{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:16px;align-items:start;width:100%;min-width:0}.aum-layout>section{min-width:0;overflow:hidden}.aum-layout input,.aum-layout textarea{max-width:100%;min-width:0}.aum-user-list{max-height:calc(100vh - 210px);overflow-y:auto;overscroll-behavior:contain}.aum-back-users{display:none}.aum-user-card{width:100%;min-width:0;overflow-wrap:anywhere}.aum-details{width:100%;min-width:0}.aum-details form{width:100%;min-width:0}.aum-details form label{min-width:0}.aum-details form input,.aum-details form textarea{width:100%;max-width:100%;box-sizing:border-box}.aum-detail-actions{position:sticky;bottom:0;background:#fff;padding:10px 0;z-index:2}@media(max-width:760px){.aum-layout{grid-template-columns:minmax(0,1fr)}.aum-layout.has-selection .aum-user-list{display:none}.aum-back-users{display:inline-flex;align-items:center;gap:8px;margin-bottom:8px;padding:9px 12px;border:1px solid #d1d5db;border-radius:9px;background:#fff;color:#111827;font-weight:700}.aum-user-list{max-height:42vh}.aum-layout>section{padding:13px!important}.aum-details{width:100%;overflow:hidden}.aum-details form{grid-template-columns:minmax(0,1fr)!important}.aum-details form label{grid-column:1/-1!important}.aum-details form input,.aum-details form textarea{font-size:16px}.aum-details h3{overflow-wrap:anywhere}.aum-detail-actions{flex-wrap:wrap}.aum-detail-actions button{flex:1 1 130px}}`}</style>
     <header style={styles.header}>
       <div><h2 style={styles.heading}>Users & Complete Profile Management</h2><p style={styles.muted}>View customer details, edit supported fields and inspect order history.</p></div>
       <div style={styles.searchRow}><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && fetchUsers(search)} placeholder="Search name, mobile, email or ID" style={styles.control} /><button style={styles.button} onClick={() => fetchUsers(search)}>Search</button></div>
     </header>
-    <div style={styles.layout}>
+    <div className={`aum-layout ${selectedUser ? "has-selection" : ""}`} style={styles.layout}>
       <section style={styles.panel}>
         <h3 style={styles.sectionTitle}>All users ({users.length})</h3>
         {loading ? <p>Loading users…</p> : users.length === 0 ? <p>No users found.</p> : users.map((u) => <button key={u._id} style={{ ...styles.userCard, ...(selectedUser?._id === u._id ? styles.activeUser : {}) }} onClick={() => openUser(u)}>
@@ -101,9 +102,9 @@ export default function UserManagement() {
             {field("Referral code", "referralCode")}{field("Referred by (user ID)", "referredBy")}{field("Reward coins", "rewardCoins", "number")}
             {editing && field("Set new password (leave blank to keep current)", "password", "password", true)}
             {editing && field("Set new recovery code (leave blank to keep current)", "newRecoveryCode", "text", true)}
-            {editing && <div style={styles.actions}><button type="submit" style={styles.button} disabled={saving}>{saving ? "Saving…" : "Save all changes"}</button><button type="button" style={styles.secondary} onClick={() => openUser(selectedUser)}>Discard</button></div>}
+            {editing && <div className="aum-detail-actions" style={styles.actions}><button type="submit" style={styles.button} disabled={saving}>{saving ? "Saving…" : "Save all changes"}</button><button type="button" style={styles.secondary} onClick={() => openUser(selectedUser)}>Discard</button></div>}
           </form>
-          <h3 style={styles.sectionTitle}>Order history ({userOrders.length})</h3>
+          <h3 style={styles.sectionTitle}>Account & referral activity</h3>\n          <div style={styles.orderCard}><p>Account created: {selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleString() : "—"}</p><p>Referral reward credited: {selectedUser.referralRewardCreditedAt ? new Date(selectedUser.referralRewardCreditedAt).toLocaleString() : "Not yet credited"}</p><p>Reward history entries: {selectedUser.rewardHistory?.length || 0}</p></div>\n          <h3 style={styles.sectionTitle}>Order history ({userOrders.length})</h3>
           {userOrders.length === 0 ? <p className={styles.muted}>No orders for this user.</p> : userOrders.map((order) => <article key={order._id} style={styles.orderCard}>
             <strong>Order #{order.orderId || order._id.slice(-6)}</strong><p>Status: {order.status}</p><p>Coupon: {order.couponCode || "None"}</p><p>Total: ₹{Number(order.totalAmount || 0).toFixed(2)}</p>
           </article>)}
@@ -118,12 +119,12 @@ const styles = {
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 18 },
   heading: { margin: 0, color: "#111827" }, muted: { color: "#64748b", fontSize: 13 },
   searchRow: { display: "flex", gap: 8, minWidth: 280, flex: "1 1 340px" },
-  layout: { display: "grid", gridTemplateColumns: "minmax(260px,380px) minmax(0,1fr)", gap: 16, alignItems: "start" },
+  layout: { display: "grid", gridTemplateColumns: "minmax(0,320px) minmax(0,1fr)", gap: 16, alignItems: "start", width: "100%", minWidth: 0 },
   panel: { background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 6px 22px #0f172a0d", display: "grid", gap: 12, minWidth: 0 },
   sectionTitle: { margin: "0 0 8px", color: "#111827" }, userCard: { textAlign: "left", padding: 12, borderRadius: 10, border: "1px solid #e5e7eb", background: "#f8fafc", cursor: "pointer", display: "grid", gap: 4, color: "#334155" },
   activeUser: { borderColor: "#2563eb", background: "#eff6ff" }, control: { width: "100%", minWidth: 0, padding: "10px 12px", borderRadius: 9, border: "1px solid #cbd5e1", background: "#fff", boxSizing: "border-box" },
   button: { border: 0, borderRadius: 9, padding: "10px 14px", background: "#111827", color: "#fff", cursor: "pointer", whiteSpace: "nowrap" }, secondary: { border: "1px solid #cbd5e1", borderRadius: 9, padding: "10px 14px", background: "#fff", cursor: "pointer" },
-  detailHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }, form: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12 },
+  detailHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }, form: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(min(100%,210px),1fr))", gap: 12, minWidth: 0 },
   field: { display: "grid", gap: 5, fontSize: 13, color: "#475569" }, wide: { gridColumn: "1 / -1" }, actions: { display: "flex", gap: 8, gridColumn: "1 / -1" },
   orderCard: { border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, fontSize: 13, color: "#475569" }
 };
