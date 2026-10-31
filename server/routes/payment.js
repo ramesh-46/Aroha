@@ -10,16 +10,19 @@ const { roundCurrency, getEffectiveUnitPrice } = require("../utils/pricing");
 const { v4: uuidv4 } = require("uuid");
 const maskEmail = (value) => { const parts = String(value || "").split("@"); return parts.length === 2 ? parts[0].slice(0, 1) + "***@" + parts[1] : ""; };
 const multer = require("multer"); // Import multer
+const auth = require("../middleware/authMiddleware");
+const { writeAudit } = require("../middleware/activityLogger");
 
 // Configure Multer for memory storage (to handle file uploads)
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // --- Create a Payment Session and Generate UPI QR Details ---
-router.post("/create-session", async (req, res) => {
+router.post("/create-session", auth, async (req, res) => {
   const requestId = require("crypto").randomUUID();
   try {
-    const { userId, cartItems, customerDetails, couponCode = "", customerLocation = null, redeemCoins = 0 } = req.body || {};
+    const { cartItems, customerDetails, couponCode = "", customerLocation = null, redeemCoins = 0 } = req.body || {};
+    const userId = req.user.id;
   let reservedCoins = 0;
   let reservedUserId = null;
     if (!userId || !Array.isArray(cartItems) || !cartItems.length || !customerDetails?.name || !customerDetails?.mobile || !customerDetails?.address) {
@@ -113,7 +116,8 @@ router.post("/create-session", async (req, res) => {
     });
     await newOrder.save();
     const checkoutUser = await User.findById(userId).select("email").lean().catch(() => null);
-    console.log("[CHECKOUT] SESSION_CREATED", { requestId, orderId, userId: String(userId), userEmail: maskEmail(checkoutUser?.email), itemCount: orderItems.length, totalQuantity, subtotalAmount, discountAmount, deliveryCharge, finalAmount, couponCode: normalizedCouponCode || null });
+    await writeAudit({ userId, username: checkoutUser?.name || customerDetails?.name || "Customer", role: "user", event: "checkout.session_created", message: "Checkout session created", requestId, metadata: { orderId, itemCount: orderItems.length, totalQuantity, finalAmount } });
+    console.log("[CHECKOUT] SESSION_CREATED", { requestId, orderId, userId: String(userId), itemCount: orderItems.length, totalQuantity, subtotalAmount, discountAmount, deliveryCharge, finalAmount, couponCode: normalizedCouponCode || null });
     return res.json({ success: true, orderId, upiUrl, upiId, amount: finalAmount, customerDetails, orderItems, pricing: { subtotalAmount, discountAmount, deliveryCharge, rewardDiscount, rewardCoinsRedeemed: reservedCoins, totalAmount: finalAmount } });
   } catch (error) {
     if (reservedCoins > 0 && reservedUserId) {
