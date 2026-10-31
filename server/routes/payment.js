@@ -243,7 +243,8 @@ router.post("/razorpay/create-order", auth, async (req, res) => {
     order.razorpayOrderId = gatewayOrder.id;
     order.paymentMethod = "Online";
     await order.save();
-    console.log("[Razorpay]", requestId, "ORDER_CREATED", { orderId: order.orderId, gatewayOrderId: gatewayOrder.id, amountPaise: gatewayOrder.amount });
+    const checkoutCustomer = await User.findById(order.userId).select("name email").lean();
+    console.log("[Razorpay]", requestId, "ORDER_CREATED", { username: checkoutCustomer?.name || order.customerName || "Customer", userId: String(order.userId), userEmail: checkoutCustomer?.email || null, orderId: order.orderId, gatewayOrderId: gatewayOrder.id, paymentId: null, amountPaise: gatewayOrder.amount });
     res.json({ success: true, keyId, razorpayOrderId: gatewayOrder.id, amount: gatewayOrder.amount, currency: gatewayOrder.currency, name: order.customerName, mobile: order.customerMobile, arohaOrderId: order.orderId });
   } catch (err) {
     console.error("[Razorpay]", requestId, "Create-order error", err.message);
@@ -453,7 +454,6 @@ router.post("/razorpay/log-event", auth, async (req, res) => {
     orderId: eventOrder?.orderId || String(orderId),
     gatewayOrderId: gatewayOrderId || eventOrder?.razorpayOrderId || null,
     paymentId: resolvedPaymentId,
-    paymentId: paymentId ? String(paymentId).slice(0, 80) : undefined,
     details: safeDetails,
     at: new Date().toISOString()
   });
