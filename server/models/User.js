@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
   recoveryCode: { type: String },
   gender: { type: String },
   address: { type: String },
+  addresses: { type: [{ label: { type: String, default: "Home", trim: true, maxlength: 30 }, name: { type: String, required: true, trim: true, maxlength: 80 }, mobile: { type: String, required: true, trim: true, maxlength: 20 }, line1: { type: String, required: true, trim: true, maxlength: 160 }, line2: { type: String, trim: true, maxlength: 160 }, landmark: { type: String, trim: true, maxlength: 100 }, city: { type: String, required: true, trim: true, maxlength: 80 }, state: { type: String, required: true, trim: true, maxlength: 80 }, pincode: { type: String, required: true, trim: true, maxlength: 12 }, isDefault: { type: Boolean, default: false } }], default: [] },
   details: { type: String },
   referralCode: { type: String, unique: true, sparse: true, index: true },
   referredBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
