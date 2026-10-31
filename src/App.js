@@ -72,7 +72,7 @@ function App() {
         <Route path="/coupons" element={<UserCoupons />} />
         <Route path="/rewards" element={<RewardsPage />} />
 
-<Route path="/MainDashboard" element={<MainDashboard />} />
+<Route path="/maindashboard" element={<MainDashboard />} />
 <Route path="/MainHeader" element={<MainHeader />} />
  <Route path="/wishlist" element={<Wishlist />} />
 

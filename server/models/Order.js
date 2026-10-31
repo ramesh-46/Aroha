@@ -41,6 +41,12 @@ const orderSchema = new mongoose.Schema({
     default: "Pending",
     enum: [
       "Pending",
+      "Under Consideration",
+      "Under Confirmation",
+      "Processing",
+      "Packing",
+      "Shipped",
+      "Out for Delivery",
       "Payment Verification Pending",
       "Payment Verified",
       "Payment Failed",
