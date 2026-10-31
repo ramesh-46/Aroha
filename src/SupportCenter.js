@@ -10,7 +10,7 @@ function SupportCenter() {
 
   const fetchQueries = async () => {
     try {
-      const res = await axios.get("https://aroha.onrender.com/support");
+      const res = await axios.get("https://aroha.onrender.com/support", { headers: { Authorization: "Bearer " + localStorage.getItem("sellerToken") } });
       setQueries(res.data.queries || []);
       if (!activeQuery && res.data.queries?.length) {
         setActiveQuery(res.data.queries[0]);
@@ -32,7 +32,7 @@ function SupportCenter() {
         senderType: "admin",
         senderId: seller?._id,
         message: reply.trim()
-      });
+      }, { headers: { Authorization: "Bearer " + localStorage.getItem("sellerToken") } });
       const updated = res.data.query;
       setQueries((prev) => prev.map((item) => (item._id === updated._id ? updated : item)));
       setActiveQuery(updated);
