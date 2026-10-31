@@ -2,7 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaBox, FaTags, FaPercent, FaStore, FaUsers, FaHeadset, FaUserCircle,
-  FaSignOutAlt, FaShoppingCart, FaChartLine, FaClipboardList, FaGift, FaArrowRight
+  FaSignOutAlt, FaShoppingCart, FaChartLine, FaClipboardList, FaGift, FaArrowRight, FaShieldAlt
 } from "react-icons/fa";
 
 function AdminDashboard() {
@@ -19,6 +19,8 @@ function AdminDashboard() {
     { title: "Store Controls", description: "Manage sale banners, checkout availability and delivery settings.", path: "/store-controls", icon: <FaStore/>, group: "STORE" },
     { title: "User Management", description: "View customer profiles, edit account details and review order history.", path: "/user-management", icon: <FaUsers/>, group: "CUSTOMERS" },
     { title: "Customer Support", description: "Review customer requests and reply from the support workspace.", path: "/support-center", icon: <FaHeadset/>, group: "CUSTOMERS" },
+    { title: "User Activity Logs", description: "Inspect persistent user-linked audit events and security activity.", path: "/user-logs", icon: <FaShieldAlt/>, group: "SECURITY" },
+    { title: "Runtime Logs", description: "Monitor recent server events and errors.", path: "/logs", icon: <FaClipboardList/>, group: "SECURITY" },
     { title: "Seller Profile", description: "View your seller account and business information.", path: "/SellerProfile", icon: <FaUserCircle/>, group: "ACCOUNT" }
   ];
 
