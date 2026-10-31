@@ -109,21 +109,21 @@ router.post("/create-session", auth, async (req, res) => {
       if (reservedCoins > 0) await User.updateOne({ _id: userId }, { $inc: { rewardCoins: reservedCoins }, $push: { rewardHistory: { type: "refund", coins: reservedCoins, note: "Reward coins returned because checkout total was invalid." } } });
       return res.status(400).json({ success: false, error: "Order total must be greater than zero." });
     }
-    const upiId = process.env.UPI_ID;
-    if (!upiId) {
-      if (reservedCoins > 0) await User.updateOne({ _id: userId }, { $inc: { rewardCoins: reservedCoins }, $push: { rewardHistory: { type: "refund", coins: reservedCoins, note: "Reward coins returned because UPI payment is not configured." } } });
-      return res.status(503).json({ success: false, error: "UPI payment is not configured. Please contact support." });
+    const upiId = process.env.UPI_ID || "";
+    if (!upiId && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) {
+      if (reservedCoins > 0) await User.updateOne({ _id: userId }, { $inc: { rewardCoins: reservedCoins }, $push: { rewardHistory: { type: "refund", coins: reservedCoins, note: "Reward coins returned because no payment provider is configured." } } });
+      return res.status(503).json({ success: false, error: "No payment provider is configured. Please contact support." });
     }
 
     const orderId = "ORDER_" + require("crypto").randomUUID().toUpperCase().slice(0, 8);
-    const upiUrl = "upi://pay?pa=" + encodeURIComponent(upiId) + "&pn=AROHA%20HUB&am=" + finalAmount + "&cu=INR";
+    const upiUrl = upiId ? "upi://pay?pa=" + encodeURIComponent(upiId) + "&pn=AROHA%20HUB&am=" + finalAmount + "&cu=INR" : "";
     const newOrder = new Order({
       orderId, userId, items: orderItems, customerName: customerDetails.name,
       customerMobile: customerDetails.mobile, deliveryAddress: customerDetails.address,
       customerLocation: customerLocation || {}, discountAmount, couponCode: normalizedCouponCode,
       couponDetails: couponRecord, subtotalAmount, deliveryCharge, totalAmount: finalAmount,
       rewardCoinsRedeemed: reservedCoins, rewardDiscountAmount: rewardDiscount,
-      status: "Payment Verification Pending", paymentMethod: "UPI QR", upiId, upiUrl
+      status: "Payment Verification Pending", paymentMethod: upiId ? "UPI QR" : "Online", upiId, upiUrl
     });
     await newOrder.save();
     await writeAudit({ userId, username: checkoutUser?.name || customerDetails?.name || "Customer", role: "user", event: "checkout.session_created", message: "Checkout session created", requestId, metadata: { orderId, itemCount: orderItems.length, totalQuantity, finalAmount } });
