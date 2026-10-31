@@ -6,10 +6,11 @@ const sellerAuthMiddleware = require("../middleware/sellerAuthMiddleware");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const { writeAudit } = require("../middleware/activityLogger");
 
 const saltRounds = 10; // bcrypt salt rounds
 const maskEmail = (value) => { const parts = String(value || "").split("@"); return parts.length === 2 ? parts[0].slice(0, 1) + "***@" + parts[1] : ""; };
-const JWT_SECRET = process.env.JWT_SECRET || "secretkey"; // use env variable in production
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // 🚀 [INFO] User router initialized
 console.log("[INFO] 🚀 User router module loaded");
@@ -57,7 +58,8 @@ router.post("/signup", async (req, res) => {
 
     console.log("[INFO] 🚀 Saving new user to database", { userId: user._id, userEmail: maskEmail(user.email) });
     await user.save();
-    console.log("[SUCCESS] ✅ User saved successfully", { userId: user._id, userEmail: maskEmail(user.email), mobile: user.mobile });
+    await writeAudit({ userId: user._id, username: user.name || "Customer", role: "user", event: "auth.signup_success", message: "User account created" });
+    console.log("[SUCCESS] User saved", { userId: user._id, username: user.name || "Customer" });
 
     console.log("[INFO] ✅ Signup request completed successfully", { userId: user._id });
     res.json({ success: true, user });
@@ -69,6 +71,7 @@ router.post("/signup", async (req, res) => {
 
 // Login
 router.post("/login", async (req, res) => {
+  if (!JWT_SECRET) return res.status(503).json({ success: false, message: "Authentication is not configured on this server." });
   console.log("[INFO] 🚀 Login request started", { mobile: req.body.mobile });
   
   const { mobile, password } = req.body;
@@ -93,6 +96,7 @@ router.post("/login", async (req, res) => {
 
     console.log("[DEBUG] 🔍 Generating JWT token for user", { userId: user._id, userEmail: maskEmail(user.email), expiresIn: "1d" });
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "1d" });
+    await writeAudit({ userId: user._id, username: user.name || "Customer", role: "user", event: "auth.login_success", message: "User signed in successfully" });
     console.log("[DEBUG] ✅ JWT token generated successfully");
 
     console.log("[INFO] ✅ Login request completed successfully", { userId: user._id });
@@ -105,6 +109,7 @@ router.post("/login", async (req, res) => {
 
 // Google Login
 router.post("/google-login", async (req, res) => {
+  if (!JWT_SECRET) return res.status(503).json({ success: false, message: "Authentication is not configured on this server." });
   console.log("[INFO] 🚀 Google Login request started", { userEmail: maskEmail(req.body.email) });
   
   const { email, name, photoUrl } = req.body;
@@ -253,15 +258,16 @@ router.get("/users", sellerAuthMiddleware, async (req, res) => {
   console.log("[INFO] 🚀 Get Users request started", { query: req.query.q });
   
   try {
-    const { q } = req.query;
+    const q = String(req.query.q || "").trim().slice(0, 80);
+    const escapedQ = q.split("").map((char) => "\\^$.*+?()[]{}|".includes(char) ? "\\" + char : char).join("");
     const query = {};
 
     if (q) {
       console.log("[DEBUG] 🔍 Search query provided, building $or conditions", { q });
       query.$or = [
-        { name: { $regex: q, $options: "i" } },
-        { mobile: { $regex: q, $options: "i" } },
-        { email: { $regex: q, $options: "i" } }
+        { name: { $regex: escapedQ, $options: "i" } },
+        { mobile: { $regex: escapedQ, $options: "i" } },
+        { email: { $regex: escapedQ, $options: "i" } }
       ];
 
       if (/^[a-f\d]{24}$/i.test(q)) {
@@ -275,11 +281,13 @@ router.get("/users", sellerAuthMiddleware, async (req, res) => {
     }
 
     console.log("[DEBUG] 🔍 Executing User.find with query", { query: JSON.stringify(query) });
-    const users = await User.find(query).select("-password -recoveryCode").sort({ createdAt: -1 }).lean();
+    const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 100));
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const [users, total] = await Promise.all([User.find(query).select("-password -recoveryCode").sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit).lean(), User.countDocuments(query)]);
     console.log("[SUCCESS] ✅ Users fetched successfully", { count: users.length });
 
     console.log("[INFO] ✅ Get Users request completed successfully", { count: users.length });
-    res.json({ success: true, users });
+    res.json({ success: true, users, total, page, limit, pages: Math.ceil(total / limit) });
   } catch (err) {
     console.log("[ERROR] ❌ Get Users request failed", { error: err.message, stack: err.stack });
     res.status(500).json({ success: false, message: err.message });

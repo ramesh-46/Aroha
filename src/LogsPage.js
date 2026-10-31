@@ -21,7 +21,7 @@ export default function LogsPage() {
   const loadLogs = useCallback(async () => {
     setLoading(true); setError("");
     try {
-      const response = await fetch(API + "?hours=" + encodeURIComponent(hours) + "&limit=500", { cache: "no-store" });
+      const response = await fetch(API + "?hours=" + encodeURIComponent(hours) + "&limit=100", { cache: "no-store", headers: { Authorization: "Bearer " + localStorage.getItem("sellerToken") } });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to load logs.");
       setLogs(Array.isArray(data.logs) ? data.logs : []);
@@ -32,41 +32,32 @@ export default function LogsPage() {
     } finally { setLoading(false); }
   }, [hours]);
 
-  useEffect(() => { loadLogs(); }, [loadLogs]);
-
-useEffect(() => {
+  useEffect(() => {
   if (!live) { setConnection("paused"); return undefined; }
-  let source;
-  let retryTimer;
   let disposed = false;
-  const connect = () => {
+  const poll = async () => {
     if (disposed) return;
-    setConnection("connecting");
-    source = new EventSource("https://aroha.onrender.com/admin/logs/stream");
-    source.addEventListener("connected", () => { if (!disposed) setConnection("live"); });
-    source.addEventListener("log", (event) => {
-      if (disposed) return;
-      try {
-        const entry = JSON.parse(event.data);
-        setLogs((previous) => previous.some((item) => item.id === entry.id) ? previous : [...previous, entry].slice(-500));
-        setUpdatedAt(new Date());
-      } catch (_) {}
-    });
-    source.onerror = () => { source.close(); if (!disposed) { setConnection("reconnecting"); retryTimer = setTimeout(connect, 3000); } };
+    try {
+      const response = await fetch(API + "?hours=" + encodeURIComponent(hours) + "&limit=100", { cache: "no-store", headers: { Authorization: "Bearer " + localStorage.getItem("sellerToken") } });
+      if (!response.ok) throw new Error(response.status === 401 || response.status === 403 ? "Admin sign-in required to view logs." : "Unable to refresh logs.");
+      const data = await response.json();
+      if (!disposed) { setLogs(Array.isArray(data.logs) ? data.logs : []); setConnection("live"); setUpdatedAt(new Date()); setError(""); }
+    } catch (e) { if (!disposed) { setConnection("reconnecting"); setError(e.message || "Unable to refresh logs."); } }
   };
-  connect();
-  return () => { disposed = true; if (source) source.close(); if (retryTimer) clearTimeout(retryTimer); };
-}, [live]);
+  poll();
+  const timer = setInterval(poll, 10000);
+  return () => { disposed = true; clearInterval(timer); };
+}, [live, hours]);
 
   const visible = useMemo(() => logs.filter((entry) => {
     const matchesLevel = level === "all" || levelOf(entry) === level;
-    const haystack = (entry.message || "") + " " + (entry.timestamp || "");
+    const haystack = [entry.message, entry.timestamp, entry.username, entry.userId, entry.role, entry.event, entry.path].filter(Boolean).join(" ");
     return matchesLevel && haystack.toLowerCase().includes(search.toLowerCase());
   }), [logs, search, level]);
 
   async function copyLogs() {
     try {
-      await navigator.clipboard.writeText(visible.map((entry) => "[" + entry.timestamp + "] [" + levelOf(entry).toUpperCase() + "] " + entry.message).join("\n"));
+      await navigator.clipboard.writeText(visible.map((entry) => "[" + entry.timestamp + "] [" + levelOf(entry).toUpperCase() + "] [" + (entry.username || "Unknown") + " / " + (entry.userId || "system") + "] " + (entry.event || "") + " " + entry.message).join("\n"));
     } catch (_) { setError("Clipboard was blocked by your browser. You can select the log text and copy it manually."); }
   }
 
@@ -105,9 +96,9 @@ useEffect(() => {
       {note && <p style={{ color: "#94a3b8", fontSize: 12 }}>{note}</p>}
       <section className="panel" style={{ background: "#111a2c", border: "1px solid #29364a", borderRadius: 16, overflow: "hidden" }}>
         <div style={{ display: "flex", justifyContent: "space-between", padding: 16, borderBottom: "1px solid #29364a", gap: 10 }}><strong>Log stream <span style={{ color: "#64748b", fontWeight: 500 }}> / {visible.length} entries</span></strong><span style={{ color: "#34d399", fontSize: 11, fontWeight: 900 }}>● BACKEND</span></div>
-        {visible.length === 0 ? <div style={{ padding: 36, textAlign: "center", color: "#94a3b8" }}>{loading ? "Loading logs…" : "No matching logs. Try Refresh or change the time range."}</div> : visible.map((entry, i) => { const severity = levelOf(entry); return <div className="logrow" key={entry.id || (entry.timestamp + "-" + i)}><div className="logtime" style={{ color: "#94a3b8", fontSize: 11 }}>{new Date(entry.timestamp).toLocaleString()}</div><div style={{ color: levelColor[severity], fontSize: 10, fontWeight: 900 }}>{severity.toUpperCase()}</div><div className="logmsg">{entry.message}</div></div>; })}
+        {visible.length === 0 ? <div style={{ padding: 36, textAlign: "center", color: "#94a3b8" }}>{loading ? "Loading logs…" : "No matching logs. Try Refresh or change the time range."}</div> : visible.map((entry, i) => { const severity = levelOf(entry); return <div className="logrow" key={entry.id || (entry.timestamp + "-" + i)}><div className="logtime" style={{ color: "#94a3b8", fontSize: 11 }}>{new Date(entry.timestamp).toLocaleString()}</div><div style={{ color: levelColor[severity], fontSize: 10, fontWeight: 900 }}>{severity.toUpperCase()}</div><div className="logmsg"><strong>{entry.username || "Unknown"} · {entry.userId || "System"} · {entry.event || "runtime.console"}</strong>{"\n"}{entry.message}</div></div>; })}
       </section>
-      <footer className="noprint" style={{ textAlign: "center", color: "#475569", fontSize: 11, padding: 22 }}>Logs are held in memory and reset whenever the backend restarts. This page shows sanitized application runtime logs, not Render build/deploy history.</footer>
+      <footer className="noprint" style={{ textAlign: "center", color: "#475569", fontSize: 11, padding: 22 }}>Persistent user-linked audit events are stored in MongoDB. Console runtime events are limited to the current server process.</footer>
     </div>
   </main>;
 }

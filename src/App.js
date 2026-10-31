@@ -32,12 +32,14 @@ import Wishlist from "./Wishlist";
 import LogsPage from "./LogsPage";
 import RewardsPage from "./RewardsPage";
 import ReferralRewardsControls from "./ReferralRewardsControls";
+import UserAuditPage from "./UserAuditPage";
 
 function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/logs" element={<LogsPage />} />
+        <Route path="/logs" element={<SellerProtectedRoute><LogsPage /></SellerProtectedRoute>} />
+        <Route path="/user-logs" element={<SellerProtectedRoute><UserAuditPage /></SellerProtectedRoute>} />
         {/* Public pages */}
         <Route path="/" element={<Homepage />} />
   <Route path="/login" element={<UserLogin />} />

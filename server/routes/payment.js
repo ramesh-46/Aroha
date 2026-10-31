@@ -10,16 +10,19 @@ const { roundCurrency, getEffectiveUnitPrice } = require("../utils/pricing");
 const { v4: uuidv4 } = require("uuid");
 const maskEmail = (value) => { const parts = String(value || "").split("@"); return parts.length === 2 ? parts[0].slice(0, 1) + "***@" + parts[1] : ""; };
 const multer = require("multer"); // Import multer
+const auth = require("../middleware/authMiddleware");
+const { writeAudit } = require("../middleware/activityLogger");
 
 // Configure Multer for memory storage (to handle file uploads)
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
 // --- Create a Payment Session and Generate UPI QR Details ---
-router.post("/create-session", async (req, res) => {
+router.post("/create-session", auth, async (req, res) => {
   const requestId = require("crypto").randomUUID();
   try {
-    const { userId, cartItems, customerDetails, couponCode = "", customerLocation = null, redeemCoins = 0 } = req.body || {};
+    const { cartItems, customerDetails, couponCode = "", customerLocation = null, redeemCoins = 0 } = req.body || {};
+    const userId = req.user.id;
   let reservedCoins = 0;
   let reservedUserId = null;
     if (!userId || !Array.isArray(cartItems) || !cartItems.length || !customerDetails?.name || !customerDetails?.mobile || !customerDetails?.address) {
@@ -113,7 +116,8 @@ router.post("/create-session", async (req, res) => {
     });
     await newOrder.save();
     const checkoutUser = await User.findById(userId).select("email").lean().catch(() => null);
-    console.log("[CHECKOUT] SESSION_CREATED", { requestId, orderId, userId: String(userId), userEmail: maskEmail(checkoutUser?.email), itemCount: orderItems.length, totalQuantity, subtotalAmount, discountAmount, deliveryCharge, finalAmount, couponCode: normalizedCouponCode || null });
+    await writeAudit({ userId, username: checkoutUser?.name || customerDetails?.name || "Customer", role: "user", event: "checkout.session_created", message: "Checkout session created", requestId, metadata: { orderId, itemCount: orderItems.length, totalQuantity, finalAmount } });
+    console.log("[CHECKOUT] SESSION_CREATED", { requestId, orderId, userId: String(userId), itemCount: orderItems.length, totalQuantity, subtotalAmount, discountAmount, deliveryCharge, finalAmount, couponCode: normalizedCouponCode || null });
     return res.json({ success: true, orderId, upiUrl, upiId, amount: finalAmount, customerDetails, orderItems, pricing: { subtotalAmount, discountAmount, deliveryCharge, rewardDiscount, rewardCoinsRedeemed: reservedCoins, totalAmount: finalAmount } });
   } catch (error) {
     if (reservedCoins > 0 && reservedUserId) {
@@ -126,7 +130,7 @@ router.post("/create-session", async (req, res) => {
 
 // --- Verify Payment and Update Order Status ---
 // NOTE: We add 'upload.single("screenshot")' here to handle the file
-router.post("/verify-payment", upload.single("screenshot"), async (req, res) => {
+router.post("/verify-payment", auth, upload.single("screenshot"), async (req, res) => {
   try {
     // Multer parses text fields into req.body and file into req.file
     const { orderId, transactionId, ocrData } = req.body;
@@ -141,7 +145,7 @@ router.post("/verify-payment", upload.single("screenshot"), async (req, res) => 
     }
 
     // 2. Fetch the order
-    const order = await Order.findOne({ orderId });
+    const order = await Order.findOne({ orderId, userId: req.user.id });
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -204,7 +208,7 @@ router.post("/verify-payment", upload.single("screenshot"), async (req, res) => 
 });
 
 
-router.post("/razorpay/create-order", async (req, res) => {
+router.post("/razorpay/create-order", auth, async (req, res) => {
   const crypto = require("crypto");
   const requestId = crypto.randomUUID();
   try {
@@ -216,8 +220,8 @@ router.post("/razorpay/create-order", async (req, res) => {
       return res.status(503).json({ success: false, error: "Razorpay is not configured on the server." });
     }
     if (!orderId) return res.status(400).json({ success: false, error: "orderId is required." });
-    const order = await Order.findOne({ orderId });
-    if (!order) return res.status(404).json({ success: false, error: "Aroha order not found." });
+    const order = await Order.findOne({ orderId, userId: req.user.id });
+    if (!order) return res.status(404).json({ success: false, error: "Aroha order not found for this account." });
     if (!Number.isFinite(order.totalAmount) || order.totalAmount <= 0) return res.status(400).json({ success: false, error: "Invalid order amount." });
     if (order.status === "Payment Verified") return res.status(409).json({ success: false, error: "Order is already paid." });
     if (order.rewardsRefundedAt) return res.status(409).json({ success: false, error: "Reward coins for this checkout were returned. Please create a new checkout." });
@@ -243,7 +247,7 @@ router.post("/razorpay/create-order", async (req, res) => {
   }
 });
 
-router.post("/razorpay/verify-payment", async (req, res) => {
+router.post("/razorpay/verify-payment", auth, async (req, res) => {
   const crypto = require("crypto");
   const requestId = crypto.randomUUID();
   try {
@@ -255,8 +259,8 @@ router.post("/razorpay/verify-payment", async (req, res) => {
       return res.status(503).json({ success: false, error: "Razorpay is not configured on the server." });
     }
     if (!orderId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) return res.status(400).json({ success: false, error: "Missing payment verification fields." });
-    const order = await Order.findOne({ orderId });
-    if (!order) return res.status(404).json({ success: false, error: "Aroha order not found." });
+    const order = await Order.findOne({ orderId, userId: req.user.id });
+    if (!order) return res.status(404).json({ success: false, error: "Aroha order not found for this account." });
     if (order.razorpayOrderId !== razorpay_order_id) return res.status(400).json({ success: false, error: "Gateway order does not match Aroha order." });
 
     const expected = crypto.createHmac("sha256", keySecret).update(razorpay_order_id + "|" + razorpay_payment_id).digest("hex");
@@ -381,7 +385,7 @@ router.post("/razorpay/verify-payment", async (req, res) => {
 });
 
 
-router.post("/razorpay/log-event", async (req, res) => {
+router.post("/razorpay/log-event", auth, async (req, res) => {
   const allowedEvents = new Set([
     "CHECKOUT_OPENED",
     "CHECKOUT_DISMISSED",
@@ -412,7 +416,7 @@ router.post("/razorpay/log-event", async (req, res) => {
     try {
       const failureReason = safeDetails?.reason || safeDetails?.message || safeDetails?.code || (event === "CHECKOUT_DISMISSED" ? "Checkout was closed before payment." : "Payment was not completed.");
       const failedOrder = await Order.findOneAndUpdate(
-        { orderId: String(orderId), status: { $ne: "Payment Verified" } },
+        { orderId: String(orderId), userId: req.user.id, status: { $ne: "Payment Verified" } },
         { $set: { status: "Payment Failed", paymentFailureReason: failureReason } },
         { new: true }
       );

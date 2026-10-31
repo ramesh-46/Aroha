@@ -63,7 +63,7 @@ function Profile() {
     if (!user) return;
     setIsLoading(true);
     try {
-      const res = await axios.get(`https://aroha.onrender.com/orders/${user._id}`);
+      const res = await axios.get(`https://aroha.onrender.com/orders/${user._id}`, { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
       const sortedOrders = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setOrders(sortedOrders);
       setFilteredOrders(sortedOrders);
