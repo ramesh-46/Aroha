@@ -174,6 +174,7 @@ function Profile() {
     try {
       const response = await axios.post("https://aroha.onrender.com/support", { orderId: order._id, message: result.value.trim() }, { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
       await Swal.fire("Support ticket created", "Ticket ID: " + response.data.query._id + ". You can continue the conversation with our support team.", "success");
+      navigate("/my-support");
     } catch (error) { Swal.fire("Unable to create ticket", error.response?.data?.message || "Please sign in again and retry.", "error"); }
   };
   const downloadInvoice = async (order) => {
@@ -795,6 +796,7 @@ function Profile() {
             <button onClick={toggleShowOrders} className="action-btn orders-btn">
               {showOrders ? "Hide Orders" : "Show Orders"}
             </button>
+            <button onClick={() => navigate("/my-support")} className="action-btn orders-btn">My Support Tickets</button>
 
             <button onClick={handleLogout} className="action-btn logout-btn">
               Logout
