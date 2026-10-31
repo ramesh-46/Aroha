@@ -10,7 +10,7 @@ const { writeAudit } = require("../middleware/activityLogger");
 const authMiddleware = require("../middleware/authMiddleware");
 
 const saltRounds = 10; // bcrypt salt rounds
-const maskEmail = (value) => { const parts = String(value || "").split("@"); return parts.length === 2 ? parts[0].slice(0, 1) + "***@" + parts[1] : ""; };
+const maskEmail = (value) => String(value || "").trim().slice(0, 254); // Full email is intentionally visible only in private Render service logs.
 const JWT_SECRET = process.env.JWT_SECRET;
 
 // 🚀 [INFO] User router initialized
