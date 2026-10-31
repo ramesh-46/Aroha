@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "axios";
-import { FaBoxOpen, FaSearch, FaSyncAlt, FaEdit, FaTimes, FaCheck, FaMapMarkerAlt, FaPhone, FaUser, FaCalendarAlt, FaReceipt, FaTruck, FaChevronDown } from "react-icons/fa";
+import { FaBoxOpen, FaSearch, FaSyncAlt, FaEdit, FaTimes, FaCheck, FaMapMarkerAlt, FaPhone, FaUser, FaCalendarAlt, FaReceipt, FaTruck, FaChevronDown, FaArrowLeft, FaFileCsv, FaFilePdf } from "react-icons/fa";
 import Swal from "./sweetalertConfig";
+import { useNavigate } from "react-router-dom";
 
 const API = "https://aroha.onrender.com";
 const STATUSES = ["Pending", "Under Consideration", "Under Confirmation", "Processing", "Packing", "Shipped", "Out for Delivery", "Delivered", "Cancelled", "Payment Verification Pending", "Payment Verified", "Payment Failed"];
@@ -20,6 +21,7 @@ export default function SellerOrders() {
   const [statusFilter, setStatusFilter] = useState("All");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("All");
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState("");
   const [editingId, setEditingId] = useState("");
@@ -27,6 +29,7 @@ export default function SellerOrders() {
   const [expandedId, setExpandedId] = useState("");
   const token = localStorage.getItem("sellerToken");
   const headers = { Authorization: "Bearer " + token };
+  const navigate = useNavigate();
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -53,9 +56,24 @@ export default function SellerOrders() {
     const created = new Date(order.createdAt);
     const matchesFrom = !dateFrom || created >= new Date(dateFrom + "T00:00:00");
     const matchesTo = !dateTo || created <= new Date(dateTo + "T23:59:59");
-    return matchesSearch && matchesStatus && matchesFrom && matchesTo;
-  }), [orders, search, statusFilter, dateFrom, dateTo]);
+    const matchesCategory = categoryFilter === "All" || (order.items || []).some(item => (item.productSnapshot?.category || item.productId?.category || "") === categoryFilter);
+    return matchesSearch && matchesStatus && matchesFrom && matchesTo && matchesCategory;
+  }), [orders, search, statusFilter, dateFrom, dateTo, categoryFilter]);
 
+  const categories = useMemo(() => Array.from(new Set(orders.flatMap(order => (order.items || []).map(item => item.productSnapshot?.category || item.productId?.category).filter(Boolean)))).sort(), [orders]);
+  const exportCsv = () => {
+    const columns = ["Order ID","Date","Customer","Mobile","Email","Status","Category","Items","Subtotal","Discount","Reward coins","Delivery","Total","Address","Payment"];
+    const quote = value => '"' + String(value ?? "").replace(/"/g,'""') + '"';
+    const rows = filteredOrders.map(order => [order.orderId || order._id,order.createdAt,order.customerName || order.userId?.name,order.customerMobile || order.userId?.mobile,order.userId?.email,order.status,(order.items||[]).map(i=>i.productSnapshot?.category||i.productId?.category).filter(Boolean).join("; "),(order.items||[]).map(i=>(i.productSnapshot?.name||i.productId?.name||"Product")+" x"+i.quantity).join("; "),order.subtotalAmount,order.discountAmount,order.rewardCoinsRedeemed,order.deliveryCharge,order.totalAmount,order.deliveryAddress,order.paymentMethod]);
+    const csv=[columns,...rows].map(row=>row.map(quote).join(",")).join("\r\n");
+    const url=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download="aroha-orders-"+new Date().toISOString().slice(0,10)+".csv";a.click();URL.revokeObjectURL(url);
+  };
+  const exportPdf = () => {
+    const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch]));
+    const body=filteredOrders.map(o=>"<tr><td>"+esc(o.orderId||o._id)+"</td><td>"+esc(dateText(o.createdAt))+"</td><td>"+esc(o.customerName||o.userId?.name)+"</td><td>"+esc(o.status)+"</td><td>"+esc((o.items||[]).map(i=>(i.productSnapshot?.name||i.productId?.name||"Product")+" × "+i.quantity).join(", "))+"</td><td>"+esc(money(o.totalAmount))+"</td></tr>").join("");
+    const win=window.open("","_blank");if(!win)return Swal.fire("Allow pop-ups","Enable pop-ups to print the filtered report as PDF.","info");
+    win.document.write("<html><head><title>Aroha Orders Report</title><style>body{font:12px Arial;padding:24px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:7px;text-align:left}</style></head><body><h1>Aroha · Orders Report</h1><p>"+esc(new Date().toLocaleString())+" · "+filteredOrders.length+" orders · filters applied</p><table><thead><tr><th>Order</th><th>Date</th><th>Customer</th><th>Status</th><th>Items</th><th>Total</th></tr></thead><tbody>"+body+"</tbody></table><script>window.onload=()=>window.print()</script></body></html>");win.document.close();
+  };
   const beginEdit = (order) => { setEditingId(order._id); setDraftStatus(order.status || "Pending"); };
   const cancelEdit = () => { setEditingId(""); setDraftStatus(""); };
 
@@ -86,7 +104,7 @@ export default function SellerOrders() {
     <style>{css}</style>
     <header className="ao-header">
       <div><span className="ao-eyebrow">AROHA ADMIN / OPERATIONS</span><h1>Order Management</h1><p>Review every order, update its progress and keep customers informed.</p></div>
-      <button className="ao-btn ao-btn-light" onClick={fetchOrders} disabled={loading}><FaSyncAlt className={loading ? "ao-spin" : ""}/> Refresh orders</button>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}><button className="ao-btn ao-btn-light" onClick={()=>navigate("/AdminDashboard")}><FaArrowLeft/> Back</button><button className="ao-btn ao-btn-light" onClick={fetchOrders} disabled={loading}><FaSyncAlt className={loading ? "ao-spin" : ""}/> Refresh</button></div>
     </header>
 
     <section className="ao-stats">
@@ -101,7 +119,9 @@ export default function SellerOrders() {
       <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} aria-label="Filter by status"><option>All</option>{STATUSES.map((status) => <option key={status}>{status}</option>)}</select>
       <label className="ao-date"><span>From</span><input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}/></label>
       <label className="ao-date"><span>To</span><input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}/></label>
-      <button className="ao-btn ao-btn-ghost" onClick={() => { setSearch(""); setStatusFilter("All"); setDateFrom(""); setDateTo(""); }}>Clear</button>
+      <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)} aria-label="Filter by category"><option value="All">All categories</option>{categories.map(category=><option key={category}>{category}</option>)}</select>
+      <button className="ao-btn ao-btn-ghost" onClick={() => { setSearch(""); setStatusFilter("All"); setDateFrom(""); setDateTo(""); setCategoryFilter("All"); }}>Clear</button>
+      <button className="ao-btn ao-btn-light" onClick={exportCsv}><FaFileCsv/> Export CSV</button><button className="ao-btn ao-btn-light" onClick={exportPdf}><FaFilePdf/> Export PDF</button>
     </section>
 
     {loading ? <div className="ao-empty"><span className="ao-loader"/><strong>Loading orders…</strong></div> :
