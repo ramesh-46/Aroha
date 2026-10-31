@@ -47,7 +47,7 @@ export default function LogsPage() {
     } catch (e) { if (!disposed) { setConnection("reconnecting"); setError(e.message || "Unable to refresh logs."); } }
   };
   poll();
-  const timer = setInterval(poll, 10000);
+  const timer = setInterval(poll, 3000);
   return () => { disposed = true; clearInterval(timer); };
 }, [live, hours]);
 
