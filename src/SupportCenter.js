@@ -24,7 +24,24 @@ function SupportCenter() {
   };
 
   useEffect(() => {
+    let stopped = false;
+    let inFlight = false;
+    const refresh = async () => {
+      if (stopped || inFlight) return;
+      inFlight = true;
+      try {
+        const res = await axios.get("https://aroha.onrender.com/support?admin=1", { headers: { Authorization: "Bearer " + localStorage.getItem("sellerToken") }, timeout: 12000 });
+        if (!stopped) {
+          setQueries(res.data.queries || []);
+          setActiveQuery(current => current ? ((res.data.queries || []).find(q => q._id === current._id) || current) : ((res.data.queries || [])[0] || null));
+        }
+      } catch (err) {
+        if (!stopped) console.error("Live support refresh failed", err.message);
+      } finally { inFlight = false; }
+    };
     fetchQueries();
+    const timer = setInterval(refresh, 3000);
+    return () => { stopped = true; clearInterval(timer); };
   }, []);
 
   const sendReply = async () => {

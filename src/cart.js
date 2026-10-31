@@ -512,6 +512,22 @@ function Cart() {
           .cart-content-grid { grid-template-columns: 1fr; }
         }
 
+                @media (max-width: 640px) {
+          .cart-page-container { padding: 10px 10px 88px; width: 100%; box-sizing: border-box; overflow-x: hidden; }
+          .cart-content-grid, .cart-list, .order-summary-card { min-width: 0; width: 100%; }
+          .cart-item-row { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; padding: 13px; width: 100%; box-sizing: border-box; }
+          .item-left { min-width: 0; width: 100%; gap: 10px; align-items: flex-start; }
+          .item-image { width: 76px; height: 88px; flex: 0 0 76px; }
+          .item-details { min-width: 0; overflow-wrap: anywhere; }
+          .item-right { min-width: 0; width: 100%; flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+          .qty-control { flex: 0 0 auto; }
+          .item-total-price { margin: 0; font-size: 1rem; }
+          .remove-btn { margin: 0; padding: 8px 4px; }
+          .modal-overlay { padding: 10px; box-sizing: border-box; }
+          .modal-content { width: 100% !important; max-width: 100%; box-sizing: border-box; }
+          .modal-content .modal-actions { display: grid; grid-template-columns: 1fr; gap: 8px; }
+        }
+
         /* Cart Items List */
         .cart-list {
           background: white;
@@ -924,7 +940,7 @@ function Cart() {
       {/* SAVED DELIVERY ADDRESS PICKER */}
       {showOrderModal && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ width: "min(620px,94vw)", maxHeight: "88vh", overflowY: "auto" }}>
+          <div className="modal-content" style={{ width: "min(620px,94vw)", maxWidth: "100%", boxSizing: "border-box", maxHeight: "88vh", overflowY: "auto" }}>
             <h3 style={{ marginTop: 0, marginBottom: 6 }}>Choose delivery address</h3>
             <p style={{ color: "#737373", fontSize: 13 }}>Save and manage up to 10 delivery addresses in your profile.</p>
             {addressesLoading ? <p style={{ padding: 20, textAlign: "center" }}>Loading saved addresses…</p> : savedAddresses.map(address => (
