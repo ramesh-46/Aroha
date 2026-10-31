@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
+const Order = require("../models/Order");
+const sellerAuthMiddleware = require("../middleware/sellerAuthMiddleware");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -273,7 +275,7 @@ router.get("/users", async (req, res) => {
     }
 
     console.log("[DEBUG] 🔍 Executing User.find with query", { query: JSON.stringify(query) });
-    const users = await User.find(query).sort({ createdAt: -1 });
+    const users = await User.find(query).select("-password -recoveryCode").sort({ createdAt: -1 }).lean();
     console.log("[SUCCESS] ✅ Users fetched successfully", { count: users.length });
 
     console.log("[INFO] ✅ Get Users request completed successfully", { count: users.length });
@@ -284,13 +286,49 @@ router.get("/users", async (req, res) => {
   }
 });
 
+// Admin-only complete user profile update. Passwords are always hashed and never returned.
+router.put("/users/:id", sellerAuthMiddleware, async (req, res) => {
+  const requestId = crypto.randomUUID();
+  try {
+    if (!/^[a-f\\d]{24}$/i.test(req.params.id)) return res.status(400).json({ success: false, message: "Invalid user ID." });
+    const allowed = ["name", "mobile", "email", "gender", "address", "details", "recoveryCode", "referralCode", "referredBy", "rewardCoins"];
+    const updates = {};
+    for (const field of allowed) {
+      if (Object.prototype.hasOwnProperty.call(req.body || {}, field)) updates[field] = req.body[field];
+    }
+    if (updates.mobile !== undefined) updates.mobile = String(updates.mobile).trim();
+    if (updates.email !== undefined) updates.email = String(updates.email).trim().toLowerCase() || undefined;
+    if (updates.referralCode !== undefined) updates.referralCode = String(updates.referralCode).trim().toUpperCase();
+    if (updates.rewardCoins !== undefined) {
+      const coins = Number(updates.rewardCoins);
+      if (!Number.isFinite(coins) || coins < 0) return res.status(400).json({ success: false, message: "Reward coins must be zero or greater." });
+      updates.rewardCoins = coins;
+    }
+    if (updates.referredBy === "") updates.referredBy = null;
+    if (req.body?.newRecoveryCode !== undefined && String(req.body.newRecoveryCode).trim()) updates.recoveryCode = String(req.body.newRecoveryCode).trim();
+    delete updates.newRecoveryCode;
+    if (req.body?.password) {
+      if (String(req.body.password).length < 8) return res.status(400).json({ success: false, message: "Password must contain at least 8 characters." });
+      updates.password = await bcrypt.hash(String(req.body.password), saltRounds);
+    }
+    const user = await User.findByIdAndUpdate(req.params.id, { $set: updates }, { new: true, runValidators: true }).select("-password -recoveryCode");
+    if (!user) return res.status(404).json({ success: false, message: "User not found." });
+    console.info("[ADMIN_USERS]", requestId, "USER_UPDATED", { userId: String(user._id), fields: Object.keys(updates).filter((key) => key !== "password") });
+    return res.json({ success: true, user, message: "User details updated." });
+  } catch (err) {
+    console.error("[ADMIN_USERS]", requestId, "UPDATE_FAILED", err.message);
+    if (err.code === 11000) return res.status(409).json({ success: false, message: "Mobile, email, or referral code is already in use." });
+    return res.status(500).json({ success: false, message: "Unable to update user details." });
+  }
+});
+
 // Get User Orders
 router.get("/users/:id/orders", async (req, res) => {
   console.log("[INFO] 🚀 Get User Orders request started", { userId: req.params.id });
   
   try {
     console.log("[DEBUG] 🔍 Finding user by ID", { userId: req.params.id });
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id).select("-password -recoveryCode");
     
     if (!user) {
       console.log("[WARN] ⚠️ Get User Orders failed - User not found", { userId: req.params.id });

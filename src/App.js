@@ -31,6 +31,7 @@ import MainHeader from "./mainheader";
 import Wishlist from "./Wishlist";
 import LogsPage from "./LogsPage";
 import RewardsPage from "./RewardsPage";
+import ReferralRewardsControls from "./ReferralRewardsControls";
 
 function App() {
   return (
@@ -63,6 +64,7 @@ function App() {
         <Route path="/product-management" element={<SellerProtectedRoute><ProductManagement /></SellerProtectedRoute>} />
         <Route path="/seller-orders" element={<SellerProtectedRoute><SellerOrders /></SellerProtectedRoute>} />
         <Route path="/store-controls" element={<SellerProtectedRoute><StoreControlPanel /></SellerProtectedRoute>} />
+        <Route path="/referral-rewards" element={<SellerProtectedRoute><ReferralRewardsControls /></SellerProtectedRoute>} />
         <Route path="/user-management" element={<SellerProtectedRoute><UserManagement /></SellerProtectedRoute>} />
         <Route path="/support-center" element={<SellerProtectedRoute><SupportCenter /></SellerProtectedRoute>} />
         <Route path="/Orders" element={<Orders />} />

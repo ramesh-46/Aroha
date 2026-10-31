@@ -177,7 +177,9 @@ function Cart() {
       await axios.post("https://aroha.onrender.com/cart", {
         userId: user._id,
         productId,
-        quantity: newQty - item.quantity
+        quantity: newQty - item.quantity,
+        size: item.size || "",
+        color: item.color || ""
       });
       fetchCart();
     } catch (err) {
