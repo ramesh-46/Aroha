@@ -33,6 +33,7 @@ import LogsPage from "./LogsPage";
 import RewardsPage from "./RewardsPage";
 import ReferralRewardsControls from "./ReferralRewardsControls";
 import UserAuditPage from "./UserAuditPage";
+import CustomerSupport from "./CustomerSupport";
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
       <Routes>
         <Route path="/logs" element={<SellerProtectedRoute><LogsPage /></SellerProtectedRoute>} />
         <Route path="/user-logs" element={<SellerProtectedRoute><UserAuditPage /></SellerProtectedRoute>} />
+        <Route path="/my-support" element={<CustomerSupport />} />
         {/* Public pages */}
         <Route path="/" element={<Homepage />} />
   <Route path="/login" element={<UserLogin />} />
