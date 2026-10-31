@@ -18,6 +18,7 @@ console.log("[INFO] 🚀 User router module loaded");
 
 // Signup
 router.post("/signup", async (req, res) => {
+  if (!JWT_SECRET) return res.status(503).json({ success: false, message: "Authentication is not configured on this server." });
   console.log("[INFO] 🚀 Signup request started", { mobile: req.body.mobile, userEmail: maskEmail(req.body.email) });
   
   const { name, mobile, email, password, recoveryCode, gender, address, details, referralCode } = req.body;
