@@ -282,7 +282,7 @@ router.get("/:userId", async (req, res) => {
 router.put("/status/:orderId", sellerAuthMiddleware, async (req, res) => {
   const { orderId } = req.params;
   const { status } = req.body;
-  const allowedStatuses = ["Pending", "Under Consideration", "Processing", "Packing", "Shipped", "Out for Delivery", "Delivered", "Cancelled", "Payment Verification Pending", "Payment Verified", "Payment Failed"];
+  const allowedStatuses = ["Pending", "Under Consideration", "Under Confirmation", "Processing", "Packing", "Shipped", "Out for Delivery", "Delivered", "Cancelled", "Payment Verification Pending", "Payment Verified", "Payment Failed"];
   if (!allowedStatuses.includes(status)) return res.status(400).json({ success: false, message: "Choose a supported order status.", allowedStatuses });
 
   try {
