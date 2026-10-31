@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "./sweetalertConfig";
 import { useNavigate } from "react-router-dom";
+import { FaFileCsv, FaFilePdf } from "react-icons/fa";
 
 const API = "https://aroha.onrender.com";
 const emptyForm = { name: "", mobile: "", email: "", gender: "", address: "", details: "", referralCode: "", referredBy: "", rewardCoins: 0, password: "", newRecoveryCode: "" };
@@ -72,6 +73,19 @@ export default function UserManagement() {
     } finally { setSaving(false); }
   };
 
+  const exportUsersCsv = () => {
+    const cols = ["User ID","Name","Mobile","Email","Gender","Address","Referral code","Referred by","Reward coins","Created"];
+    const quote = value => '"' + String(value ?? "").replace(/"/g,'""') + '"';
+    const rows = users.map(u => [u._id,u.name,u.mobile,u.email,u.gender,u.address,u.referralCode,u.referredBy,u.rewardCoins,u.createdAt]);
+    const csv=[cols,...rows].map(row=>row.map(quote).join(",")).join("\r\n");
+    const url=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8"}));const a=document.createElement("a");a.href=url;a.download="aroha-users-"+new Date().toISOString().slice(0,10)+".csv";a.click();URL.revokeObjectURL(url);
+  };
+  const exportUsersPdf = () => {
+    const esc=value=>String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch]));
+    const body=users.map(u=>"<tr><td>"+esc(u.name)+"</td><td>"+esc(u.mobile)+"</td><td>"+esc(u.email)+"</td><td>"+esc(u.referralCode)+"</td><td>"+esc(u.rewardCoins)+"</td></tr>").join("");
+    const win=window.open("","_blank");if(!win)return Swal.fire("Allow pop-ups","Enable pop-ups to print the user report as PDF.","info");
+    win.document.write("<html><head><title>Aroha Users Report</title><style>body{font:12px Arial;padding:24px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:7px;text-align:left}</style></head><body><h1>Aroha · Users Report</h1><p>"+esc(new Date().toLocaleString())+" · "+users.length+" users</p><table><thead><tr><th>Name</th><th>Mobile</th><th>Email</th><th>Referral</th><th>Coins</th></tr></thead><tbody>"+body+"</tbody></table><script>window.onload=()=>window.print()</script></body></html>");win.document.close();
+  };
   const field = (label, key, type = "text", wide = false) => (
     <label style={{ ...styles.field, ...(wide ? styles.wide : {}) }} key={key}>
       <span>{label}</span>
@@ -84,7 +98,7 @@ export default function UserManagement() {
     <style>{`.aum-layout{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:16px;align-items:start;width:100%;min-width:0}.aum-layout>section{min-width:0;overflow:hidden}.aum-layout input,.aum-layout textarea{max-width:100%;min-width:0}.aum-user-list{max-height:calc(100vh - 210px);overflow-y:auto;overscroll-behavior:contain}.aum-back-users{display:none}.aum-user-card{width:100%;min-width:0;overflow-wrap:anywhere}.aum-details{width:100%;min-width:0}.aum-details form{width:100%;min-width:0}.aum-details form label{min-width:0}.aum-details form input,.aum-details form textarea{width:100%;max-width:100%;box-sizing:border-box}.aum-detail-actions{position:sticky;bottom:0;background:#fff;padding:10px 0;z-index:2}@media(max-width:760px){.aum-layout{grid-template-columns:minmax(0,1fr)}.aum-layout.has-selection .aum-user-list{display:none}.aum-back-users{display:inline-flex;align-items:center;gap:8px;margin-bottom:8px;padding:9px 12px;border:1px solid #d1d5db;border-radius:9px;background:#fff;color:#111827;font-weight:700}.aum-user-list{max-height:42vh}.aum-layout>section{padding:13px!important}.aum-details{width:100%;overflow:hidden}.aum-details form{grid-template-columns:minmax(0,1fr)!important}.aum-details form label{grid-column:1/-1!important}.aum-details form input,.aum-details form textarea{font-size:16px}.aum-details h3{overflow-wrap:anywhere}.aum-detail-actions{flex-wrap:wrap}.aum-detail-actions button{flex:1 1 130px}}`}</style>
     <header style={styles.header}><button onClick={() => navigate("/AdminDashboard")} style={styles.button || {padding:10,borderRadius:9}}>← Back to dashboard</button>
       <div><h2 style={styles.heading}>Users & Complete Profile Management</h2><p style={styles.muted}>View customer details, edit supported fields and inspect order history.</p></div>
-      <div style={styles.searchRow}><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && fetchUsers(search)} placeholder="Search name, mobile, email or ID" style={styles.control} /><button style={styles.button} onClick={() => fetchUsers(search)}>Search</button></div>
+      <div style={styles.searchRow}><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && fetchUsers(search)} placeholder="Search name, mobile, email or ID" style={styles.control} /><button style={styles.button} onClick={() => fetchUsers(search)}>Search</button><button style={styles.button} onClick={exportUsersCsv}><FaFileCsv/> CSV</button><button style={styles.button} onClick={exportUsersPdf}><FaFilePdf/> PDF</button></div>
     </header>
     <div className={`aum-layout ${selectedUser ? "has-selection" : ""}`} style={styles.layout}>
       <section style={styles.panel}>
