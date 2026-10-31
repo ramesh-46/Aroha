@@ -257,8 +257,7 @@ router.get("/users", sellerAuthMiddleware, async (req, res) => {
   
   try {
     const q = String(req.query.q || "").trim().slice(0, 80);
-    const escapedQ = q.replace(/[.*+?^${}()|[\]\\]/g, "\\    const { q } = req.query;
-    const query = {};");
+    const escapedQ = q.replace(/[.*+?^${}()|[\\]\\\\]/g, (match) => "\\\\" + match);
     const query = {};
 
     if (q) {
