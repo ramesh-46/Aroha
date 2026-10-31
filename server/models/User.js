@@ -18,4 +18,6 @@ const userSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
+userSchema.set("toJSON", { transform: (_doc, ret) => { delete ret.password; delete ret.recoveryCode; delete ret.__v; return ret; } });
+userSchema.set("toObject", { transform: (_doc, ret) => { delete ret.password; delete ret.recoveryCode; delete ret.__v; return ret; } });
 module.exports = mongoose.model("User", userSchema);
