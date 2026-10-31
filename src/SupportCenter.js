@@ -10,7 +10,7 @@ function SupportCenter() {
 
   const fetchQueries = async () => {
     try {
-      const res = await axios.get("https://aroha.onrender.com/support", { headers: { Authorization: "Bearer " + localStorage.getItem("sellerToken") } });
+      const res = await axios.get("https://aroha.onrender.com/support?admin=1", { headers: { Authorization: "Bearer " + localStorage.getItem("sellerToken") } });
       setQueries(res.data.queries || []);
       if (!activeQuery && res.data.queries?.length) {
         setActiveQuery(res.data.queries[0]);
