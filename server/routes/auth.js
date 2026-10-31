@@ -6,6 +6,7 @@ const sellerAuthMiddleware = require("../middleware/sellerAuthMiddleware");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const { writeAudit } = require("../middleware/activityLogger");
 
 const saltRounds = 10; // bcrypt salt rounds
 const maskEmail = (value) => { const parts = String(value || "").split("@"); return parts.length === 2 ? parts[0].slice(0, 1) + "***@" + parts[1] : ""; };
@@ -57,7 +58,8 @@ router.post("/signup", async (req, res) => {
 
     console.log("[INFO] 🚀 Saving new user to database", { userId: user._id, userEmail: maskEmail(user.email) });
     await user.save();
-    console.log("[SUCCESS] ✅ User saved successfully", { userId: user._id, userEmail: maskEmail(user.email), mobile: user.mobile });
+    await writeAudit({ userId: user._id, username: user.name || "Customer", role: "user", event: "auth.signup_success", message: "User account created" });
+    console.log("[SUCCESS] User saved", { userId: user._id, username: user.name || "Customer" });
 
     console.log("[INFO] ✅ Signup request completed successfully", { userId: user._id });
     res.json({ success: true, user });
@@ -93,6 +95,7 @@ router.post("/login", async (req, res) => {
 
     console.log("[DEBUG] 🔍 Generating JWT token for user", { userId: user._id, userEmail: maskEmail(user.email), expiresIn: "1d" });
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "1d" });
+    await writeAudit({ userId: user._id, username: user.name || "Customer", role: "user", event: "auth.login_success", message: "User signed in successfully" });
     console.log("[DEBUG] ✅ JWT token generated successfully");
 
     console.log("[INFO] ✅ Login request completed successfully", { userId: user._id });
