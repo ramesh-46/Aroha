@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "./sweetalertConfig";
+import { useNavigate } from "react-router-dom";
 
 const API = "https://aroha.onrender.com";
 const emptyForm = { name: "", mobile: "", email: "", gender: "", address: "", details: "", referralCode: "", referredBy: "", rewardCoins: 0, password: "", newRecoveryCode: "" };
 
 export default function UserManagement() {
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
@@ -80,7 +82,7 @@ export default function UserManagement() {
 
   return <main className="aum-page" style={styles.page}>
     <style>{`.aum-layout{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:16px;align-items:start;width:100%;min-width:0}.aum-layout>section{min-width:0;overflow:hidden}.aum-layout input,.aum-layout textarea{max-width:100%;min-width:0}.aum-user-list{max-height:calc(100vh - 210px);overflow-y:auto;overscroll-behavior:contain}.aum-back-users{display:none}.aum-user-card{width:100%;min-width:0;overflow-wrap:anywhere}.aum-details{width:100%;min-width:0}.aum-details form{width:100%;min-width:0}.aum-details form label{min-width:0}.aum-details form input,.aum-details form textarea{width:100%;max-width:100%;box-sizing:border-box}.aum-detail-actions{position:sticky;bottom:0;background:#fff;padding:10px 0;z-index:2}@media(max-width:760px){.aum-layout{grid-template-columns:minmax(0,1fr)}.aum-layout.has-selection .aum-user-list{display:none}.aum-back-users{display:inline-flex;align-items:center;gap:8px;margin-bottom:8px;padding:9px 12px;border:1px solid #d1d5db;border-radius:9px;background:#fff;color:#111827;font-weight:700}.aum-user-list{max-height:42vh}.aum-layout>section{padding:13px!important}.aum-details{width:100%;overflow:hidden}.aum-details form{grid-template-columns:minmax(0,1fr)!important}.aum-details form label{grid-column:1/-1!important}.aum-details form input,.aum-details form textarea{font-size:16px}.aum-details h3{overflow-wrap:anywhere}.aum-detail-actions{flex-wrap:wrap}.aum-detail-actions button{flex:1 1 130px}}`}</style>
-    <header style={styles.header}>
+    <header style={styles.header}><button onClick={() => navigate("/AdminDashboard")} style={styles.button || {padding:10,borderRadius:9}}>← Back to dashboard</button>
       <div><h2 style={styles.heading}>Users & Complete Profile Management</h2><p style={styles.muted}>View customer details, edit supported fields and inspect order history.</p></div>
       <div style={styles.searchRow}><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && fetchUsers(search)} placeholder="Search name, mobile, email or ID" style={styles.control} /><button style={styles.button} onClick={() => fetchUsers(search)}>Search</button></div>
     </header>
