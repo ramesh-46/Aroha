@@ -26,6 +26,7 @@ const initialSaleData = {
 };
 
 const PromotionPage = () => {
+  const navigate = useNavigate();
   const sellerToken = localStorage.getItem("sellerToken");
   const adminHeaders = sellerToken
     ? { Authorization: `Bearer ${sellerToken}` }
