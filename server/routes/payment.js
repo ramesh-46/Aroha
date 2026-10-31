@@ -130,7 +130,7 @@ router.post("/create-session", auth, async (req, res) => {
 
 // --- Verify Payment and Update Order Status ---
 // NOTE: We add 'upload.single("screenshot")' here to handle the file
-router.post("/verify-payment", upload.single("screenshot"), async (req, res) => {
+router.post("/verify-payment", auth, upload.single("screenshot"), async (req, res) => {
   try {
     // Multer parses text fields into req.body and file into req.file
     const { orderId, transactionId, ocrData } = req.body;
@@ -145,7 +145,7 @@ router.post("/verify-payment", upload.single("screenshot"), async (req, res) => 
     }
 
     // 2. Fetch the order
-    const order = await Order.findOne({ orderId });
+    const order = await Order.findOne({ orderId, userId: req.user.id });
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -208,7 +208,7 @@ router.post("/verify-payment", upload.single("screenshot"), async (req, res) => 
 });
 
 
-router.post("/razorpay/create-order", async (req, res) => {
+router.post("/razorpay/create-order", auth, async (req, res) => {
   const crypto = require("crypto");
   const requestId = crypto.randomUUID();
   try {
@@ -220,8 +220,8 @@ router.post("/razorpay/create-order", async (req, res) => {
       return res.status(503).json({ success: false, error: "Razorpay is not configured on the server." });
     }
     if (!orderId) return res.status(400).json({ success: false, error: "orderId is required." });
-    const order = await Order.findOne({ orderId });
-    if (!order) return res.status(404).json({ success: false, error: "Aroha order not found." });
+    const order = await Order.findOne({ orderId, userId: req.user.id });
+    if (!order) return res.status(404).json({ success: false, error: "Aroha order not found for this account." });
     if (!Number.isFinite(order.totalAmount) || order.totalAmount <= 0) return res.status(400).json({ success: false, error: "Invalid order amount." });
     if (order.status === "Payment Verified") return res.status(409).json({ success: false, error: "Order is already paid." });
     if (order.rewardsRefundedAt) return res.status(409).json({ success: false, error: "Reward coins for this checkout were returned. Please create a new checkout." });
@@ -247,7 +247,7 @@ router.post("/razorpay/create-order", async (req, res) => {
   }
 });
 
-router.post("/razorpay/verify-payment", async (req, res) => {
+router.post("/razorpay/verify-payment", auth, async (req, res) => {
   const crypto = require("crypto");
   const requestId = crypto.randomUUID();
   try {
@@ -259,8 +259,8 @@ router.post("/razorpay/verify-payment", async (req, res) => {
       return res.status(503).json({ success: false, error: "Razorpay is not configured on the server." });
     }
     if (!orderId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) return res.status(400).json({ success: false, error: "Missing payment verification fields." });
-    const order = await Order.findOne({ orderId });
-    if (!order) return res.status(404).json({ success: false, error: "Aroha order not found." });
+    const order = await Order.findOne({ orderId, userId: req.user.id });
+    if (!order) return res.status(404).json({ success: false, error: "Aroha order not found for this account." });
     if (order.razorpayOrderId !== razorpay_order_id) return res.status(400).json({ success: false, error: "Gateway order does not match Aroha order." });
 
     const expected = crypto.createHmac("sha256", keySecret).update(razorpay_order_id + "|" + razorpay_payment_id).digest("hex");
@@ -385,7 +385,7 @@ router.post("/razorpay/verify-payment", async (req, res) => {
 });
 
 
-router.post("/razorpay/log-event", async (req, res) => {
+router.post("/razorpay/log-event", auth, async (req, res) => {
   const allowedEvents = new Set([
     "CHECKOUT_OPENED",
     "CHECKOUT_DISMISSED",
@@ -416,7 +416,7 @@ router.post("/razorpay/log-event", async (req, res) => {
     try {
       const failureReason = safeDetails?.reason || safeDetails?.message || safeDetails?.code || (event === "CHECKOUT_DISMISSED" ? "Checkout was closed before payment." : "Payment was not completed.");
       const failedOrder = await Order.findOneAndUpdate(
-        { orderId: String(orderId), status: { $ne: "Payment Verified" } },
+        { orderId: String(orderId), userId: req.user.id, status: { $ne: "Payment Verified" } },
         { $set: { status: "Payment Failed", paymentFailureReason: failureReason } },
         { new: true }
       );
