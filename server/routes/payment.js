@@ -105,9 +105,15 @@ router.post("/create-session", auth, async (req, res) => {
       rewardDiscount = roundCurrency(requestedCoins * Number(settings.coinRupeeValue));
     }
     const finalAmount = roundCurrency(Math.max(0, subtotalAmount - discountAmount + deliveryCharge - rewardDiscount));
-    if (finalAmount <= 0) return res.status(400).json({ success: false, error: "Order total must be greater than zero." });
+    if (finalAmount <= 0) {
+      if (reservedCoins > 0) await User.updateOne({ _id: userId }, { $inc: { rewardCoins: reservedCoins }, $push: { rewardHistory: { type: "refund", coins: reservedCoins, note: "Reward coins returned because checkout total was invalid." } } });
+      return res.status(400).json({ success: false, error: "Order total must be greater than zero." });
+    }
     const upiId = process.env.UPI_ID;
-    if (!upiId) return res.status(503).json({ success: false, error: "UPI payment is not configured." });
+    if (!upiId) {
+      if (reservedCoins > 0) await User.updateOne({ _id: userId }, { $inc: { rewardCoins: reservedCoins }, $push: { rewardHistory: { type: "refund", coins: reservedCoins, note: "Reward coins returned because UPI payment is not configured." } } });
+      return res.status(503).json({ success: false, error: "UPI payment is not configured. Please contact support." });
+    }
 
     const orderId = "ORDER_" + require("crypto").randomUUID().toUpperCase().slice(0, 8);
     const upiUrl = "upi://pay?pa=" + encodeURIComponent(upiId) + "&pn=AROHA%20HUB&am=" + finalAmount + "&cu=INR";
