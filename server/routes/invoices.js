@@ -15,7 +15,8 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
       ? { userId: req.user.id, $or: [{ orderId: requestedOrderId }, { _id: requestedOrderId }] }
       : { userId: req.user.id, orderId: requestedOrderId };
     const order = await Order.findOne(orderLookup)
-      .populate("items.productId", "name brand category sku price finalPrice images");
+      .populate("items.productId", "name brand category sku price finalPrice images")
+      .populate("userId", "name email mobile");
 
     if (!order) return res.status(404).json({ success: false, message: "Order not found for this account." });
 
@@ -53,8 +54,9 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
       ["Order ID", order.orderId || String(order._id)],
       ["Invoice date", new Date().toLocaleDateString("en-IN")],
       ["Order date", new Date(order.createdAt).toLocaleString("en-IN")],
-      ["Customer", order.customerName || "Customer"],
-      ["Mobile", order.customerMobile || "Not provided"],
+      ["Customer", order.customerName || order.userId?.name || "Customer"],
+      ["Mobile", order.customerMobile || order.userId?.mobile || "Not provided"],
+      ["Email", order.userId?.email || "Not provided"],
       ["Delivery address", order.deliveryAddress || "Not provided"],
       ["Order status", order.status || "Pending"]
     ];
@@ -149,7 +151,7 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
     doc.save(); doc.circle(472, y + 22, 27).lineWidth(1.5).strokeColor("#111111").stroke();
     doc.circle(472, y + 22, 22).lineWidth(0.7).strokeColor("#737373").stroke();
     doc.fillColor("#111111").font("Helvetica-Bold").fontSize(7).text("JIGIRIKART", 447, y + 12, { width: 50, align: "center" });
-    doc.fontSize(6).text("ORDER VERIFIED", 447, y + 23, { width: 50, align: "center" }); doc.restore();
+    doc.fontSize(6).text("ORDER RECORDED", 447, y + 23, { width: 50, align: "center" }); doc.restore();
     doc.fillColor(muted).font("Helvetica").fontSize(7).text("Computer-generated invoice. This digital stamp is a document mark and is not a handwritten or cryptographic signature.", 48, y + 70, { width: 499, align: "center" });
     doc.end();
   } catch (error) {
