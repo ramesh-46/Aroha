@@ -98,7 +98,7 @@ export default function LogsPage() {
         <div style={{ display: "flex", justifyContent: "space-between", padding: 16, borderBottom: "1px solid #29364a", gap: 10 }}><strong>Log stream <span style={{ color: "#64748b", fontWeight: 500 }}> / {visible.length} entries</span></strong><span style={{ color: "#34d399", fontSize: 11, fontWeight: 900 }}>● BACKEND</span></div>
         {visible.length === 0 ? <div style={{ padding: 36, textAlign: "center", color: "#94a3b8" }}>{loading ? "Loading logs…" : "No matching logs. Try Refresh or change the time range."}</div> : visible.map((entry, i) => { const severity = levelOf(entry); return <div className="logrow" key={entry.id || (entry.timestamp + "-" + i)}><div className="logtime" style={{ color: "#94a3b8", fontSize: 11 }}>{new Date(entry.timestamp).toLocaleString()}</div><div style={{ color: levelColor[severity], fontSize: 10, fontWeight: 900 }}>{severity.toUpperCase()}</div><div className="logmsg"><strong>{entry.username || "Unknown"} · {entry.userId || "System"} · {entry.event || "runtime.console"}</strong>{"\n"}{entry.message}</div></div>; })}
       </section>
-      <footer className="noprint" style={{ textAlign: "center", color: "#475569", fontSize: 11, padding: 22 }}>Logs are held in memory and reset whenever the backend restarts. This page shows sanitized application runtime logs, not Render build/deploy history.</footer>
+      <footer className="noprint" style={{ textAlign: "center", color: "#475569", fontSize: 11, padding: 22 }}>Persistent user-linked audit events are stored in MongoDB. Console runtime events are limited to the current server process.</footer>
     </div>
   </main>;
 }
