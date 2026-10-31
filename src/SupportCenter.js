@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "./sweetalertConfig";
+import { useNavigate } from "react-router-dom";
 
 function SupportCenter() {
+  const navigate = useNavigate();
   const seller = JSON.parse(localStorage.getItem("sellerData") || "null");
   const [queries, setQueries] = useState([]);
   const [activeQuery, setActiveQuery] = useState(null);
@@ -45,7 +47,7 @@ function SupportCenter() {
 
   return (
     <div style={styles.page}>
-      <h2 style={styles.heading}>Customer Queries</h2>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}><h2 style={styles.heading}>Customer Queries</h2><button onClick={()=>navigate("/AdminDashboard")}>← Back to dashboard</button></div>
       <div style={styles.layout}>
         <div style={styles.sidebar}>
           {queries.map((query) => (
