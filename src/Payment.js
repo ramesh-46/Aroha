@@ -452,12 +452,12 @@ const PaymentPage = () => {
             </div>
             
             <div style={{ display: "inline-block", padding: "16px", background: "#fff", borderRadius: "12px", border: "2px dashed #e5e7eb", marginBottom: "16px" }}>
-              <QRCodeCanvas value={orderData.upiUrl} size={200} />
+              {orderData.upiUrl ? <QRCodeCanvas value={orderData.upiUrl} size={200} /> : <p style={{ color: "#6b7280", margin: 0 }}>UPI QR is not configured. Use secure Razorpay checkout below.</p>}
             </div>
             
             <div style={{ background: "#f0fdf4", padding: "12px", borderRadius: "8px", marginBottom: "12px", display: "inline-block" }}>
               <p style={{ margin: 0, fontSize: "0.9rem", color: "#065f46", fontWeight: "600" }}>
-                {orderData.upiId}
+                {orderData.upiId || "Secure online payment"}
               </p>
             </div>
             
@@ -467,7 +467,7 @@ const PaymentPage = () => {
           </div>
 
           {/* MOBILE ONLY: Direct App Buttons */}
-          {isMobile && (
+          {isMobile && orderData.upiUrl && (
             <div style={{ background: "#ffffff", padding: "24px", borderRadius: "16px", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.05)", border: "1px solid #f3f4f6" }}>
                <h3 style={{ margin: "0 0 16px 0", fontSize: "1.1rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "8px" }}>
                 <FaMobileAlt style={{ color: "#059669" }} /> Pay Directly via App
