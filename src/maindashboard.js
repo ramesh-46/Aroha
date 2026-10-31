@@ -650,7 +650,7 @@ const handleToggleWishlist = async () => {
                 </div>
               </div>
 
-              <div style={styles.actionButtons}>
+              <div style={{ ...styles.actionButtons, ...(isMobile ? { display: "none" } : {}) }}>
                  <button style={styles.addToCartBtn} onClick={handleAddToCart} disabled={isAddingToCart}>
                   {cartSuccessMsg ? <><IconSVG name="check" /> {cartSuccessMsg}</> : "Add to Cart"}
                 </button>
