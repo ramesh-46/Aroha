@@ -248,8 +248,9 @@ router.get("/user/:userId", require("../middleware/authMiddleware"), async (req,
   const { userId } = req.params;
   try {
     const orders = await Order.find({ userId })
-      .populate("items.productId")
-      .sort({ createdAt: -1 });
+      .populate("items.productId", "name brand category sku price finalPrice images")
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(orders);
   } catch (err) {
     console.log(err);
@@ -275,8 +276,9 @@ router.get("/:userId", require("../middleware/authMiddleware"), async (req, res)
   const { userId } = req.params;
   try {
     const orders = await Order.find({ userId })
-      .populate("items.productId")
-      .sort({ createdAt: -1 });
+      .populate("items.productId", "name brand category sku price finalPrice images")
+      .sort({ createdAt: -1 })
+      .lean();
     res.json(orders);
   } catch (err) {
     console.log(err);
