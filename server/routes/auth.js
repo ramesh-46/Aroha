@@ -305,6 +305,8 @@ router.put("/users/:id", sellerAuthMiddleware, async (req, res) => {
       updates.rewardCoins = coins;
     }
     if (updates.referredBy === "") updates.referredBy = null;
+    if (req.body?.newRecoveryCode !== undefined && String(req.body.newRecoveryCode).trim()) updates.recoveryCode = String(req.body.newRecoveryCode).trim();
+    delete updates.newRecoveryCode;
     if (req.body?.password) {
       if (String(req.body.password).length < 8) return res.status(400).json({ success: false, message: "Password must contain at least 8 characters." });
       updates.password = await bcrypt.hash(String(req.body.password), saltRounds);
