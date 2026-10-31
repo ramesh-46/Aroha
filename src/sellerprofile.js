@@ -25,7 +25,7 @@ function SellerProfile() {
 
   return (
     <div style={container}>
-      <h2>Seller Profile</h2>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><h2>Seller Profile</h2><button onClick={()=>navigate("/AdminDashboard")}>← Back to dashboard</button></div>
       <div style={profileBox}>
         <div style={profileItem}>
           <strong>Name:</strong> {seller.name}
