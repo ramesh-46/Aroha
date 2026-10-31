@@ -2,183 +2,126 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "./sweetalertConfig";
 
-function UserManagement() {
+const API = "https://aroha.onrender.com";
+const emptyForm = { name: "", mobile: "", email: "", gender: "", address: "", details: "", referralCode: "", referredBy: "", rewardCoins: 0, password: "" };
+
+export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [search, setSearch] = useState("");
   const [selectedUser, setSelectedUser] = useState(null);
   const [userOrders, setUserOrders] = useState([]);
+  const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const token = localStorage.getItem("sellerToken");
+  const headers = { Authorization: "Bearer " + token };
 
-  const fetchUsers = async (query = "") => {
+  const fetchUsers = async (query = search) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await axios.get(`https://aroha.onrender.com/auth/users${query ? `?q=${encodeURIComponent(query)}` : ""}`);
+      const res = await axios.get(API + "/auth/users" + (query ? "?q=" + encodeURIComponent(query) : ""));
       setUsers(res.data.users || []);
     } catch (err) {
-      console.error("Failed to fetch users", err);
-      Swal.fire("Unable to load users.", "", "error");
-    } finally {
-      setLoading(false);
-    }
+      console.error("[ADMIN_USERS] FETCH_FAILED", err.response?.data || err.message);
+      Swal.fire("Unable to load users.", err.response?.data?.message || "Check admin login and backend logs.", "error");
+    } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  useEffect(() => { fetchUsers(""); }, []);
 
   const openUser = async (user) => {
     try {
-      const res = await axios.get(`https://aroha.onrender.com/auth/users/${user._id}/orders`);
-      setSelectedUser(res.data.user);
+      const res = await axios.get(API + "/auth/users/" + user._id + "/orders");
+      const current = res.data.user || user;
+      setSelectedUser(current);
       setUserOrders(res.data.orders || []);
+      setForm({
+        name: current.name || "", mobile: current.mobile || "", email: current.email || "",
+        gender: current.gender || "", address: current.address || "", details: current.details || "",
+        referralCode: current.referralCode || "", referredBy: current.referredBy || "",
+        rewardCoins: current.rewardCoins ?? 0, password: ""
+      });
+      setEditing(false);
     } catch (err) {
-      console.error("Failed to fetch user orders", err);
-      Swal.fire("Unable to load user details.", "", "error");
+      console.error("[ADMIN_USERS] DETAILS_FAILED", err.response?.data || err.message);
+      Swal.fire("Unable to load user details.", err.response?.data?.message || "", "error");
     }
   };
 
-  return (
-    <div style={styles.page}>
-      <div style={styles.header}>
-        <h2 style={styles.heading}>Users & Order History</h2>
-        <div style={styles.searchRow}>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter by name, mobile, email, or ID"
-            style={styles.input}
-          />
-          <button style={styles.button} onClick={() => fetchUsers(search)}>
-            Search
-          </button>
-        </div>
-      </div>
+  const saveUser = async (event) => {
+    event.preventDefault();
+    if (!selectedUser) return;
+    setSaving(true);
+    try {
+      const payload = { ...form };
+      if (!payload.password) delete payload.password;
+      const res = await axios.put(API + "/auth/users/" + selectedUser._id, payload, { headers });
+      setSelectedUser(res.data.user);
+      setForm((previous) => ({ ...previous, password: "" }));
+      setEditing(false);
+      await fetchUsers();
+      Swal.fire("User updated", "All submitted details were saved.", "success");
+      console.info("[ADMIN_USERS] USER_UPDATED", selectedUser._id);
+    } catch (err) {
+      console.error("[ADMIN_USERS] UPDATE_FAILED", err.response?.data || err.message);
+      Swal.fire("Update failed", err.response?.data?.message || "Check admin authorization and server logs.", "error");
+    } finally { setSaving(false); }
+  };
 
-      <div style={styles.layout}>
-        <div style={styles.panel}>
-          {loading ? (
-            <p>Loading users...</p>
-          ) : users.length === 0 ? (
-            <p>No users found.</p>
-          ) : (
-            users.map((user) => (
-              <button key={user._id} style={styles.userCard} onClick={() => openUser(user)}>
-                <strong>{user.name || "Unnamed User"}</strong>
-                <span>{user.mobile}</span>
-                <span>{user.email || "No email"}</span>
-                <small>{user._id}</small>
-              </button>
-            ))
-          )}
-        </div>
-
-        <div style={styles.panel}>
-          {!selectedUser ? (
-            <p>Select a user to view full details and order history.</p>
-          ) : (
-            <>
-              <div style={styles.userSummary}>
-                <h3 style={{ margin: "0 0 8px" }}>{selectedUser.name || "Unnamed User"}</h3>
-                <p style={styles.meta}>Mobile: {selectedUser.mobile}</p>
-                <p style={styles.meta}>Email: {selectedUser.email || "No email"}</p>
-                <p style={styles.meta}>Address: {selectedUser.address || "No address"}</p>
-              </div>
-              <h4 style={styles.sectionTitle}>Order History</h4>
-              {userOrders.length === 0 ? (
-                <p>No orders for this user yet.</p>
-              ) : (
-                userOrders.map((order) => (
-                  <div key={order._id} style={styles.orderCard}>
-                    <strong>Order #{order._id.slice(-6)}</strong>
-                    <p style={styles.meta}>Status: {order.status}</p>
-                    <p style={styles.meta}>Coupon: {order.couponCode || "None"}</p>
-                    <p style={styles.meta}>Total: Rs. {Math.round(order.totalAmount || 0)}</p>
-                  </div>
-                ))
-              )}
-            </>
-          )}
-        </div>
-      </div>
-    </div>
+  const field = (label, key, type = "text", wide = false) => (
+    <label style={{ ...styles.field, ...(wide ? styles.wide : {}) }} key={key}>
+      <span>{label}</span>
+      {type === "textarea" ? <textarea value={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))} disabled={!editing} rows={3} style={styles.control} /> :
+      <input type={type} value={form[key]} onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))} disabled={!editing} style={styles.control} />}
+    </label>
   );
+
+  return <main style={styles.page}>
+    <header style={styles.header}>
+      <div><h2 style={styles.heading}>Users & Complete Profile Management</h2><p style={styles.muted}>View customer details, edit supported fields and inspect order history.</p></div>
+      <div style={styles.searchRow}><input value={search} onChange={(e) => setSearch(e.target.value)} onKeyDown={(e) => e.key === "Enter" && fetchUsers(search)} placeholder="Search name, mobile, email or ID" style={styles.control} /><button style={styles.button} onClick={() => fetchUsers(search)}>Search</button></div>
+    </header>
+    <div style={styles.layout}>
+      <section style={styles.panel}>
+        <h3 style={styles.sectionTitle}>All users ({users.length})</h3>
+        {loading ? <p>Loading users…</p> : users.length === 0 ? <p>No users found.</p> : users.map((u) => <button key={u._id} style={{ ...styles.userCard, ...(selectedUser?._id === u._id ? styles.activeUser : {}) }} onClick={() => openUser(u)}>
+          <strong>{u.name || "Unnamed user"}</strong><span>{u.mobile}</span><span>{u.email || "No email"}</span><small>{u._id}</small><small>Coins: {u.rewardCoins || 0} · Referral: {u.referralCode || "—"}</small>
+        </button>)}
+      </section>
+      <section style={styles.panel}>
+        {!selectedUser ? <p>Select a user to view and edit their details.</p> : <>
+          <div style={styles.detailHeader}><div><h3 style={styles.sectionTitle}>{selectedUser.name || "User details"}</h3><small style={styles.muted}>ID: {selectedUser._id}</small></div>
+            <button style={styles.button} onClick={() => setEditing((v) => !v)}>{editing ? "Cancel edit" : "Edit all details"}</button>
+          </div>
+          <form onSubmit={saveUser} style={styles.form}>
+            {field("Full name", "name")}{field("Mobile", "mobile", "tel")}{field("Email", "email", "email")}{field("Gender", "gender")}
+            {field("Address", "address", "textarea", true)}{field("Additional details", "details", "textarea", true)}
+            {field("Referral code", "referralCode")}{field("Referred by (user ID)", "referredBy")}{field("Reward coins", "rewardCoins", "number")}
+            {editing && field("Set new password (leave blank to keep current)", "password", "password", true)}
+            {editing && <div style={styles.actions}><button type="submit" style={styles.button} disabled={saving}>{saving ? "Saving…" : "Save all changes"}</button><button type="button" style={styles.secondary} onClick={() => openUser(selectedUser)}>Discard</button></div>}
+          </form>
+          <h3 style={styles.sectionTitle}>Order history ({userOrders.length})</h3>
+          {userOrders.length === 0 ? <p className={styles.muted}>No orders for this user.</p> : userOrders.map((order) => <article key={order._id} style={styles.orderCard}>
+            <strong>Order #{order.orderId || order._id.slice(-6)}</strong><p>Status: {order.status}</p><p>Coupon: {order.couponCode || "None"}</p><p>Total: ₹{Number(order.totalAmount || 0).toFixed(2)}</p>
+          </article>)}
+        </>}
+      </section>
+    </div>
+  </main>;
 }
 
 const styles = {
-  page: {
-    padding: "24px",
-    background: "#f6f7fb",
-    minHeight: "100vh"
-  },
-  header: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: "16px",
-    flexWrap: "wrap",
-    marginBottom: "18px"
-  },
-  heading: {
-    margin: 0
-  },
-  searchRow: {
-    display: "flex",
-    gap: "10px",
-    flex: "1 1 360px"
-  },
-  layout: {
-    display: "grid",
-    gridTemplateColumns: "minmax(280px, 380px) 1fr",
-    gap: "18px"
-  },
-  panel: {
-    background: "#fff",
-    borderRadius: "16px",
-    padding: "18px",
-    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.08)",
-    display: "grid",
-    gap: "12px",
-    alignContent: "start"
-  },
-  input: {
-    flex: 1,
-    padding: "10px 12px",
-    borderRadius: "10px",
-    border: "1px solid #d0d7e2"
-  },
-  button: {
-    border: "none",
-    borderRadius: "10px",
-    padding: "10px 14px",
-    background: "#111827",
-    color: "#fff",
-    cursor: "pointer"
-  },
-  userCard: {
-    textAlign: "left",
-    padding: "14px",
-    borderRadius: "12px",
-    border: "1px solid #e5e7eb",
-    background: "#f8fafc",
-    cursor: "pointer",
-    display: "grid",
-    gap: "4px"
-  },
-  userSummary: {
-    paddingBottom: "12px",
-    borderBottom: "1px solid #e5e7eb"
-  },
-  sectionTitle: {
-    margin: "4px 0 0"
-  },
-  orderCard: {
-    border: "1px solid #e5e7eb",
-    borderRadius: "12px",
-    padding: "12px"
-  },
-  meta: {
-    margin: "4px 0"
-  }
+  page: { padding: "clamp(14px,3vw,28px)", background: "#f6f7fb", minHeight: "100vh", fontFamily: "Inter,system-ui,sans-serif" },
+  header: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 18 },
+  heading: { margin: 0, color: "#111827" }, muted: { color: "#64748b", fontSize: 13 },
+  searchRow: { display: "flex", gap: 8, minWidth: 280, flex: "1 1 340px" },
+  layout: { display: "grid", gridTemplateColumns: "minmax(260px,380px) minmax(0,1fr)", gap: 16, alignItems: "start" },
+  panel: { background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 6px 22px #0f172a0d", display: "grid", gap: 12, minWidth: 0 },
+  sectionTitle: { margin: "0 0 8px", color: "#111827" }, userCard: { textAlign: "left", padding: 12, borderRadius: 10, border: "1px solid #e5e7eb", background: "#f8fafc", cursor: "pointer", display: "grid", gap: 4, color: "#334155" },
+  activeUser: { borderColor: "#2563eb", background: "#eff6ff" }, control: { width: "100%", minWidth: 0, padding: "10px 12px", borderRadius: 9, border: "1px solid #cbd5e1", background: "#fff", boxSizing: "border-box" },
+  button: { border: 0, borderRadius: 9, padding: "10px 14px", background: "#111827", color: "#fff", cursor: "pointer", whiteSpace: "nowrap" }, secondary: { border: "1px solid #cbd5e1", borderRadius: 9, padding: "10px 14px", background: "#fff", cursor: "pointer" },
+  detailHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }, form: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))", gap: 12 },
+  field: { display: "grid", gap: 5, fontSize: 13, color: "#475569" }, wide: { gridColumn: "1 / -1" }, actions: { display: "flex", gap: 8, gridColumn: "1 / -1" },
+  orderCard: { border: "1px solid #e5e7eb", borderRadius: 10, padding: 12, fontSize: 13, color: "#475569" }
 };
-
-export default UserManagement;
