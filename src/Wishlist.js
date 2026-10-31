@@ -440,7 +440,11 @@ const Wishlist = () => {
           My Wishlist ({displayItems.length} items)
         </h2>
 
-        {displayItems.length === 0 ? (
+        {wishlistLoading ? (
+          <div className="empty-wishlist-state" role="status"><div className="wishlist-loader"/> <h3>Loading your wishlist…</h3></div>
+        ) : wishlistError ? (
+          <div className="empty-wishlist-state"><p>{wishlistError}</p><button className="action-btn" onClick={() => window.location.reload()}>Try again</button></div>
+        ) : displayItems.length === 0 ? (
           <div className="empty-wishlist-state">
             <FaHeart size={64} className="empty-icon" />
             <h3>Your wishlist is empty</h3>
