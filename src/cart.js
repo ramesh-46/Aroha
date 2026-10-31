@@ -34,6 +34,8 @@ const IconSVG = ({ name }) => {
 function Cart() {
   // --- STATE MANAGEMENT ---
   const [cart, setCart] = useState({ items: [] });
+  const [cartLoading, setCartLoading] = useState(true);
+  const [cartError, setCartError] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [customerDetails, setCustomerDetails] = useState({ name: "", mobile: "", address: "" });
@@ -117,16 +119,18 @@ function Cart() {
 
   // --- API CALLS ---
   const fetchCart = async () => {
-    if (!user) return;
+    if (!user) { setCartLoading(false); return; }
+    setCartLoading(true); setCartError("");
     try {
-      const res = await axios.get(`https://aroha.onrender.com/cart/${user._id}`);
-      setCart(res.data);
+      const res = await axios.get(`https://aroha.onrender.com/cart/${user._id}`, { timeout: 20000 });
+      setCart({ ...res.data, items: Array.isArray(res.data.items) ? res.data.items : [] });
       if (res.data.items.length > 0 && selectedItems.length === 0) {
         setSelectedItems(res.data.items.map(i => i.productId._id));
       }
     } catch (err) {
-      console.error("Fetch Cart Error:", err);
-    }
+      console.error("[CART] LOAD_FAILED", { status: err.response?.status, message: err.response?.data?.message || err.message });
+      setCartError("Your cart could not be loaded. Please retry.");
+    } finally { setCartLoading(false); }
   };
 
   const fetchOrders = async () => {
@@ -740,7 +744,11 @@ function Cart() {
         </div>
       )}
 
-      {cart.items.length === 0 ? (
+      {cartLoading ? (
+        <div className="empty-cart-state" role="status"><div className="cart-loader" aria-label="Loading cart"/> <h3>Loading your cart…</h3><p>Fetching your latest items.</p></div>
+      ) : cartError ? (
+        <div className="empty-cart-state"><h3>Unable to load cart</h3><p>{cartError}</p><button className="shop-now-btn" onClick={fetchCart}>Try again</button></div>
+      ) : cart.items.length === 0 ? (
         <div className="empty-cart-state">
           <FaShoppingBag size={64} className="empty-icon" />
           <h3>Your cart is empty</h3>
