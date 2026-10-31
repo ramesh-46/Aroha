@@ -205,10 +205,9 @@ function Profile() {
 
   // Reset ordersLoaded when hiding orders
   const toggleShowOrders = () => {
-    if (showOrders) {
-      setOrdersLoaded(false); // Reset loaded state when hiding
-    }
-    setShowOrders(!showOrders);
+    // Keep the already fetched order history in memory when the panel is collapsed.
+    // Reopening it is immediate; failed requests can still be retried explicitly.
+    setShowOrders(value => !value);
   };
 
   if (!user) return <p style={{ textAlign: 'center', padding: '60px', color: '#666' }}>Please log in to view your profile.</p>;
