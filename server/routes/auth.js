@@ -275,7 +275,7 @@ router.get("/users", async (req, res) => {
     }
 
     console.log("[DEBUG] 🔍 Executing User.find with query", { query: JSON.stringify(query) });
-    const users = await User.find(query).sort({ createdAt: -1 });
+    const users = await User.find(query).select("-password -recoveryCode").sort({ createdAt: -1 }).lean();
     console.log("[SUCCESS] ✅ Users fetched successfully", { count: users.length });
 
     console.log("[INFO] ✅ Get Users request completed successfully", { count: users.length });
@@ -326,7 +326,7 @@ router.get("/users/:id/orders", async (req, res) => {
   
   try {
     console.log("[DEBUG] 🔍 Finding user by ID", { userId: req.params.id });
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id).select("-password -recoveryCode");
     
     if (!user) {
       console.log("[WARN] ⚠️ Get User Orders failed - User not found", { userId: req.params.id });
