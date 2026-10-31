@@ -60,7 +60,8 @@ router.post("/", async (req, res) => {
     await cart.save();
     const populated = await loadCart(userId);
     console.info("[Cart]", requestId, "ADD_OK", { userId, productId, quantityAdded: quantity, finalQuantity: nextQuantity, size, color, itemCount: populated.items.length });
-    return res.status(200).json({ success: true, message: "Added to cart.", ...populated.toObject?.() ? populated.toObject() : populated });
+    const payload = typeof populated.toObject === "function" ? populated.toObject() : populated;
+    return res.status(200).json({ success: true, message: "Added to cart.", ...payload });
   } catch (err) {
     console.error("[Cart]", requestId, "ADD_FAILED", { userId, productId, message: err.message });
     return res.status(500).json({ success: false, message: "Unable to save cart item." });
