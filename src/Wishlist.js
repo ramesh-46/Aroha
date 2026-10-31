@@ -16,6 +16,8 @@ import axios from "axios";
 const Wishlist = () => {
   const navigate = useNavigate();
   const [wishlistItems, setWishlistItems] = useState([]);
+  const [wishlistLoading, setWishlistLoading] = useState(true);
+  const [wishlistError, setWishlistError] = useState("");
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [activeTab, setActiveTab] = useState("heart");
 
@@ -38,17 +40,19 @@ const Wishlist = () => {
         return;
       }
 
+      setWishlistLoading(true); setWishlistError("");
       try {
         const res = await axios.get(
-          `https://aroha.onrender.com/wishlist/${userId}`
+          `https://aroha.onrender.com/wishlist/${userId}`, { timeout: 20000 }
         );
 
         setWishlistItems(
           Array.isArray(res.data.items) ? res.data.items : []
         );
       } catch (err) {
-        console.error("Fetch Wishlist Error:", err);
-      }
+        console.error("[WISHLIST] LOAD_FAILED", { status: err.response?.status, message: err.response?.data?.message || err.message });
+        setWishlistError("Your wishlist could not be loaded. Please retry.");
+      } finally { setWishlistLoading(false); }
     };
 
     fetchWishlist();
