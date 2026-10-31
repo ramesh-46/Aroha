@@ -197,7 +197,7 @@ const PromotionPage = () => {
 
   return (
     <div style={styles.page}>
-      <h2 style={styles.heading}>Coupons, Promotions & Flash Sale</h2>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:10,flexWrap:"wrap"}}><h2 style={styles.heading}>Coupons, Promotions & Flash Sale</h2><button type="button" onClick={()=>navigate("/AdminDashboard")}>← Back to dashboard</button></div>
 
       <section style={styles.panel}>
         <h3 style={styles.sectionTitle}>Flash Live Sale</h3>
