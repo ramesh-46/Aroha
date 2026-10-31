@@ -10,7 +10,7 @@ const { writeAudit } = require("../middleware/activityLogger");
 
 const saltRounds = 10; // bcrypt salt rounds
 const maskEmail = (value) => { const parts = String(value || "").split("@"); return parts.length === 2 ? parts[0].slice(0, 1) + "***@" + parts[1] : ""; };
-const JWT_SECRET = process.env.JWT_SECRET || "secretkey"; // use env variable in production
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // 🚀 [INFO] User router initialized
 console.log("[INFO] 🚀 User router module loaded");
@@ -71,6 +71,7 @@ router.post("/signup", async (req, res) => {
 
 // Login
 router.post("/login", async (req, res) => {
+  if (!JWT_SECRET) return res.status(503).json({ success: false, message: "Authentication is not configured on this server." });
   console.log("[INFO] 🚀 Login request started", { mobile: req.body.mobile });
   
   const { mobile, password } = req.body;
@@ -108,6 +109,7 @@ router.post("/login", async (req, res) => {
 
 // Google Login
 router.post("/google-login", async (req, res) => {
+  if (!JWT_SECRET) return res.status(503).json({ success: false, message: "Authentication is not configured on this server." });
   console.log("[INFO] 🚀 Google Login request started", { userEmail: maskEmail(req.body.email) });
   
   const { email, name, photoUrl } = req.body;
