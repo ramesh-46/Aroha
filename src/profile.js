@@ -181,20 +181,33 @@ function Profile() {
   const downloadInvoice = async (order) => {
     try {
       const token = localStorage.getItem("authToken");
-      const response = await axios.get(`https://aroha.onrender.com/invoices/${encodeURIComponent(order.orderId || order._id)}/pdf`, {
-        headers: token ? { Authorization: "Bearer " + token } : {},
-        responseType: "blob"
+      if (!token) throw new Error("Please sign in again to download your invoice.");
+      const response = await axios.get(\`https://aroha.onrender.com/invoices/\${encodeURIComponent(order.orderId || order._id)}/pdf\`, {
+        headers: { Authorization: "Bearer " + token },
+        responseType: "blob",
+        timeout: 30000
       });
-      const url = window.URL.createObjectURL(new Blob([response.data], { type: "application/pdf" }));
+      const contentType = response.headers["content-type"] || "";
+      if (!contentType.includes("application/pdf")) {
+        const message = await response.data.text().catch(() => "");
+        throw new Error(message || "The server did not return a PDF. Please try again.");
+      }
+      const url = window.URL.createObjectURL(response.data);
       const link = document.createElement("a");
       link.href = url;
-      link.download = `Aroha-Invoice-${order.orderId || order._id}.pdf`;
+      link.download = \`Aroha-Invoice-\${order.orderId || order._id}.pdf\`;
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 1500);
     } catch (error) {
-      alert(error.response?.data?.message || "Invoice could not be downloaded. Please sign in again.");
+      let message = error.message || "Invoice could not be downloaded.";
+      if (error.response?.data instanceof Blob) {
+        message = await error.response.data.text().then(text => {
+          try { return JSON.parse(text).message || message; } catch (_) { return text || message; }
+        }).catch(() => message);
+      } else if (error.response?.data?.message) message = error.response.data.message;
+      alert(message);
     }
   };
 
