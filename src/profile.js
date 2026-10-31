@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
+import AddressBook from "./AddressBook";
 import { useNavigate } from "react-router-dom";
 import {
   FaSearch, FaFilter, FaTruck, FaCheckCircle, FaClock, FaTimesCircle, FaBox,
@@ -45,6 +46,7 @@ function Profile() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [ordersLoaded, setOrdersLoaded] = useState(false); // Track if orders are already loaded
+  const [ordersError, setOrdersError] = useState("");
 
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user"));
@@ -62,18 +64,23 @@ function Profile() {
   const fetchOrders = useCallback(async () => {
     if (!user) return;
     setIsLoading(true);
+    setOrdersError("");
     try {
-      const res = await axios.get(`https://aroha.onrender.com/orders/${user._id}`, { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
-      const sortedOrders = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const token = localStorage.getItem("authToken");
+      if (!token) throw new Error("Your session expired. Please sign in again.");
+      const res = await axios.get(`https://aroha.onrender.com/orders/user/${user._id}`, { headers: { Authorization: "Bearer " + token }, timeout: 20000 });
+      const orderRows = Array.isArray(res.data) ? res.data : (res.data.orders || []);
+      const sortedOrders = orderRows.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setOrders(sortedOrders);
       setFilteredOrders(sortedOrders);
       setOrdersLoaded(true);
     } catch (err) {
-      console.log(err);
+      console.error("[PROFILE_ORDERS] LOAD_FAILED", { userId: user?._id, status: err.response?.status, message: err.response?.data?.message || err.message });
+      setOrdersError(err.response?.data?.message || err.message || "Unable to load your orders.");
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user?._id]);
 
   // Fetch orders only when showOrders becomes true and orders are not already loaded
   useEffect(() => {
@@ -161,6 +168,14 @@ function Profile() {
     }
   };
 
+  const createOrderTicket = async (order) => {
+    const result = await Swal.fire({ title: "Get help with this order", input: "textarea", inputLabel: "Describe your issue", inputPlaceholder: "Tell us what you need help with…", inputAttributes: { maxlength: 3000 }, showCancelButton: true, confirmButtonText: "Create support ticket", inputValidator: value => !value?.trim() ? "Please enter your message." : undefined });
+    if (!result.isConfirmed) return;
+    try {
+      const response = await axios.post("https://aroha.onrender.com/support", { orderId: order._id, message: result.value.trim() }, { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
+      await Swal.fire("Support ticket created", "Ticket ID: " + response.data.query._id + ". You can continue the conversation with our support team.", "success");
+    } catch (error) { Swal.fire("Unable to create ticket", error.response?.data?.message || "Please sign in again and retry.", "error"); }
+  };
   const downloadInvoice = async (order) => {
     try {
       const token = localStorage.getItem("authToken");
@@ -787,6 +802,8 @@ function Profile() {
           </div>
         </div>
 
+        <AddressBook />
+
         {/* ORDERS SECTION (SCROLLABLE) */}
         {showOrders && (
           <div className="orders-section">
@@ -821,6 +838,7 @@ function Profile() {
             </div>
 
             {/* Loader or Orders List */}
+            {ordersError && !isLoading && <div style={{ padding: 14, marginBottom: 12, borderRadius: 10, background: "#fff1f2", color: "#9f1239" }}>{ordersError} <button onClick={fetchOrders}>Retry</button></div>}
             {isLoading ? (
               <div className="loader-container">
                 <FaSpinner className="loader" size={32} color="#10b981" />
@@ -880,7 +898,8 @@ function Profile() {
                       ))}
                     </div>
 
-                    <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 20px 14px" }}>
+                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, flexWrap: "wrap", padding: "0 20px 14px" }}>
+                      <button onClick={() => createOrderTicket(order)} className="action-btn edit-btn" style={{ background: "#171717" }}>Get help with this order</button>
                       <button onClick={() => downloadInvoice(order)} className="action-btn edit-btn" style={{ background: "#1d4ed8" }}>
                         <FaReceipt style={{ marginRight: 7 }} /> Download PDF Invoice
                       </button>
