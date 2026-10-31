@@ -1,8 +1,9 @@
 const jwt = require("jsonwebtoken");
 
-const JWT_SECRET = process.env.JWT_SECRET || "sellersecret";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 const sellerAuthMiddleware = (req, res, next) => {
+  if (!JWT_SECRET) return res.status(503).json({ success: false, message: "Admin authentication is not configured on this server." });
   const authHeader = req.headers.authorization || "";
   const token = authHeader.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
 
