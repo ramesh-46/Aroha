@@ -23,7 +23,7 @@ export default function UserManagement() {
   const fetchUsers = async (query = search) => {
     setLoading(true);
     try {
-      const res = await axios.get(API + "/auth/users" + (query ? "?q=" + encodeURIComponent(query) : ""), { headers });
+      const res = await axios.get(API + "/auth/users?limit=200" + (query ? "&q=" + encodeURIComponent(query) : ""), { headers });
       setUsers(res.data.users || []);
     } catch (err) {
       console.error("[ADMIN_USERS] FETCH_FAILED", err.response?.data || err.message);
