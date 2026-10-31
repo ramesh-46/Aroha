@@ -291,7 +291,7 @@ const PaymentPage = () => {
                 razorpay_order_id: paymentResponse.razorpay_order_id,
                 razorpay_payment_id: paymentResponse.razorpay_payment_id,
                 razorpay_signature: paymentResponse.razorpay_signature
-              });
+              }, { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
               if (verified.data.success && verified.data.paid) {
                 logRazorpayEvent("CLIENT_VERIFICATION_SUCCESS", data.arohaOrderId, { gatewayOrderId: paymentResponse.razorpay_order_id, paymentId: paymentResponse.razorpay_payment_id });
                 await Swal.fire("Payment successful", "Razorpay verified your payment. Your order is confirmed.", "success");
