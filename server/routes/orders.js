@@ -240,7 +240,8 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.get("/user/:userId", async (req, res) => {
+router.get("/user/:userId", require("../middleware/authMiddleware"), async (req, res) => {
+  if (String(req.params.userId) !== String(req.user.id)) return res.status(403).json({ success: false, message: "You may only view your own orders." });
   const { userId } = req.params;
   try {
     const orders = await Order.find({ userId })
@@ -266,7 +267,8 @@ router.get("/all", sellerAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/:userId", async (req, res) => {
+router.get("/:userId", require("../middleware/authMiddleware"), async (req, res) => {
+  if (String(req.params.userId) !== String(req.user.id)) return res.status(403).json({ success: false, message: "You may only view your own orders." });
   const { userId } = req.params;
   try {
     const orders = await Order.find({ userId })
@@ -347,9 +349,9 @@ router.put("/status/:orderId", sellerAuthMiddleware, async (req, res) => {
   }
 });
 
-router.get("/users/all", async (req, res) => {
+router.get("/users/all", sellerAuthMiddleware, async (req, res) => {
   try {
-    const users = await User.find().sort({ createdAt: -1 });
+    const users = await User.find().select("-password -recoveryCode").sort({ createdAt: -1 }).limit(500);
     res.json({ success: true, users });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
