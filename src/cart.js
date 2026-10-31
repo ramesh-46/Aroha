@@ -407,7 +407,7 @@ function Cart() {
   return (
     <div className="cart-page-container">
       {/* INJECT CSS STYLES */}
-      <style>{`
+      <style>{`@keyframes arohaSpin{to{transform:rotate(360deg)}}
         .cart-page-container {
           max-width: 1200px;
           margin: 0 auto;
@@ -745,7 +745,7 @@ function Cart() {
       )}
 
       {cartLoading ? (
-        <div className="empty-cart-state" role="status"><div className="cart-loader" aria-label="Loading cart"/> <h3>Loading your cart…</h3><p>Fetching your latest items.</p></div>
+        <div className="empty-cart-state" role="status"><div aria-label="Loading cart" style={{width:30,height:30,border:"3px solid #e5e5e5",borderTopColor:"#171717",borderRadius:"50%",animation:"arohaSpin .8s linear infinite",margin:"0 auto"}}/> <h3>Loading your cart…</h3><p>Fetching your latest items.</p></div>
       ) : cartError ? (
         <div className="empty-cart-state"><h3>Unable to load cart</h3><p>{cartError}</p><button className="shop-now-btn" onClick={fetchCart}>Try again</button></div>
       ) : cart.items.length === 0 ? (
