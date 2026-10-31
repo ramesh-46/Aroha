@@ -129,7 +129,7 @@ const Wishlist = () => {
   return (
     <div className="wishlist-page-container">
       {/* INJECT CSS STYLES */}
-      <style>{`
+      <style>{`@keyframes arohaSpin{to{transform:rotate(360deg)}}
         .wishlist-page-container {
           max-width: 1200px;
           margin: 0 auto;
@@ -441,7 +441,7 @@ const Wishlist = () => {
         </h2>
 
         {wishlistLoading ? (
-          <div className="empty-wishlist-state" role="status"><div className="wishlist-loader"/> <h3>Loading your wishlist…</h3></div>
+          <div className="empty-wishlist-state" role="status"><div className="wishlist-loader" style={{width:30,height:30,border:"3px solid #e5e5e5",borderTopColor:"#171717",borderRadius:"50%",animation:"arohaSpin .8s linear infinite",margin:"0 auto"}}/> <h3>Loading your wishlist…</h3></div>
         ) : wishlistError ? (
           <div className="empty-wishlist-state"><p>{wishlistError}</p><button className="action-btn" onClick={() => window.location.reload()}>Try again</button></div>
         ) : displayItems.length === 0 ? (
