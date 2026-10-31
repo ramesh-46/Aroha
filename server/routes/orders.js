@@ -100,9 +100,8 @@ router.get("/checkout-settings", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", require("../middleware/authMiddleware"), async (req, res) => {
   const {
-    userId,
     items,
     customerName,
     customerMobile,
@@ -113,8 +112,9 @@ router.post("/", async (req, res) => {
     customerLocation,
     couponDetails
   } = req.body;
+  const userId = req.user.id;
 
-  if (!userId || !items || !items.length) {
+  if (!items || !items.length) {
     return res.status(400).json({ message: "Missing userId or items" });
   }
 
