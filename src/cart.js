@@ -100,7 +100,7 @@ function Cart() {
   const fetchOrders = async () => {
     if (!user) return;
     try {
-      const res = await axios.get(`https://aroha.onrender.com/orders/${user._id}`);
+      const res = await axios.get(`https://aroha.onrender.com/orders/${user._id}`, { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
       setPreviousOrders(res.data);
     } catch (err) {
       console.error("Fetch Orders Error:", err);
