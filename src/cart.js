@@ -264,7 +264,7 @@ function Cart() {
       customerLocation,
       couponCode: appliedCoupon ? appliedCoupon.code : "",
       redeemCoins: safeRedeemCoins,
-    });
+    }, { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
 
     if (response.data.success) {
       navigate("/payment", {
