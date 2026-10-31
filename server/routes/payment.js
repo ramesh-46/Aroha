@@ -25,7 +25,7 @@ router.post("/create-session", auth, async (req, res) => {
     const userId = req.user.id;
     const checkoutUser = await User.findById(userId).select("name mobile email addresses address").lean();
     if (!checkoutUser) return res.status(404).json({ success: false, error: "Customer account not found." });
-    const selectedAddress = (checkoutUser.addresses || []).find(address => String(address._id) === String(addressId));
+    const selectedAddress = (checkoutUser.addresses || []).find(address => String(address._id) === String(addressId)) || (String(addressId) === "legacy" && checkoutUser.address ? { name: checkoutUser.name, mobile: checkoutUser.mobile, line1: checkoutUser.address } : null);
     if (!selectedAddress) return res.status(400).json({ success: false, error: "Select a saved delivery address before checkout." });
     const customerDetails = { name: selectedAddress.name || checkoutUser.name, mobile: selectedAddress.mobile || checkoutUser.mobile, address: [selectedAddress.line1, selectedAddress.line2, selectedAddress.landmark, selectedAddress.city, selectedAddress.state, selectedAddress.pincode].filter(Boolean).join(", ") };
   let reservedCoins = 0;
