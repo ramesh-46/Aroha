@@ -233,6 +233,7 @@ function ProductManagement() {
 
   return (
     <div style={styles.page}>
+      <button style={styles.secondaryButton} onClick={() => navigate("/AdminDashboard")}>← Back to dashboard</button>
       <div style={styles.headerRow}>
         <div>
           <h2 style={styles.heading}>Product Management</h2>

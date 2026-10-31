@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FaTerminal, FaCopy, FaFilePdf, FaSyncAlt, FaSearch, FaExclamationTriangle } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
 
 const API = "https://aroha.onrender.com/admin/logs";
 const levelOf = (entry) => entry.level === "error" ? "error" : entry.level === "warn" ? "warning" : entry.level === "info" ? "info" : (/error|failed|exception|rejected/i.test(entry.message || "") ? "error" : /warn/i.test(entry.message || "") ? "warning" : "info");
@@ -7,6 +8,7 @@ const levelColor = { error: "#fca5a5", warning: "#fcd34d", info: "#6ee7b7" };
 const btn = { display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 14px", borderRadius: 10, border: "1px solid #334155", background: "#182337", color: "#f8fafc", fontWeight: 800, cursor: "pointer" };
 
 export default function LogsPage() {
+  const navigate = useNavigate();
   const [logs, setLogs] = useState([]);
   const [search, setSearch] = useState("");
   const [level, setLevel] = useState("all");
@@ -74,7 +76,7 @@ export default function LogsPage() {
     <div style={{ maxWidth: 1450, margin: "0 auto" }}>
       <header style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 24, flexWrap: "wrap" }}>
         <div style={{ width: 54, height: 54, display: "grid", placeItems: "center", borderRadius: 16, background: "linear-gradient(135deg,#34d399,#22d3ee)", color: "#062018", fontSize: 24 }}><FaTerminal /></div>
-        <div style={{ flex: "1 1 240px" }}><div style={{ color: "#5eead4", fontSize: 11, fontWeight: 900, letterSpacing: ".15em" }}>AROHA • OPERATIONS</div><h1 style={{ margin: "4px 0", fontSize: "clamp(27px,4vw,38px)", letterSpacing: "-.04em" }}>Runtime Logs</h1><div style={{ color: "#94a3b8", fontSize: 13 }}>Aroha backend · newest events first</div></div>
+        <button onClick={() => navigate("/AdminDashboard")} style={btn}>← Back</button><div style={{ flex: "1 1 240px" }}><div style={{ color: "#5eead4", fontSize: 11, fontWeight: 900, letterSpacing: ".15em" }}>AROHA • OPERATIONS</div><h1 style={{ margin: "4px 0", fontSize: "clamp(27px,4vw,38px)", letterSpacing: "-.04em" }}>Runtime Logs</h1><div style={{ color: "#94a3b8", fontSize: 13 }}>Aroha backend · newest events first</div></div>
         <span style={{display:"inline-flex",alignItems:"center",gap:7,color:connection==="live"?"#6ee7b7":connection==="reconnecting"?"#fcd34d":"#94a3b8",fontSize:12,fontWeight:900}}>{connection==="live"?"● LIVE TAIL":connection==="reconnecting"?"● RECONNECTING":connection==="paused"?"● PAUSED":"● CONNECTING"}</span><button style={btn} onClick={() => setLive((value) => !value)}>{live ? "Pause live" : "Resume live"}</button><button style={btn} onClick={loadLogs} disabled={loading}><FaSyncAlt /> {loading ? "Refreshing…" : "Refresh history"}</button>
       </header>
 

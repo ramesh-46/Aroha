@@ -16,6 +16,8 @@ import axios from "axios";
 const Wishlist = () => {
   const navigate = useNavigate();
   const [wishlistItems, setWishlistItems] = useState([]);
+  const [wishlistLoading, setWishlistLoading] = useState(true);
+  const [wishlistError, setWishlistError] = useState("");
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [activeTab, setActiveTab] = useState("heart");
 
@@ -38,17 +40,19 @@ const Wishlist = () => {
         return;
       }
 
+      setWishlistLoading(true); setWishlistError("");
       try {
         const res = await axios.get(
-          `https://aroha.onrender.com/wishlist/${userId}`
+          `https://aroha.onrender.com/wishlist/${userId}`, { timeout: 20000 }
         );
 
         setWishlistItems(
           Array.isArray(res.data.items) ? res.data.items : []
         );
       } catch (err) {
-        console.error("Fetch Wishlist Error:", err);
-      }
+        console.error("[WISHLIST] LOAD_FAILED", { status: err.response?.status, message: err.response?.data?.message || err.message });
+        setWishlistError("Your wishlist could not be loaded. Please retry.");
+      } finally { setWishlistLoading(false); }
     };
 
     fetchWishlist();
@@ -125,7 +129,7 @@ const Wishlist = () => {
   return (
     <div className="wishlist-page-container">
       {/* INJECT CSS STYLES */}
-      <style>{`
+      <style>{`@keyframes arohaSpin{to{transform:rotate(360deg)}}
         .wishlist-page-container {
           max-width: 1200px;
           margin: 0 auto;
@@ -436,7 +440,11 @@ const Wishlist = () => {
           My Wishlist ({displayItems.length} items)
         </h2>
 
-        {displayItems.length === 0 ? (
+        {wishlistLoading ? (
+          <div className="empty-wishlist-state" role="status"><div className="wishlist-loader" style={{width:30,height:30,border:"3px solid #e5e5e5",borderTopColor:"#171717",borderRadius:"50%",animation:"arohaSpin .8s linear infinite",margin:"0 auto"}}/> <h3>Loading your wishlist…</h3></div>
+        ) : wishlistError ? (
+          <div className="empty-wishlist-state"><p>{wishlistError}</p><button className="action-btn" onClick={() => window.location.reload()}>Try again</button></div>
+        ) : displayItems.length === 0 ? (
           <div className="empty-wishlist-state">
             <FaHeart size={64} className="empty-icon" />
             <h3>Your wishlist is empty</h3>

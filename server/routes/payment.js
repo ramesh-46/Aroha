@@ -21,8 +21,13 @@ const upload = multer({ storage: storage });
 router.post("/create-session", auth, async (req, res) => {
   const requestId = require("crypto").randomUUID();
   try {
-    const { cartItems, customerDetails, couponCode = "", customerLocation = null, redeemCoins = 0 } = req.body || {};
+    const { cartItems, addressId, customerLocation = null, couponCode = "", redeemCoins = 0 } = req.body || {};
     const userId = req.user.id;
+    const checkoutUser = await User.findById(userId).select("name mobile email addresses address").lean();
+    if (!checkoutUser) return res.status(404).json({ success: false, error: "Customer account not found." });
+    const selectedAddress = (checkoutUser.addresses || []).find(address => String(address._id) === String(addressId)) || (String(addressId) === "legacy" && checkoutUser.address ? { name: checkoutUser.name, mobile: checkoutUser.mobile, line1: checkoutUser.address } : null);
+    if (!selectedAddress) return res.status(400).json({ success: false, error: "Select a saved delivery address before checkout." });
+    const customerDetails = { name: selectedAddress.name || checkoutUser.name, mobile: selectedAddress.mobile || checkoutUser.mobile, address: [selectedAddress.line1, selectedAddress.line2, selectedAddress.landmark, selectedAddress.city, selectedAddress.state, selectedAddress.pincode].filter(Boolean).join(", ") };
   let reservedCoins = 0;
   let reservedUserId = null;
     if (!userId || !Array.isArray(cartItems) || !cartItems.length || !customerDetails?.name || !customerDetails?.mobile || !customerDetails?.address) {
@@ -100,22 +105,27 @@ router.post("/create-session", auth, async (req, res) => {
       rewardDiscount = roundCurrency(requestedCoins * Number(settings.coinRupeeValue));
     }
     const finalAmount = roundCurrency(Math.max(0, subtotalAmount - discountAmount + deliveryCharge - rewardDiscount));
-    if (finalAmount <= 0) return res.status(400).json({ success: false, error: "Order total must be greater than zero." });
-    const upiId = process.env.UPI_ID;
-    if (!upiId) return res.status(503).json({ success: false, error: "UPI payment is not configured." });
+    if (finalAmount <= 0) {
+      if (reservedCoins > 0) await User.updateOne({ _id: userId }, { $inc: { rewardCoins: reservedCoins }, $push: { rewardHistory: { type: "refund", coins: reservedCoins, note: "Reward coins returned because checkout total was invalid." } } });
+      return res.status(400).json({ success: false, error: "Order total must be greater than zero." });
+    }
+    const upiId = process.env.UPI_ID || "";
+    if (!upiId && (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)) {
+      if (reservedCoins > 0) await User.updateOne({ _id: userId }, { $inc: { rewardCoins: reservedCoins }, $push: { rewardHistory: { type: "refund", coins: reservedCoins, note: "Reward coins returned because no payment provider is configured." } } });
+      return res.status(503).json({ success: false, error: "No payment provider is configured. Please contact support." });
+    }
 
     const orderId = "ORDER_" + require("crypto").randomUUID().toUpperCase().slice(0, 8);
-    const upiUrl = "upi://pay?pa=" + encodeURIComponent(upiId) + "&pn=AROHA%20HUB&am=" + finalAmount + "&cu=INR";
+    const upiUrl = upiId ? "upi://pay?pa=" + encodeURIComponent(upiId) + "&pn=AROHA%20HUB&am=" + finalAmount + "&cu=INR" : "";
     const newOrder = new Order({
       orderId, userId, items: orderItems, customerName: customerDetails.name,
       customerMobile: customerDetails.mobile, deliveryAddress: customerDetails.address,
       customerLocation: customerLocation || {}, discountAmount, couponCode: normalizedCouponCode,
       couponDetails: couponRecord, subtotalAmount, deliveryCharge, totalAmount: finalAmount,
       rewardCoinsRedeemed: reservedCoins, rewardDiscountAmount: rewardDiscount,
-      status: "Payment Verification Pending", paymentMethod: "UPI QR", upiId, upiUrl
+      status: "Payment Verification Pending", paymentMethod: upiId ? "UPI QR" : "Online", upiId, upiUrl
     });
     await newOrder.save();
-    const checkoutUser = await User.findById(userId).select("email").lean().catch(() => null);
     await writeAudit({ userId, username: checkoutUser?.name || customerDetails?.name || "Customer", role: "user", event: "checkout.session_created", message: "Checkout session created", requestId, metadata: { orderId, itemCount: orderItems.length, totalQuantity, finalAmount } });
     console.log("[CHECKOUT] SESSION_CREATED", { requestId, orderId, userId: String(userId), itemCount: orderItems.length, totalQuantity, subtotalAmount, discountAmount, deliveryCharge, finalAmount, couponCode: normalizedCouponCode || null });
     return res.json({ success: true, orderId, upiUrl, upiId, amount: finalAmount, customerDetails, orderItems, pricing: { subtotalAmount, discountAmount, deliveryCharge, rewardDiscount, rewardCoinsRedeemed: reservedCoins, totalAmount: finalAmount } });
@@ -239,7 +249,8 @@ router.post("/razorpay/create-order", auth, async (req, res) => {
     order.razorpayOrderId = gatewayOrder.id;
     order.paymentMethod = "Online";
     await order.save();
-    console.log("[Razorpay]", requestId, "ORDER_CREATED", { orderId: order.orderId, gatewayOrderId: gatewayOrder.id, amountPaise: gatewayOrder.amount });
+    const checkoutCustomer = await User.findById(order.userId).select("name email").lean();
+    console.log("[Razorpay]", requestId, "ORDER_CREATED", { username: checkoutCustomer?.name || order.customerName || "Customer", userId: String(order.userId), userEmail: checkoutCustomer?.email || null, orderId: order.orderId, gatewayOrderId: gatewayOrder.id, paymentId: null, amountPaise: gatewayOrder.amount });
     res.json({ success: true, keyId, razorpayOrderId: gatewayOrder.id, amount: gatewayOrder.amount, currency: gatewayOrder.currency, name: order.customerName, mobile: order.customerMobile, arohaOrderId: order.orderId });
   } catch (err) {
     console.error("[Razorpay]", requestId, "Create-order error", err.message);
@@ -404,7 +415,8 @@ router.post("/razorpay/log-event", auth, async (req, res) => {
   }
   const { event, orderId, gatewayOrderId, paymentId, details } = eventBody;
   if (!allowedEvents.has(event) || !orderId) {
-    return res.status(400).json({ success: false, error: "Invalid Razorpay event." });
+    console.warn("[Razorpay][CLIENT_EVENT_INVALID]", { userId: String(req.user.id), event: String(event || "missing").slice(0, 80), hasOrderId: Boolean(orderId), hasGatewayOrderId: Boolean(gatewayOrderId), hasPaymentId: Boolean(paymentId), at: new Date().toISOString() });
+    return res.status(400).json({ success: false, error: "Invalid Razorpay event. A valid order ID is required." });
   }
   const safeDetails = details && typeof details === "object" ? {
     code: details.code ? String(details.code).slice(0, 100) : undefined,
@@ -438,14 +450,17 @@ router.post("/razorpay/log-event", auth, async (req, res) => {
       console.error("[Razorpay] Could not record failed payment", error.message);
     }
   }
-  const eventOrder = await Order.findOne({ orderId: String(orderId) }).select("userId").lean().catch(() => null);
-  const eventUser = eventOrder?.userId ? await User.findById(eventOrder.userId).select("email").lean().catch(() => null) : null;
+  const eventOrder = await Order.findOne({ orderId: String(orderId), userId: req.user.id }).select("userId orderId razorpayOrderId razorpayPaymentId transactionId").lean().catch(() => null);
+  const eventUser = eventOrder?.userId ? await User.findById(eventOrder.userId).select("name email").lean().catch(() => null) : null;
+  const resolvedPaymentId = paymentId || eventOrder?.razorpayPaymentId || eventOrder?.transactionId || null;
   console.log("[Razorpay][CLIENT_EVENT]", {
     event,
-    userEmail: maskEmail(eventUser?.email),
-    orderId: String(orderId).slice(0, 80),
-    gatewayOrderId: gatewayOrderId ? String(gatewayOrderId).slice(0, 80) : undefined,
-    paymentId: paymentId ? String(paymentId).slice(0, 80) : undefined,
+    username: eventUser?.name || "Customer",
+    userId: String(req.user.id),
+    userEmail: eventUser?.email || null,
+    orderId: eventOrder?.orderId || String(orderId),
+    gatewayOrderId: gatewayOrderId || eventOrder?.razorpayOrderId || null,
+    paymentId: resolvedPaymentId,
     details: safeDetails,
     at: new Date().toISOString()
   });

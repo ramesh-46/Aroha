@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import Swal from "./sweetalertConfig";
+import { useNavigate } from "react-router-dom";
 
 const API = "https://aroha.onrender.com";
 const defaults = { rewardsEnabled: true, coinsPer100Spent: 5, referralBonusCoins: 100, referredUserBonusCoins: 100, coinRupeeValue: 0.1 };
 
 export default function ReferralRewardsControls() {
+  const navigate = useNavigate();
   const [settings, setSettings] = useState(defaults);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -31,7 +33,7 @@ export default function ReferralRewardsControls() {
   };
   if (loading) return <main style={styles.page}>Loading referral and rewards controls…</main>;
   return <main style={styles.page}>
-    <header><p style={styles.eyebrow}>AROHA ADMIN</p><h1 style={styles.title}>Referral & Rewards Controls</h1><p style={styles.muted}>Manage customer reward coins and referral bonuses from one dedicated page.</p></header>
+    <header><button type="button" onClick={()=>navigate("/AdminDashboard")}>← Back to dashboard</button><p style={styles.eyebrow}>AROHA ADMIN</p><h1 style={styles.title}>Referral & Rewards Controls</h1><p style={styles.muted}>Manage customer reward coins and referral bonuses from one dedicated page.</p></header>
     <form onSubmit={save} style={styles.card}>
       <label style={styles.toggle}><input type="checkbox" checked={!!settings.rewardsEnabled} onChange={(e) => change("rewardsEnabled", e.target.checked)} /> Enable reward and referral credits</label>
       <div style={styles.grid}>

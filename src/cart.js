@@ -34,9 +34,18 @@ const IconSVG = ({ name }) => {
 function Cart() {
   // --- STATE MANAGEMENT ---
   const [cart, setCart] = useState({ items: [] });
+  const [cartLoading, setCartLoading] = useState(true);
+  const [cartError, setCartError] = useState("");
   const [selectedItems, setSelectedItems] = useState([]);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [customerDetails, setCustomerDetails] = useState({ name: "", mobile: "", address: "" });
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [addressesLoading, setAddressesLoading] = useState(false);
+  const [addressDraft, setAddressDraft] = useState({ label: "Home", name: "", mobile: "", line1: "", line2: "", landmark: "", city: "", state: "", pincode: "", isDefault: false });
+  const [editingAddressId, setEditingAddressId] = useState("");
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [previousOrders, setPreviousOrders] = useState([]);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -65,6 +74,7 @@ function Cart() {
     fetchCart();
     fetchOrders();
     fetchCheckoutSettings();
+    fetchSavedAddresses();
     const token = localStorage.getItem("authToken");
     if (token) axios.get("https://aroha.onrender.com/rewards/me", { headers: { Authorization: "Bearer " + token } }).then((res) => setRewardBalance(Number(res.data.coins) || 0)).catch((error) => console.warn("[Rewards] Balance unavailable", error.response?.status));
 
@@ -83,18 +93,44 @@ function Cart() {
     }
   }, []);
 
+  const authHeaders = () => ({ Authorization: "Bearer " + localStorage.getItem("authToken") });
+  const fetchSavedAddresses = async () => {
+    if (!localStorage.getItem("authToken")) return;
+    setAddressesLoading(true);
+    try { const r = await axios.get("https://aroha.onrender.com/auth/addresses", { headers: authHeaders() }); const rows = r.data.addresses || []; setSavedAddresses(rows); const preferred = rows.find(a => a.isDefault) || rows[0]; if (preferred) setSelectedAddressId(String(preferred._id)); }
+    catch (e) { console.error("[ADDRESS_BOOK] LOAD_FAILED", { status: e.response?.status, message: e.response?.data?.message || e.message }); }
+    finally { setAddressesLoading(false); }
+  };
+  const saveAddress = async () => {
+    const required = ["name","mobile","line1","city","state","pincode"];
+    if (required.some(k => !String(addressDraft[k] || "").trim())) return Swal.fire("Complete address required", "Fill name, mobile, street address, city, state and PIN code.", "warning");
+    try {
+      const url = "https://aroha.onrender.com/auth/addresses" + (editingAddressId ? "/" + editingAddressId : "");
+      const r = editingAddressId ? await axios.put(url, addressDraft, { headers: authHeaders() }) : await axios.post(url, addressDraft, { headers: authHeaders() });
+      const rows = r.data.addresses || []; setSavedAddresses(rows); const chosen = rows.find(a => String(a._id) === String(editingAddressId)) || rows[rows.length - 1]; if (chosen) setSelectedAddressId(String(chosen._id));
+      setShowAddressForm(false); setEditingAddressId(""); Swal.fire({ title: "Address saved", icon: "success", timer: 1000, showConfirmButton: false });
+    } catch (e) { Swal.fire("Address not saved", e.response?.data?.message || "Please check the details and try again.", "error"); }
+  };
+  const deleteAddress = async id => {
+    const result = await Swal.fire({ title: "Delete this address?", icon: "warning", showCancelButton: true, confirmButtonText: "Delete" }); if (!result.isConfirmed) return;
+    try { const r = await axios.delete("https://aroha.onrender.com/auth/addresses/" + id, { headers: authHeaders() }); const rows = r.data.addresses || []; setSavedAddresses(rows); if (String(selectedAddressId) === String(id)) setSelectedAddressId(String((rows.find(a => a.isDefault) || rows[0] || {})._id || "")); }
+    catch (e) { Swal.fire("Delete failed", e.response?.data?.message || "Unable to delete address.", "error"); }
+  };
+
   // --- API CALLS ---
   const fetchCart = async () => {
-    if (!user) return;
+    if (!user) { setCartLoading(false); return; }
+    setCartLoading(true); setCartError("");
     try {
-      const res = await axios.get(`https://aroha.onrender.com/cart/${user._id}`);
-      setCart(res.data);
+      const res = await axios.get(`https://aroha.onrender.com/cart/${user._id}`, { timeout: 20000 });
+      setCart({ ...res.data, items: Array.isArray(res.data.items) ? res.data.items : [] });
       if (res.data.items.length > 0 && selectedItems.length === 0) {
         setSelectedItems(res.data.items.map(i => i.productId._id));
       }
     } catch (err) {
-      console.error("Fetch Cart Error:", err);
-    }
+      console.error("[CART] LOAD_FAILED", { status: err.response?.status, message: err.response?.data?.message || err.message });
+      setCartError("Your cart could not be loaded. Please retry.");
+    } finally { setCartLoading(false); }
   };
 
   const fetchOrders = async () => {
@@ -237,7 +273,7 @@ function Cart() {
   }
 
   // If delivery details are missing, show the modal
-  if (!customerDetails.name || !customerDetails.mobile || !customerDetails.address) {
+  if (!selectedAddressId) {
     setShowOrderModal(true);
     return;
   }
@@ -253,14 +289,10 @@ function Cart() {
       quantity: i.quantity,
     }));
 
+    setCheckoutLoading(true);
     const response = await axios.post("https://aroha.onrender.com/payment/create-session", {
-      userId: user._id,
       cartItems: formattedItems,
-      customerDetails: {
-        name: customerDetails.name,
-        mobile: customerDetails.mobile,
-        address: customerDetails.address,
-      },
+      addressId: selectedAddressId,
       customerLocation,
       couponCode: appliedCoupon ? appliedCoupon.code : "",
       redeemCoins: safeRedeemCoins,
@@ -282,9 +314,9 @@ function Cart() {
     }
   } catch (err) {
     console.error("Checkout error:", err);
-    const errorMessage = err.response?.data?.error || "Failed to create payment session";
-    Swal.fire("Error", errorMessage, "error");
-  }
+    const errorMessage = err.response?.data?.error || err.response?.data?.message || "Failed to create payment session";
+    Swal.fire("Checkout failed", errorMessage, "error");
+  } finally { setCheckoutLoading(false); }
 };
 
   const handlePlaceOrder = async () => {
@@ -375,7 +407,7 @@ function Cart() {
   return (
     <div className="cart-page-container">
       {/* INJECT CSS STYLES */}
-      <style>{`
+      <style>{`@keyframes arohaSpin{to{transform:rotate(360deg)}}
         .cart-page-container {
           max-width: 1200px;
           margin: 0 auto;
@@ -712,7 +744,11 @@ function Cart() {
         </div>
       )}
 
-      {cart.items.length === 0 ? (
+      {cartLoading ? (
+        <div className="empty-cart-state" role="status"><div aria-label="Loading cart" style={{width:30,height:30,border:"3px solid #e5e5e5",borderTopColor:"#171717",borderRadius:"50%",animation:"arohaSpin .8s linear infinite",margin:"0 auto"}}/> <h3>Loading your cart…</h3><p>Fetching your latest items.</p></div>
+      ) : cartError ? (
+        <div className="empty-cart-state"><h3>Unable to load cart</h3><p>{cartError}</p><button className="shop-now-btn" onClick={fetchCart}>Try again</button></div>
+      ) : cart.items.length === 0 ? (
         <div className="empty-cart-state">
           <FaShoppingBag size={64} className="empty-icon" />
           <h3>Your cart is empty</h3>
@@ -885,40 +921,35 @@ function Cart() {
         </div>
       )}
 
-      {/* ORDER MODAL (Delivery Details) */}
+      {/* SAVED DELIVERY ADDRESS PICKER */}
       {showOrderModal && (
         <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Delivery Details</h3>
-            <input
-              type="text"
-              className="modal-input"
-              placeholder="Full Name"
-              value={customerDetails.name}
-              onChange={e => setCustomerDetails({...customerDetails, name: e.target.value})}
-            />
-            <input
-              type="tel"
-              className="modal-input"
-              placeholder="Mobile Number"
-              value={customerDetails.mobile}
-              onChange={e => setCustomerDetails({...customerDetails, mobile: e.target.value})}
-            />
-            <textarea
-              className="modal-input"
-              placeholder="Complete Address"
-              value={customerDetails.address}
-              onChange={e => setCustomerDetails({...customerDetails, address: e.target.value})}
-              rows="3"
-            />
+          <div className="modal-content" style={{ width: "min(620px,94vw)", maxHeight: "88vh", overflowY: "auto" }}>
+            <h3 style={{ marginTop: 0, marginBottom: 6 }}>Choose delivery address</h3>
+            <p style={{ color: "#737373", fontSize: 13 }}>Save and manage up to 10 delivery addresses in your profile.</p>
+            {addressesLoading ? <p style={{ padding: 20, textAlign: "center" }}>Loading saved addresses…</p> : savedAddresses.map(address => (
+              <div key={address._id} onClick={() => setSelectedAddressId(String(address._id))} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, margin: "8px 0", border: "1px solid " + (String(selectedAddressId) === String(address._id) ? "#171717" : "#e7e5e4"), borderRadius: 12, background: String(selectedAddressId) === String(address._id) ? "#f5f5f4" : "#fff" }}>
+                <input type="radio" checked={String(selectedAddressId) === String(address._id)} onChange={() => setSelectedAddressId(String(address._id))}/>
+                <div style={{ flex: 1, minWidth: 0 }}><strong>{address.label} {address.isDefault ? "· Default" : ""}</strong><div style={{ fontSize: 13 }}>{address.name} · {address.mobile}</div><div style={{ color: "#737373", fontSize: 13, overflowWrap: "anywhere" }}>{[address.line1,address.line2,address.landmark,address.city,address.state,address.pincode].filter(Boolean).join(", ")}</div></div>
+                <button type="button" onClick={e => { e.stopPropagation(); setAddressDraft({ ...address, isDefault: !!address.isDefault }); setEditingAddressId(String(address._id)); setShowAddressForm(true); }}>Edit</button>
+                <button type="button" onClick={e => { e.stopPropagation(); deleteAddress(address._id); }}>Delete</button>
+              </div>
+            ))}
+            {!addressesLoading && savedAddresses.length === 0 && <p>No saved addresses. Add one to continue.</p>}
+            {!showAddressForm ? <button className="btn-cancel" style={{ width: "100%", margin: "10px 0" }} disabled={savedAddresses.length >= 10} onClick={() => { setEditingAddressId(""); setAddressDraft({ label: "Home", name: user?.name || "", mobile: user?.mobile || "", line1: "", line2: "", landmark: "", city: "", state: "", pincode: "", isDefault: savedAddresses.length === 0 }); setShowAddressForm(true); }}>+ Add address ({savedAddresses.length}/10)</button> : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 8, margin: "12px 0" }}>
+                {["label","name","mobile","line1","line2","landmark","city","state","pincode"].map(key => <input key={key} className="modal-input" style={{ minWidth: 0, gridColumn: ["line1","line2","landmark"].includes(key) ? "1 / -1" : "auto" }} placeholder={{label:"Label (Home/Work)",name:"Full name",mobile:"Mobile number",line1:"Address line 1",line2:"Address line 2 (optional)",landmark:"Landmark (optional)",city:"City",state:"State",pincode:"PIN code"}[key]} value={addressDraft[key] || ""} onChange={e => setAddressDraft(old => ({ ...old, [key]: e.target.value }))}/>)}
+                <label style={{ gridColumn: "1 / -1", fontSize: 13 }}><input type="checkbox" checked={!!addressDraft.isDefault} onChange={e => setAddressDraft(old => ({ ...old, isDefault: e.target.checked }))}/> Set as default</label>
+                <button className="btn-confirm" onClick={saveAddress}>Save address</button><button className="btn-cancel" onClick={() => { setShowAddressForm(false); setEditingAddressId(""); }}>Cancel</button>
+              </div>
+            )}
             <div className="modal-actions">
-              <button className="btn-confirm" onClick={handleProceedToCheckout}>Proceed to Payment</button>
-              <button className="btn-cancel" onClick={() => setShowOrderModal(false)}>Cancel</button>
+              <button className="btn-confirm" disabled={!selectedAddressId || checkoutLoading || addressesLoading} onClick={() => { setShowOrderModal(false); handleProceedToCheckout(); }}>{checkoutLoading ? "Preparing checkout…" : "Continue to payment"}</button>
+              <button className="btn-cancel" onClick={() => setShowOrderModal(false)}>Close</button>
             </div>
           </div>
         </div>
       )}
-
       {/* MOBILE BOTTOM NAV (ONLY ON SMALL SCREENS) */}
       <div className="bottom-nav-mobile">
         {[
