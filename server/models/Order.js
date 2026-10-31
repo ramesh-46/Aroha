@@ -42,6 +42,7 @@ const orderSchema = new mongoose.Schema({
     enum: [
       "Pending",
       "Under Consideration",
+      "Under Confirmation",
       "Processing",
       "Packing",
       "Shipped",
