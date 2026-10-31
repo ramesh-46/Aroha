@@ -913,40 +913,35 @@ function Cart() {
         </div>
       )}
 
-      {/* ORDER MODAL (Delivery Details) */}
+      {/* SAVED DELIVERY ADDRESS PICKER */}
       {showOrderModal && (
         <div className="modal-overlay">
-          <div className="modal-content">
-            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Delivery Details</h3>
-            <input
-              type="text"
-              className="modal-input"
-              placeholder="Full Name"
-              value={customerDetails.name}
-              onChange={e => setCustomerDetails({...customerDetails, name: e.target.value})}
-            />
-            <input
-              type="tel"
-              className="modal-input"
-              placeholder="Mobile Number"
-              value={customerDetails.mobile}
-              onChange={e => setCustomerDetails({...customerDetails, mobile: e.target.value})}
-            />
-            <textarea
-              className="modal-input"
-              placeholder="Complete Address"
-              value={customerDetails.address}
-              onChange={e => setCustomerDetails({...customerDetails, address: e.target.value})}
-              rows="3"
-            />
+          <div className="modal-content" style={{ width: "min(620px,94vw)", maxHeight: "88vh", overflowY: "auto" }}>
+            <h3 style={{ marginTop: 0, marginBottom: 6 }}>Choose delivery address</h3>
+            <p style={{ color: "#737373", fontSize: 13 }}>Save and manage up to 10 delivery addresses in your profile.</p>
+            {addressesLoading ? <p style={{ padding: 20, textAlign: "center" }}>Loading saved addresses…</p> : savedAddresses.map(address => (
+              <div key={address._id} onClick={() => setSelectedAddressId(String(address._id))} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, margin: "8px 0", border: "1px solid " + (String(selectedAddressId) === String(address._id) ? "#171717" : "#e7e5e4"), borderRadius: 12, background: String(selectedAddressId) === String(address._id) ? "#f5f5f4" : "#fff" }}>
+                <input type="radio" checked={String(selectedAddressId) === String(address._id)} onChange={() => setSelectedAddressId(String(address._id))}/>
+                <div style={{ flex: 1, minWidth: 0 }}><strong>{address.label} {address.isDefault ? "· Default" : ""}</strong><div style={{ fontSize: 13 }}>{address.name} · {address.mobile}</div><div style={{ color: "#737373", fontSize: 13, overflowWrap: "anywhere" }}>{[address.line1,address.line2,address.landmark,address.city,address.state,address.pincode].filter(Boolean).join(", ")}</div></div>
+                <button type="button" onClick={e => { e.stopPropagation(); setAddressDraft({ ...address, isDefault: !!address.isDefault }); setEditingAddressId(String(address._id)); setShowAddressForm(true); }}>Edit</button>
+                <button type="button" onClick={e => { e.stopPropagation(); deleteAddress(address._id); }}>Delete</button>
+              </div>
+            ))}
+            {!addressesLoading && savedAddresses.length === 0 && <p>No saved addresses. Add one to continue.</p>}
+            {!showAddressForm ? <button className="btn-cancel" style={{ width: "100%", margin: "10px 0" }} disabled={savedAddresses.length >= 10} onClick={() => { setEditingAddressId(""); setAddressDraft({ label: "Home", name: user?.name || "", mobile: user?.mobile || "", line1: "", line2: "", landmark: "", city: "", state: "", pincode: "", isDefault: savedAddresses.length === 0 }); setShowAddressForm(true); }}>+ Add address ({savedAddresses.length}/10)</button> : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 8, margin: "12px 0" }}>
+                {["label","name","mobile","line1","line2","landmark","city","state","pincode"].map(key => <input key={key} className="modal-input" style={{ minWidth: 0, gridColumn: ["line1","line2","landmark"].includes(key) ? "1 / -1" : "auto" }} placeholder={{label:"Label (Home/Work)",name:"Full name",mobile:"Mobile number",line1:"Address line 1",line2:"Address line 2 (optional)",landmark:"Landmark (optional)",city:"City",state:"State",pincode:"PIN code"}[key]} value={addressDraft[key] || ""} onChange={e => setAddressDraft(old => ({ ...old, [key]: e.target.value }))}/>)}
+                <label style={{ gridColumn: "1 / -1", fontSize: 13 }}><input type="checkbox" checked={!!addressDraft.isDefault} onChange={e => setAddressDraft(old => ({ ...old, isDefault: e.target.checked }))}/> Set as default</label>
+                <button className="btn-confirm" onClick={saveAddress}>Save address</button><button className="btn-cancel" onClick={() => { setShowAddressForm(false); setEditingAddressId(""); }}>Cancel</button>
+              </div>
+            )}
             <div className="modal-actions">
-              <button className="btn-confirm" onClick={handleProceedToCheckout}>Proceed to Payment</button>
-              <button className="btn-cancel" onClick={() => setShowOrderModal(false)}>Cancel</button>
+              <button className="btn-confirm" disabled={!selectedAddressId || checkoutLoading || addressesLoading} onClick={() => { setShowOrderModal(false); handleProceedToCheckout(); }}>{checkoutLoading ? "Preparing checkout…" : "Continue to payment"}</button>
+              <button className="btn-cancel" onClick={() => setShowOrderModal(false)}>Close</button>
             </div>
           </div>
         </div>
       )}
-
       {/* MOBILE BOTTOM NAV (ONLY ON SMALL SCREENS) */}
       <div className="bottom-nav-mobile">
         {[
