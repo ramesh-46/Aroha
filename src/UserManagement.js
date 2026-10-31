@@ -3,7 +3,7 @@ import axios from "axios";
 import Swal from "./sweetalertConfig";
 
 const API = "https://aroha.onrender.com";
-const emptyForm = { name: "", mobile: "", email: "", gender: "", address: "", details: "", referralCode: "", referredBy: "", rewardCoins: 0, password: "" };
+const emptyForm = { name: "", mobile: "", email: "", gender: "", address: "", details: "", referralCode: "", referredBy: "", rewardCoins: 0, password: "", newRecoveryCode: "" };
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -40,7 +40,7 @@ export default function UserManagement() {
         name: current.name || "", mobile: current.mobile || "", email: current.email || "",
         gender: current.gender || "", address: current.address || "", details: current.details || "",
         referralCode: current.referralCode || "", referredBy: current.referredBy || "",
-        rewardCoins: current.rewardCoins ?? 0, password: ""
+        rewardCoins: current.rewardCoins ?? 0, password: "", newRecoveryCode: ""
       });
       setEditing(false);
     } catch (err) {
@@ -56,6 +56,7 @@ export default function UserManagement() {
     try {
       const payload = { ...form };
       if (!payload.password) delete payload.password;
+      if (!payload.newRecoveryCode) delete payload.newRecoveryCode;
       const res = await axios.put(API + "/auth/users/" + selectedUser._id, payload, { headers });
       setSelectedUser(res.data.user);
       setForm((previous) => ({ ...previous, password: "" }));
@@ -99,6 +100,7 @@ export default function UserManagement() {
             {field("Address", "address", "textarea", true)}{field("Additional details", "details", "textarea", true)}
             {field("Referral code", "referralCode")}{field("Referred by (user ID)", "referredBy")}{field("Reward coins", "rewardCoins", "number")}
             {editing && field("Set new password (leave blank to keep current)", "password", "password", true)}
+            {editing && field("Set new recovery code (leave blank to keep current)", "newRecoveryCode", "text", true)}
             {editing && <div style={styles.actions}><button type="submit" style={styles.button} disabled={saving}>{saving ? "Saving…" : "Save all changes"}</button><button type="button" style={styles.secondary} onClick={() => openUser(selectedUser)}>Discard</button></div>}
           </form>
           <h3 style={styles.sectionTitle}>Order history ({userOrders.length})</h3>
