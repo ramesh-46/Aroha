@@ -14,7 +14,7 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
 
     if (!order) return res.status(404).json({ success: false, message: "Order not found for this account." });
 
-    const paid = order.status === "Payment Verified";
+    const paid = order.status === "Payment Verified" || order.status === "Delivered";
     const failed = order.status === "Payment Failed";
     const doc = new PDFDocument({ size: "A4", margin: 48, bufferPages: true });
     res.setHeader("Content-Type", "application/pdf");
@@ -26,11 +26,20 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
     const accent = "#6d28d9";
     const money = (value) => "INR " + Number(value || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    doc.rect(0, 0, 595, 118).fill("#f3f0ff");
-    doc.fillColor(accent).fontSize(25).font("Helvetica-Bold").text("AROHA", 48, 38);
-    doc.fillColor(ink).fontSize(10).font("Helvetica").text("ONLINE STORE", 49, 69);
-    doc.fillColor(ink).fontSize(20).font("Helvetica-Bold").text(paid ? "PAYMENT RECEIPT" : failed ? "PAYMENT FAILED STATEMENT" : "ORDER INVOICE", 300, 42, { width: 245, align: "right" });
-    doc.fillColor(failed ? "#b91c1c" : paid ? "#047857" : "#b45309").fontSize(10).font("Helvetica-Bold").text(failed ? "NOT PAID" : paid ? "PAID" : "PAYMENT PENDING", 300, 72, { width: 245, align: "right" });
+    doc.rect(0, 0, 595, 132).fill("#ffffff");
+    doc.rect(0, 0, 595, 5).fill("#111111");
+    // Vector-rendered JK shopping bag wordmark based on the supplied JigiriKart logo.
+    doc.save();
+    doc.roundedRect(48, 26, 53, 54, 7).lineWidth(1.5).strokeColor("#111111").stroke();
+    doc.moveTo(61, 36).lineTo(61, 31).bezierCurveTo(61, 14, 88, 14, 88, 31).lineTo(88, 36).lineWidth(3).strokeColor("#111111").stroke();
+    doc.fillColor("#111111").font("Helvetica-Bold").fontSize(15).text("JK", 58, 47, { width: 34, align: "center" });
+    doc.moveTo(55, 72).lineTo(92, 43).lineWidth(1.5).strokeColor("#111111").stroke();
+    doc.restore();
+    doc.fillColor("#111111").font("Times-Bold").fontSize(24).text("JIGIRIKART", 111, 35, { width: 205 });
+    doc.fillColor(muted).font("Helvetica").fontSize(8).text("ORDER & PAYMENT DOCUMENT", 113, 65);
+    doc.fillColor(ink).fontSize(17).font("Helvetica-Bold").text(paid ? "PAYMENT RECEIPT" : failed ? "PAYMENT FAILED" : "ORDER INVOICE", 330, 39, { width: 215, align: "right" });
+    doc.fillColor(failed ? "#b91c1c" : paid ? "#047857" : "#b45309").fontSize(9).font("Helvetica-Bold").text(failed ? "NOT PAID" : paid ? "PAID / VERIFIED" : "PAYMENT PENDING", 330, 67, { width: 215, align: "right" });
+    doc.moveTo(48, 105).lineTo(547, 105).lineWidth(1).strokeColor("#d4d4d4").stroke();
 
     let y = 145;
     doc.fillColor(ink).font("Helvetica-Bold").fontSize(11).text("ORDER & CUSTOMER DETAILS", 48, y);
@@ -41,7 +50,8 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
       ["Order date", new Date(order.createdAt).toLocaleString("en-IN")],
       ["Customer", order.customerName || "Customer"],
       ["Mobile", order.customerMobile || "Not provided"],
-      ["Delivery address", order.deliveryAddress || "Not provided"]
+      ["Delivery address", order.deliveryAddress || "Not provided"],
+      ["Order status", order.status || "Pending"]
     ];
     left.forEach(([label, value]) => {
       doc.fillColor(muted).font("Helvetica").fontSize(9).text(label, 48, y, { width: 115 });
@@ -79,16 +89,20 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
 
     y += 12;
     const rows = [
-      ["Subtotal", order.subtotalAmount || (order.items || []).reduce((sum, item) => sum + Number(item.lineTotal || 0), 0)],
-      ["Discount", -Number(order.discountAmount || 0)],
+      ["Items subtotal (before discounts)", Number(order.subtotalAmount || (order.items || []).reduce((sum, item) => sum + Number(item.originalPrice || 0) * Number(item.quantity || 0), 0))],
+      ["Coupon / promotional discount", -Number(order.discountAmount || 0)],
+      ["Reward coins redeemed", Number(order.rewardCoinsRedeemed || 0) + " coins"],
+      ["Reward redemption discount", -Number(order.rewardDiscountAmount || 0)],
       ["Delivery charge", Number(order.deliveryCharge || 0)],
-      ["TOTAL AMOUNT", Number(order.totalAmount || 0)]
+      ["TOTAL AMOUNT PAYABLE", Number(order.totalAmount || 0)]
     ];
     rows.forEach(([label, value], index) => {
-      doc.fillColor(index === 3 ? accent : muted).font(index === 3 ? "Helvetica-Bold" : "Helvetica").fontSize(index === 3 ? 12 : 9);
-      doc.text(label, 320, y, { width: 105 });
-      doc.fillColor(ink).text(money(Math.abs(value)), 430, y, { width: 110, align: "right" });
-      y += index === 3 ? 25 : 18;
+      const totalRow = index === rows.length - 1;
+      doc.fillColor(totalRow ? "#111111" : muted).font(totalRow ? "Helvetica-Bold" : "Helvetica").fontSize(totalRow ? 11 : 8.5);
+      doc.text(label, 285, y, { width: 150 });
+      doc.fillColor(ink).text(typeof value === "string" ? value : money(value), 435, y, { width: 105, align: "right" });
+      if (totalRow) doc.moveTo(280, y - 5).lineTo(547, y - 5).lineWidth(1.5).strokeColor("#111111").stroke();
+      y += totalRow ? 24 : 16;
     });
 
     y += 10;
@@ -116,6 +130,18 @@ router.get("/:orderId/pdf", auth, async (req, res) => {
     );
     y += 18;
     doc.fillColor(muted).fontSize(8).text("Thank you for shopping with Aroha.", 48, y, { width: 499, align: "center" });
+    y += 16;
+    if (y > 700) { doc.addPage(); y = 70; }
+    doc.moveTo(48, y).lineTo(547, y).lineWidth(0.7).strokeColor("#d4d4d4").stroke();
+    y += 16;
+    doc.fillColor("#111111").font("Helvetica-Bold").fontSize(9).text("AUTHORIZED SIGNATURE", 48, y);
+    doc.moveTo(48, y + 35).lineTo(205, y + 35).lineWidth(0.8).strokeColor("#737373").stroke();
+    doc.fillColor(muted).font("Helvetica").fontSize(8).text("For JigiriKart / Aroha", 48, y + 40);
+    doc.save(); doc.circle(472, y + 22, 27).lineWidth(1.5).strokeColor("#111111").stroke();
+    doc.circle(472, y + 22, 22).lineWidth(0.7).strokeColor("#737373").stroke();
+    doc.fillColor("#111111").font("Helvetica-Bold").fontSize(7).text("JIGIRIKART", 447, y + 12, { width: 50, align: "center" });
+    doc.fontSize(6).text("ORDER VERIFIED", 447, y + 23, { width: 50, align: "center" }); doc.restore();
+    doc.fillColor(muted).font("Helvetica").fontSize(7).text("Computer-generated invoice. This digital stamp is a document mark and is not a handwritten or cryptographic signature.", 48, y + 70, { width: 499, align: "center" });
     doc.end();
   } catch (error) {
     console.error("Invoice generation failed:", error.message);
