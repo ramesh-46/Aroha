@@ -266,8 +266,8 @@ router.get("/users", sellerAuthMiddleware, async (req, res) => {
       console.log("[DEBUG] 🔍 Search query provided, building $or conditions", { q });
       query.$or = [
         { name: { $regex: escapedQ, $options: "i" } },
-        { mobile: { $regex: q, $options: "i" } },
-        { email: { $regex: q, $options: "i" } }
+        { mobile: { $regex: escapedQ, $options: "i" } },
+        { email: { $regex: escapedQ, $options: "i" } }
       ];
 
       if (/^[a-f\d]{24}$/i.test(q)) {
