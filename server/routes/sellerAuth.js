@@ -5,7 +5,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 const saltRounds = 10;
-const JWT_SECRET = process.env.JWT_SECRET || "sellersecret";
+const JWT_SECRET = process.env.JWT_SECRET;
 
 // ====== SELLER SIGNUP ======
 router.post("/seller-signup", async (req, res) => {
@@ -52,6 +52,7 @@ router.post("/seller-signup", async (req, res) => {
 
 // ====== SELLER LOGIN ======
 router.post("/seller-login", async (req, res) => {
+  if (!JWT_SECRET) return res.status(503).json({ success: false, message: "Admin authentication is not configured on this server." });
   const { mobile, password } = req.body;
   try {
     const seller = await Seller.findOne({ mobile });
