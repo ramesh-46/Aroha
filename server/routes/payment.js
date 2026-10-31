@@ -21,8 +21,13 @@ const upload = multer({ storage: storage });
 router.post("/create-session", auth, async (req, res) => {
   const requestId = require("crypto").randomUUID();
   try {
-    const { cartItems, customerDetails, couponCode = "", customerLocation = null, redeemCoins = 0 } = req.body || {};
+    const { cartItems, addressId, customerLocation = null, couponCode = "", redeemCoins = 0 } = req.body || {};
     const userId = req.user.id;
+    const checkoutUser = await User.findById(userId).select("name mobile email addresses address").lean();
+    if (!checkoutUser) return res.status(404).json({ success: false, error: "Customer account not found." });
+    const selectedAddress = (checkoutUser.addresses || []).find(address => String(address._id) === String(addressId));
+    if (!selectedAddress) return res.status(400).json({ success: false, error: "Select a saved delivery address before checkout." });
+    const customerDetails = { name: selectedAddress.name || checkoutUser.name, mobile: selectedAddress.mobile || checkoutUser.mobile, address: [selectedAddress.line1, selectedAddress.line2, selectedAddress.landmark, selectedAddress.city, selectedAddress.state, selectedAddress.pincode].filter(Boolean).join(", ") };
   let reservedCoins = 0;
   let reservedUserId = null;
     if (!userId || !Array.isArray(cartItems) || !cartItems.length || !customerDetails?.name || !customerDetails?.mobile || !customerDetails?.address) {
@@ -115,7 +120,6 @@ router.post("/create-session", auth, async (req, res) => {
       status: "Payment Verification Pending", paymentMethod: "UPI QR", upiId, upiUrl
     });
     await newOrder.save();
-    const checkoutUser = await User.findById(userId).select("email").lean().catch(() => null);
     await writeAudit({ userId, username: checkoutUser?.name || customerDetails?.name || "Customer", role: "user", event: "checkout.session_created", message: "Checkout session created", requestId, metadata: { orderId, itemCount: orderItems.length, totalQuantity, finalAmount } });
     console.log("[CHECKOUT] SESSION_CREATED", { requestId, orderId, userId: String(userId), itemCount: orderItems.length, totalQuantity, subtotalAmount, discountAmount, deliveryCharge, finalAmount, couponCode: normalizedCouponCode || null });
     return res.json({ success: true, orderId, upiUrl, upiId, amount: finalAmount, customerDetails, orderItems, pricing: { subtotalAmount, discountAmount, deliveryCharge, rewardDiscount, rewardCoinsRedeemed: reservedCoins, totalAmount: finalAmount } });
