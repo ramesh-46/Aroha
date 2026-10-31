@@ -442,13 +442,17 @@ router.post("/razorpay/log-event", auth, async (req, res) => {
       console.error("[Razorpay] Could not record failed payment", error.message);
     }
   }
-  const eventOrder = await Order.findOne({ orderId: String(orderId) }).select("userId").lean().catch(() => null);
-  const eventUser = eventOrder?.userId ? await User.findById(eventOrder.userId).select("email").lean().catch(() => null) : null;
+  const eventOrder = await Order.findOne({ orderId: String(orderId), userId: req.user.id }).select("userId orderId razorpayOrderId razorpayPaymentId transactionId").lean().catch(() => null);
+  const eventUser = eventOrder?.userId ? await User.findById(eventOrder.userId).select("name email").lean().catch(() => null) : null;
+  const resolvedPaymentId = paymentId || eventOrder?.razorpayPaymentId || eventOrder?.transactionId || null;
   console.log("[Razorpay][CLIENT_EVENT]", {
     event,
-    userEmail: maskEmail(eventUser?.email),
-    orderId: String(orderId).slice(0, 80),
-    gatewayOrderId: gatewayOrderId ? String(gatewayOrderId).slice(0, 80) : undefined,
+    username: eventUser?.name || "Customer",
+    userId: String(req.user.id),
+    userEmail: eventUser?.email || null,
+    orderId: eventOrder?.orderId || String(orderId),
+    gatewayOrderId: gatewayOrderId || eventOrder?.razorpayOrderId || null,
+    paymentId: resolvedPaymentId,
     paymentId: paymentId ? String(paymentId).slice(0, 80) : undefined,
     details: safeDetails,
     at: new Date().toISOString()
