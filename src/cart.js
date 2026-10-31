@@ -37,6 +37,13 @@ function Cart() {
   const [selectedItems, setSelectedItems] = useState([]);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [customerDetails, setCustomerDetails] = useState({ name: "", mobile: "", address: "" });
+  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [addressesLoading, setAddressesLoading] = useState(false);
+  const [addressDraft, setAddressDraft] = useState({ label: "Home", name: "", mobile: "", line1: "", line2: "", landmark: "", city: "", state: "", pincode: "", isDefault: false });
+  const [editingAddressId, setEditingAddressId] = useState("");
+  const [showAddressForm, setShowAddressForm] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [previousOrders, setPreviousOrders] = useState([]);
   const [couponCode, setCouponCode] = useState("");
   const [appliedCoupon, setAppliedCoupon] = useState(null);
@@ -65,6 +72,7 @@ function Cart() {
     fetchCart();
     fetchOrders();
     fetchCheckoutSettings();
+    fetchSavedAddresses();
     const token = localStorage.getItem("authToken");
     if (token) axios.get("https://aroha.onrender.com/rewards/me", { headers: { Authorization: "Bearer " + token } }).then((res) => setRewardBalance(Number(res.data.coins) || 0)).catch((error) => console.warn("[Rewards] Balance unavailable", error.response?.status));
 
@@ -82,6 +90,30 @@ function Cart() {
       );
     }
   }, []);
+
+  const authHeaders = () => ({ Authorization: "Bearer " + localStorage.getItem("authToken") });
+  const fetchSavedAddresses = async () => {
+    if (!localStorage.getItem("authToken")) return;
+    setAddressesLoading(true);
+    try { const r = await axios.get("https://aroha.onrender.com/auth/addresses", { headers: authHeaders() }); const rows = r.data.addresses || []; setSavedAddresses(rows); const preferred = rows.find(a => a.isDefault) || rows[0]; if (preferred) setSelectedAddressId(String(preferred._id)); }
+    catch (e) { console.error("[ADDRESS_BOOK] LOAD_FAILED", { status: e.response?.status, message: e.response?.data?.message || e.message }); }
+    finally { setAddressesLoading(false); }
+  };
+  const saveAddress = async () => {
+    const required = ["name","mobile","line1","city","state","pincode"];
+    if (required.some(k => !String(addressDraft[k] || "").trim())) return Swal.fire("Complete address required", "Fill name, mobile, street address, city, state and PIN code.", "warning");
+    try {
+      const url = "https://aroha.onrender.com/auth/addresses" + (editingAddressId ? "/" + editingAddressId : "");
+      const r = editingAddressId ? await axios.put(url, addressDraft, { headers: authHeaders() }) : await axios.post(url, addressDraft, { headers: authHeaders() });
+      const rows = r.data.addresses || []; setSavedAddresses(rows); const chosen = rows.find(a => String(a._id) === String(editingAddressId)) || rows[rows.length - 1]; if (chosen) setSelectedAddressId(String(chosen._id));
+      setShowAddressForm(false); setEditingAddressId(""); Swal.fire({ title: "Address saved", icon: "success", timer: 1000, showConfirmButton: false });
+    } catch (e) { Swal.fire("Address not saved", e.response?.data?.message || "Please check the details and try again.", "error"); }
+  };
+  const deleteAddress = async id => {
+    const result = await Swal.fire({ title: "Delete this address?", icon: "warning", showCancelButton: true, confirmButtonText: "Delete" }); if (!result.isConfirmed) return;
+    try { const r = await axios.delete("https://aroha.onrender.com/auth/addresses/" + id, { headers: authHeaders() }); const rows = r.data.addresses || []; setSavedAddresses(rows); if (String(selectedAddressId) === String(id)) setSelectedAddressId(String((rows.find(a => a.isDefault) || rows[0] || {})._id || "")); }
+    catch (e) { Swal.fire("Delete failed", e.response?.data?.message || "Unable to delete address.", "error"); }
+  };
 
   // --- API CALLS ---
   const fetchCart = async () => {
@@ -237,7 +269,7 @@ function Cart() {
   }
 
   // If delivery details are missing, show the modal
-  if (!customerDetails.name || !customerDetails.mobile || !customerDetails.address) {
+  if (!selectedAddressId) {
     setShowOrderModal(true);
     return;
   }
@@ -253,14 +285,10 @@ function Cart() {
       quantity: i.quantity,
     }));
 
+    setCheckoutLoading(true);
     const response = await axios.post("https://aroha.onrender.com/payment/create-session", {
-      userId: user._id,
       cartItems: formattedItems,
-      customerDetails: {
-        name: customerDetails.name,
-        mobile: customerDetails.mobile,
-        address: customerDetails.address,
-      },
+      addressId: selectedAddressId,
       customerLocation,
       couponCode: appliedCoupon ? appliedCoupon.code : "",
       redeemCoins: safeRedeemCoins,
@@ -282,9 +310,9 @@ function Cart() {
     }
   } catch (err) {
     console.error("Checkout error:", err);
-    const errorMessage = err.response?.data?.error || "Failed to create payment session";
-    Swal.fire("Error", errorMessage, "error");
-  }
+    const errorMessage = err.response?.data?.error || err.response?.data?.message || "Failed to create payment session";
+    Swal.fire("Checkout failed", errorMessage, "error");
+  } finally { setCheckoutLoading(false); }
 };
 
   const handlePlaceOrder = async () => {
