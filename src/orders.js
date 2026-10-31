@@ -20,7 +20,7 @@ function Orders() {
     if (!user) return;
     try {
       setLoading(true);
-      const res = await axios.get(`https://aroha.onrender.com/orders/user/${user._id}`);
+      const res = await axios.get(`https://aroha.onrender.com/orders/user/${user._id}`, { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
       setOrders(res.data);
       setError(null);
     } catch (err) {
@@ -40,7 +40,7 @@ function Orders() {
 
   const fetchSupportThreads = async () => {
     try {
-      const res = await axios.get(`https://aroha.onrender.com/support?userId=${user._id}`);
+      const res = await axios.get("https://aroha.onrender.com/support", { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
       setSupportThreads(res.data.queries || []);
     } catch (err) {
       console.error("Failed to fetch support queries", err);
@@ -111,14 +111,14 @@ function Orders() {
           productId: activeSupport.item.productId?._id,
           productName: getProductName(activeSupport.item),
           message: supportMessage.trim()
-        });
+        }, { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
         thread = res.data.query;
       } else {
         const res = await axios.post(`https://aroha.onrender.com/support/${thread._id}/reply`, {
           senderType: "user",
           senderId: user._id,
           message: supportMessage.trim()
-        });
+        }, { headers: { Authorization: "Bearer " + localStorage.getItem("authToken") } });
         thread = res.data.query;
       }
 
