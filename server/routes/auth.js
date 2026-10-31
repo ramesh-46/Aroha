@@ -249,7 +249,7 @@ router.post("/profile/update", async (req, res) => {
 });
 
 // Get Users with Search
-router.get("/users", async (req, res) => {
+router.get("/users", sellerAuthMiddleware, async (req, res) => {
   console.log("[INFO] 🚀 Get Users request started", { query: req.query.q });
   
   try {
@@ -323,7 +323,7 @@ router.put("/users/:id", sellerAuthMiddleware, async (req, res) => {
 });
 
 // Get User Orders
-router.get("/users/:id/orders", async (req, res) => {
+router.get("/users/:id/orders", sellerAuthMiddleware, async (req, res) => {
   console.log("[INFO] 🚀 Get User Orders request started", { userId: req.params.id });
   
   try {
