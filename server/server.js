@@ -23,6 +23,35 @@ const invoiceRoutes = require("./routes/invoices");
 const AuditLog = require("./models/AuditLog");
 const sellerAuthMiddleware = require("./middleware/sellerAuthMiddleware");
 const app = express();
+app.set("trust proxy", 1);
+app.disable("x-powered-by");
+
+// Small bounded per-IP limiter; critical write/login routes have tighter budgets.
+const requestBuckets = new Map();
+let lastBucketSweep = Date.now();
+app.use((req, res, next) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "no-referrer");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(self)");
+  const now = Date.now();
+  if (now - lastBucketSweep > 60000) {
+    for (const [key, bucket] of requestBuckets) if (bucket.resetAt <= now) requestBuckets.delete(key);
+    lastBucketSweep = now;
+  }
+  const ip = String(req.ip || req.socket?.remoteAddress || "unknown").slice(0, 80);
+  const sensitive = /^\/auth\/(login|signup|google-login|reset-password)|^\/payment\/create-session/.test(req.path);
+  const limit = sensitive ? 20 : 300;
+  const key = (sensitive ? "s:" : "g:") + ip;
+  let bucket = requestBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) { bucket = { count: 0, resetAt: now + 60000 }; requestBuckets.set(key, bucket); }
+  bucket.count += 1;
+  if (bucket.count > limit) {
+    res.setHeader("Retry-After", String(Math.max(1, Math.ceil((bucket.resetAt - now) / 1000))));
+    return res.status(429).json({ success: false, message: "Too many requests. Please wait and try again." });
+  }
+  next();
+});
 
 // --------------------
 // In-memory runtime log viewer (current server process only)
