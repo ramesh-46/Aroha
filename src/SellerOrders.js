@@ -4,7 +4,7 @@ import { FaBoxOpen, FaSearch, FaSyncAlt, FaEdit, FaTimes, FaCheck, FaMapMarkerAl
 import Swal from "./sweetalertConfig";
 
 const API = "https://aroha.onrender.com";
-const STATUSES = ["Pending", "Under Consideration", "Processing", "Packing", "Shipped", "Out for Delivery", "Delivered", "Cancelled", "Payment Verification Pending", "Payment Verified", "Payment Failed"];
+const STATUSES = ["Pending", "Under Consideration", "Under Confirmation", "Processing", "Packing", "Shipped", "Out for Delivery", "Delivered", "Cancelled", "Payment Verification Pending", "Payment Verified", "Payment Failed"];
 const statusTone = (status) => {
   if (status === "Delivered" || status === "Payment Verified") return "success";
   if (status === "Cancelled" || status === "Payment Failed") return "danger";
