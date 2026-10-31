@@ -119,7 +119,7 @@ const styles = {
   header: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap", marginBottom: 18 },
   heading: { margin: 0, color: "#111827" }, muted: { color: "#64748b", fontSize: 13 },
   searchRow: { display: "flex", gap: 8, minWidth: 280, flex: "1 1 340px" },
-  layout: { display: "grid", gridTemplateColumns: "minmax(0,320px) minmax(0,1fr)", gap: 16, alignItems: "start", width: "100%", minWidth: 0 },
+  layout: { display: "grid", gap: 16, alignItems: "start", width: "100%", minWidth: 0 },
   panel: { background: "#fff", borderRadius: 14, padding: 16, boxShadow: "0 6px 22px #0f172a0d", display: "grid", gap: 12, minWidth: 0 },
   sectionTitle: { margin: "0 0 8px", color: "#111827" }, userCard: { textAlign: "left", padding: 12, borderRadius: 10, border: "1px solid #e5e7eb", background: "#f8fafc", cursor: "pointer", display: "grid", gap: 4, color: "#334155" },
   activeUser: { borderColor: "#2563eb", background: "#eff6ff" }, control: { width: "100%", minWidth: 0, padding: "10px 12px", borderRadius: 9, border: "1px solid #cbd5e1", background: "#fff", boxSizing: "border-box" },
